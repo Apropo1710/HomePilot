@@ -364,7 +364,7 @@ private fun HomePilotApp() {
                                 devices.removeAll { it.stateId == id }; lights.removeAll { it.stateId == id }
                             }
                             confirmRemoveDevice = null
-                        }) { Text("Entfernen") },
+                        }) { Text("Entfernen") } },
                         dismissButton = { TextButton(onClick = { confirmRemoveDevice = null }) { Text("Abbrechen") } }
                     )
                     if (confirmDeleteRoom != null) AlertDialog(
@@ -375,7 +375,7 @@ private fun HomePilotApp() {
                             rooms = (rooms.filterNot { it == room } + if ("Nicht zugeordnet" !in rooms) listOf("Nicht zugeordnet") else emptyList()).toMutableList(); persistRooms()
                             devices.indices.forEach { i -> if (devices[i].room == room) { devices[i] = devices[i].copy(room = "Nicht zugeordnet"); devices[i].stateId?.let { id -> deviceRooms = deviceRooms.toMutableMap().apply { put(id, "Nicht zugeordnet") } } } }
                             lights.indices.forEach { i -> if (lights[i].room == room) { lights[i] = lights[i].copy(room = "Nicht zugeordnet"); lights[i].stateId?.let { id -> deviceRooms = deviceRooms.toMutableMap().apply { put(id, "Nicht zugeordnet") } } } }; persistDeviceRooms()
-                        }; confirmDeleteRoom = null }) { Text("Raum löschen") },
+                        }; confirmDeleteRoom = null }) { Text("Raum löschen") } },
                         dismissButton = { TextButton(onClick = { confirmDeleteRoom = null }) { Text("Abbrechen") } }
                     )
                     if (showHiddenDevices) AlertDialog(
