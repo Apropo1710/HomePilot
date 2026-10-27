@@ -12,8 +12,8 @@ android {
         applicationId = "de.homepilot.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.8-hidden-devices"
+        versionCode = 4
+        versionName = "0.9"
     }
 
     buildTypes {
@@ -31,6 +31,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
