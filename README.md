@@ -1,39 +1,39 @@
-# HomePilot v0.6 – Räume und Geräteverwaltung
+# HomePilot – Räume und Geräteverwaltung
 
-Android-Studio-Projekt (Kotlin / Jetpack Compose).
+Android-App auf Basis von Kotlin und Jetpack Compose zur Steuerung und Verwaltung von ioBroker-Geräten.
 
-## Enthalten
-- Simple-API-Anbindung an ioBroker über Port 8087.
-- Verbindungsmeldung ohne Waschmaschinenstatus.
-- Erneute Gerätesuche über die Schaltfläche in Einstellungen.
-- Geräteerkennung für Shelly- und Hue-Schaltzustände mit engerer Filterung, damit allgemeine boolesche Datenpunkte nicht alle als Schalter erscheinen.
-- Bekannter Wasser-Plug wird bei der Suche gezielt erhalten und standardmäßig dem Wohnzimmer zugeordnet; Leistungsaufnahme wird weiter abgefragt.
+## Funktionen
+
+- Verbindung zu ioBroker über die Simple API auf Port 8087.
+- Verbindungstest ohne Abfrage des Waschmaschinenstatus.
+- Manuelle Gerätesuche über die Schaltfläche in den Einstellungen.
+- Erkennung von Shelly- und Hue-Schaltzuständen mit Filtern, damit nicht jeder boolesche Datenpunkt als Schalter erscheint.
+- Bei der Geräteerkennung werden lesbare Namen aus ioBroker-Objekten und übergeordneten Geräten/Kanälen bevorzugt.
+- Der bekannte Wasser-Plug wird bei der Suche berücksichtigt und standardmäßig dem Wohnzimmer zugeordnet; die Leistungsaufnahme kann ebenfalls abgefragt werden.
 - Räume in der App anlegen, umbenennen und löschen.
-- Geräte umbenennen und Räumen zuordnen bzw. verschieben.
-- Geräte aus HomePilot ausblenden, ohne sie in ioBroker zu löschen.
-- Räume, Namen und Zuordnungen werden lokal auf dem Gerät gespeichert.
-- Waschmaschinen-Schalter ist verfügbar, wird aber nicht als Testgerät verwendet.
+- Geräte umbenennen, Räumen zuordnen und zwischen Räumen verschieben.
+- Geräte in HomePilot ausblenden, ohne sie in ioBroker zu löschen.
+- Räume, Gerätenamen und Raumzuordnungen werden lokal auf dem Gerät gespeichert.
+- Ausgeblendete Geräte können über den Bereich „Ausgeblendete Geräte“ wieder hinzugefügt werden.
+- Entfernen von Geräten und Löschen von Räumen werden bestätigt.
+- Die Waschmaschine kann als Gerät verwaltet werden, ist aber ausdrücklich nicht das Testgerät.
 
-## Öffnen
-Den Ordner `HomePilot` in Android Studio öffnen, Gradle synchronisieren und auf dem Gerät starten.
+## Verbindung und Sicherheit
 
-## Hinweis zum Teststatus
-Die ZIP-Datei und Quelltextstruktur wurden geprüft. Ein vollständiger Android/Gradle-Build konnte in der verfügbaren Umgebung nicht ausgeführt werden; bitte vor der Installation in Android Studio synchronisieren und kompilieren. Die Simple API ist in der aktuell eingerichteten ioBroker-Instanz ungeschützt und verwendet Admin-Rechte; nicht ins Internet freigeben.
+Die App verwendet die ioBroker Simple API. In der aktuellen Einrichtung läuft diese über Port 8087. Prüfe die Absicherung deiner ioBroker-Instanz und gib die Simple API nicht ungeschützt im Internet frei.
 
+## APK bauen und herunterladen
 
-## Version 0.8 – ausgeblendete Geräte und Bestätigungen
+GitHub Actions baut nach Änderungen auf dem Branch `main automatisch eine Debug-APK. Der Workflow kann auch manuell gestartet werden:
 
-- Aus HomePilot entfernte Geräte werden mit ihren wichtigsten Gerätedaten lokal gespeichert.
-- In Räume & Geräte gibt es den Bereich „Ausgeblendete Geräte“ mit „Wieder hinzufügen“.
-- Entfernen und Raum löschen benötigen eine Bestätigung.
-- Entfernte Geräte bleiben in ioBroker unverändert.
-- Bereits bekannte Geräte wie Wasser und Waschmaschine werden bei der Suche nicht gegen eine explizite Ausblendung wieder eingeblendet.
+1. Im GitHub-Repository den Bereich **Actions** öffnen.
+2. **HomePilot Android APK** auswählen.
+3. **Run workflow** starten.
+4. Nach erfolgreichem Lauf den Eintrag **HomePilot-debug-apk** unter **Artifacts** herunterladen.
 
-Hinweis: Ein vollständiger Android-Gradle-Build wurde in dieser Umgebung nicht ausgeführt.
+Die Debug-APK ist für Tests vorgesehen und keine Play-Store-signierte Release-APK.
 
+## Letzte Änderung
 
-## Automatischer APK-Build über GitHub Actions
+- **Gerätenamen:** Die automatische Erkennung fragt nun ioBroker-Objekte einschließlich übergeordneter Objekte ab und versucht, aussagekräftige Geräte-/Kanalnamen statt generischer Zustandsnamen wie „Switch“ zu verwenden.
 
-Dieses Projekt enthält `.github/workflows/android.yml`. Nach dem einmaligen Hochladen des Projektordners `HomePilot` in ein GitHub-Repository baut GitHub bei Pushes auf `main`/`master` automatisch eine Debug-APK. Ein manueller Start ist ebenfalls möglich: GitHub → Actions → HomePilot Android APK → Run workflow.
-
-Die APK findest du nach erfolgreichem Lauf im Abschnitt **Artifacts** des jeweiligen Workflow-Laufs (`HomePilot-debug-apk`). Das ist zunächst eine Debug-APK, keine Play-Store-signierte Release-APK. Der Workflow wurde strukturell geprüft, aber nicht tatsächlich in GitHub ausgeführt; der erste Lauf muss bestätigen, dass alle Abhängigkeiten erfolgreich gebaut werden.
