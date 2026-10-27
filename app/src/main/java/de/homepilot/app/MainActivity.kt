@@ -675,6 +675,9 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text(if (connected) "Geräte erneut suchen" else "Verbinden und Geräte suchen") }
         Text("Verbindung über Simple API auf Port 8087. In der aktuellen ioBroker-Konfiguration erfolgt der Zugriff ohne Anmeldung.", color = Muted, fontSize = 11.sp)
     }
+    CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
+        Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
+    }
     CardBlock(panel, text, "Geplante Erweiterungen", "Nach erfolgreichem Verbindungstest", Icons.Default.AddCircle) {
         Text("• Live-Erkennung von Hue- und Shelly-Schaltern\n• Wassermelder-Datenpunkte als nächster Schritt\n• Später: KlimaPilot und Roboter", color = text, fontSize = 13.sp, lineHeight = 22.sp)
     }
