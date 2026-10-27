@@ -106,7 +106,7 @@ private class IoBrokerClient {
     }
 
     fun discoverSwitches(baseUrl: String, adapter: String, callback: (List<DeviceItem>, String?) -> Unit) {
-        request(baseUrl, "/objects?pattern=${Uri.encode(adapter + ".*")}&type=state") { ok, body, error ->
+        request(baseUrl, "/objects?pattern=${Uri.encode(adapter + ".*")}") { ok, body, error ->
             if (!ok || body == null) { callback(emptyList(), error ?: "Geräteliste nicht verfügbar"); return@request }
             try {
                 val objects = JSONObject(body)
@@ -139,10 +139,35 @@ private class IoBrokerClient {
                                 (candidateId.substringAfterLast('.').contains("power", ignoreCase = true) ||
                                  (objects.optJSONObject(candidateId)?.optJSONObject("common")?.optString("unit", "") == "W"))
                         }
+                        // Prefer the human-readable device/channel name from ioBroker's
+                        // object hierarchy over generic state labels such as "Switch".
+                        fun objectName(objectId: String): String {
+                            val objectCommon = objects.optJSONObject(objectId)?.optJSONObject("common") ?: return ""
+                            val value = objectCommon.opt("name")
+                            val resolved = when (value) {
+                                is JSONObject -> value.optString("de").ifBlank { value.optString("en") }
+                                else -> value?.toString().orEmpty()
+                            }.trim()
+                            val generic = resolved.isBlank() || resolved.startsWith("{") ||
+                                resolved.equals("Switch", true) || resolved.equals("on", true) ||
+                                resolved.equals("Output", true) || resolved.equals("State", true) ||
+                                resolved.matches(Regex("(?i)(relay|channel|device)\\s*#?\\d*"))
+                            return if (generic) "" else resolved
+                        }
+                        var ancestor = parent
+                        var friendlyName = ""
+                        while (ancestor.startsWith("$adapter.") && ancestor.isNotBlank()) {
+                            friendlyName = objectName(ancestor)
+                            if (friendlyName.isNotBlank()) break
+                            val next = ancestor.substringBeforeLast('.', "")
+                            if (next.isBlank() || next == ancestor || next == adapter) break
+                            ancestor = next
+                        }
                         val fallbackName = when {
-                            name.isBlank() || name.startsWith("{") -> parent.substringAfterLast('.')
-                            name.equals("Switch", true) || name.equals("on", true) -> parent.substringAfterLast('.')
-                            else -> name
+                            friendlyName.isNotBlank() -> friendlyName
+                            name.isNotBlank() && !name.startsWith("{") &&
+                                !name.equals("Switch", true) && !name.equals("on", true) -> name
+                            else -> parent.substringAfterLast('.')
                         }
                         candidates.add(DeviceItem(fallbackName, if (adapter == "hue.0") "Hue · ioBroker" else "Shelly · ioBroker", if (adapter == "hue.0") "light" else "plug", false, "", id, siblingPower, true))
                     }
