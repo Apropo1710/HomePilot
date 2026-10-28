@@ -33,6 +33,12 @@ jobs:
           unzip -q /tmp/gradle.zip -d /tmp
           echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
 
+      - name: Stabilen Debug-Signaturschlüssel einrichten
+        run: |
+          mkdir -p "$HOME/.android"
+          base64 --decode .github/debug-keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+
       - name: Debug APK bauen
         run: gradle --no-daemon assembleDebug
 
