@@ -808,10 +808,9 @@ private fun LightsScreen(
                 LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
                 LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
-                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = Muted, fontSize = 11.sp) }
-                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Raum zuordnen", tint = Blue) }
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
                     if (item.brightnessId != null) {
@@ -1024,10 +1023,9 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (lamps.isNotEmpty()) {
             Text("Lampen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             lamps.forEach { item ->
-                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Gerät bearbeiten", tint = Blue) }
                     }
                 }
             }
@@ -1035,10 +1033,9 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (switches.isNotEmpty()) {
             Text("Schalter & Steckdosen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             switches.forEach { item ->
-                CardBlock(panel, text, item.name, "", Icons.Default.Power) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Gerät bearbeiten", tint = Blue) }
                     }
                 }
             }
@@ -1046,10 +1043,9 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (otherItems.isNotEmpty()) {
             Text("Sonstiges", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             otherItems.forEach { item ->
-                CardBlock(panel, text, item.name, "", Icons.Default.Devices) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Devices, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(item.detail.ifBlank { item.kind }, color = Muted, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Gerät bearbeiten", tint = Blue) }
                     }
                 }
             }
