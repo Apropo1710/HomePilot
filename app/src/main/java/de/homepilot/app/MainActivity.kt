@@ -316,6 +316,7 @@ private fun HomePilotApp() {
     var showTuyaImportDialog by remember { mutableStateOf(false) }
     var selectedTuyaIds by remember { mutableStateOf(setOf<String>()) }
     var selectedTuyaRooms by remember { mutableStateOf(emptyMap<String, String>()) }
+    var discoveredNames by remember { mutableStateOf(emptyMap<String, String>()) }
     var showLightImportDialog by remember { mutableStateOf(false) }
     var scanResultMessage by remember { mutableStateOf<String?>(null) }
     var selectedLightIds by remember { mutableStateOf(setOf<String>()) }
@@ -403,7 +404,8 @@ private fun HomePilotApp() {
                             discoveredTuyaDevices.clear()
                             discoveredTuyaDevices.addAll(candidates)
                             selectedTuyaIds = emptySet()
-                            selectedTuyaRooms = candidates.associate { it.stateId.orEmpty() to "Nicht zugeordnet" }
+                            selectedTuyaRooms = candidates.associate { it.stateId.orEmpty() to (deviceRooms[it.stateId.orEmpty()] ?: "Nicht zugeordnet") }
+                            discoveredNames = discoveredNames + candidates.associate { it.stateId.orEmpty() to (customNames[it.stateId.orEmpty()] ?: it.name) }
                             showTuyaImportDialog = candidates.isNotEmpty()
                             if (candidates.isEmpty() && tuyaFound.isEmpty()) {
                                 scanResultMessage = "Keine Tuya-Schalter gefunden. Prüfe, ob ein Tuya-Adapter (tuya.0, tuya.1 usw.) aktiv ist und schaltbare Datenpunkte bereitstellt."
@@ -422,6 +424,7 @@ private fun HomePilotApp() {
                             discoveredLights.clear()
                             discoveredLights.addAll(candidates)
                             selectedLightIds = emptySet()
+                            discoveredNames = discoveredNames + candidates.associate { it.stateId.orEmpty() to (customNames[it.stateId.orEmpty()] ?: it.name) }
                             showLightImportDialog = candidates.isNotEmpty()
                             if (candidates.isEmpty()) {
                                 scanResultMessage = if (found.isEmpty()) {
@@ -620,7 +623,7 @@ private fun HomePilotApp() {
                     )
                     if (scanResultMessage != null) AlertDialog(
                         onDismissRequest = { scanResultMessage = null },
-                        title = { Text("Lampensuche") },
+                        title = { Text("Gerätesuche") },
                         text = { Text(scanResultMessage ?: "") },
                         confirmButton = { TextButton(onClick = { scanResultMessage = null }) { Text("OK") } }
                     )
@@ -640,10 +643,18 @@ private fun HomePilotApp() {
                                                 selectedTuyaIds = if (checked) selectedTuyaIds + id else selectedTuyaIds - id
                                             })
                                             Column(Modifier.weight(1f)) {
-                                                Text(item.name, color = LightText, fontWeight = FontWeight.SemiBold)
+                                                OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                                 Text(id, color = Muted, fontSize = 9.sp)
                                             }
                                         }
+                                        TextButton(onClick = {
+                                            hiddenIds = hiddenIds + id
+                                            prefs.edit().putStringSet("hiddenDevices", hiddenIds).apply()
+                                            hiddenItems = hiddenItems.filterNot { it.stateId == id } + item.copy(name = discoveredNames[id]?.trim().orEmpty().ifBlank { item.name }, room = selectedTuyaRooms[id] ?: "Nicht zugeordnet")
+                                            persistHiddenItems()
+                                            discoveredTuyaDevices.removeAll { it.stateId == id }
+                                            selectedTuyaIds = selectedTuyaIds - id
+                                        }) { Text("Ausblenden") }
                                         var roomMenuExpanded by remember(id) { mutableStateOf(false) }
                                         OutlinedButton(onClick = { roomMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
                                             Text("Raum: ${selectedTuyaRooms[id] ?: "Nicht zugeordnet"}")
@@ -667,9 +678,12 @@ private fun HomePilotApp() {
                                     val id = item.stateId ?: return@forEach
                                     val room = selectedTuyaRooms[id] ?: "Nicht zugeordnet"
                                     deviceRooms = deviceRooms.toMutableMap().apply { put(id, room) }
-                                    if (devices.none { it.stateId == id }) devices.add(item.copy(room = room))
+                                    val chosenName = discoveredNames[id]?.trim().orEmpty().ifBlank { item.name }
+                                    customNames = customNames.toMutableMap().apply { put(id, chosenName) }
+                                    if (devices.none { it.stateId == id }) devices.add(item.copy(name = chosenName, room = room))
                                 }
                                 persistDeviceRooms()
+                                persistNames()
                                 applyCustomConfig()
                                 refreshStates(ioClient, serverUrl, devices, lights)
                                 showTuyaImportDialog = false
@@ -693,10 +707,19 @@ private fun HomePilotApp() {
                                             selectedLightIds = if (checked) selectedLightIds + id else selectedLightIds - id
                                         })
                                         Column(Modifier.weight(1f)) {
-                                            Text(item.name, color = LightText, fontWeight = FontWeight.SemiBold)
+                                            OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                             Text(id, color = Muted, fontSize = 9.sp)
                                         }
                                     }
+                                    TextButton(onClick = {
+                                        hiddenIds = hiddenIds + id
+                                        prefs.edit().putStringSet("hiddenDevices", hiddenIds).apply()
+                                        hiddenItems = hiddenItems.filterNot { it.stateId == id } + item.copy(name = discoveredNames[id]?.trim().orEmpty().ifBlank { item.name })
+                                        persistHiddenItems()
+                                        discoveredLights.removeAll { it.stateId == id }
+                                        selectedLightIds = selectedLightIds - id
+                                    }) { Text("Ausblenden") }
+                                }
                                 }
                             }
                         },
@@ -706,7 +729,9 @@ private fun HomePilotApp() {
                                 val chosenIds = chosen.mapNotNull { it.stateId }.toSet()
                                 importedLightIds = importedLightIds + chosenIds
                                 prefs.edit().putStringSet("importedLights", importedLightIds).apply()
-                                lights.addAll(chosen.filter { item -> lights.none { it.stateId == item.stateId } })
+                                chosen.forEach { item -> item.stateId?.let { id -> customNames = customNames.toMutableMap().apply { put(id, discoveredNames[id]?.trim().orEmpty().ifBlank { item.name }) } } }
+                                persistNames()
+                                lights.addAll(chosen.map { item -> item.copy(name = discoveredNames[item.stateId]?.trim().orEmpty().ifBlank { item.name }) }.filter { item -> lights.none { it.stateId == item.stateId } })
                                 applyCustomConfig()
                                 refreshStates(ioClient, serverUrl, devices, lights)
                                 showLightImportDialog = false
@@ -725,7 +750,7 @@ private fun HomePilotApp() {
                                 Column(Modifier.weight(1f)) { Text(item.name, fontWeight = FontWeight.SemiBold); Text(item.subtitle, color = Muted, fontSize = 12.sp) }
                                 TextButton(onClick = {
                                     val id = item.stateId
-                                    if (id != null) { hiddenIds = hiddenIds - id; prefs.edit().putStringSet("hiddenDevices", hiddenIds).apply(); hiddenItems = hiddenItems.filterNot { it.stateId == id }; persistHiddenItems(); if (item.kind == "light") { if (lights.none { it.stateId == id }) lights.add(item) } else { if (devices.none { it.stateId == id }) devices.add(item) }; applyCustomConfig(); refreshStates(ioClient, serverUrl, devices, lights) }
+                                    if (id != null) { hiddenIds = hiddenIds - id; prefs.edit().putStringSet("hiddenDevices", hiddenIds).apply(); hiddenItems = hiddenItems.filterNot { it.stateId == id }; persistHiddenItems(); if (item.kind == "light") { importedLightIds = importedLightIds + id; prefs.edit().putStringSet("importedLights", importedLightIds).apply(); if (lights.none { it.stateId == id }) lights.add(item) } else { if (devices.none { it.stateId == id }) devices.add(item) }; applyCustomConfig(); refreshStates(ioClient, serverUrl, devices, lights) }
                                 }) { Text("Wieder hinzufügen") }
                             } }
                         } },
