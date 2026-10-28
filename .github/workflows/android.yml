@@ -45,6 +45,14 @@ jobs:
       - name: Separate Test-App bauen
         run: gradle --no-daemon assembleDebug
 
+      - name: APK-Signaturen prüfen
+        run: |
+          echo 'Release APK:'
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
+          echo 'Test APK:'
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk
+          echo 'APK version and signing configuration verification complete.'
+
       - name: APKs als Download bereitstellen
         uses: actions/upload-artifact@v4
         with:
