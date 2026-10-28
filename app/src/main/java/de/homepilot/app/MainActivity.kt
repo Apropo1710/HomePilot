@@ -293,7 +293,11 @@ private data class DeviceItem(
     val brightnessId: String? = null,
     val colorTempId: String? = null,
     val hueId: String? = null,
-    val saturationId: String? = null
+    val saturationId: String? = null,
+    val currentBrightness: Double? = null,
+    val currentColorTemp: Double? = null,
+    val currentHue: Double? = null,
+    val currentSaturation: Double? = null
 )
 
 @Composable
@@ -355,7 +359,7 @@ private fun HomePilotApp() {
     val ioClient = remember { IoBrokerClient() }
     DisposableEffect(Unit) { onDispose { ioClient.disconnect() } }
 
-    fun connectToIoBroker() {
+    fun connectToIoBroker(manualDeviceSearch: Boolean = false) {
         prefs.edit().putString("server", serverUrl).apply()
         connectionStatus = "Verbindung wird aufgebaut …"
         ioClient.connect(serverUrl) { ok, msg ->
@@ -386,15 +390,17 @@ private fun HomePilotApp() {
                 ioClient.discoverSwitches(serverUrl, "hue.0") { found, err ->
                     if (err == null) {
                         val candidates = found.filter { it.stateId !in hiddenIds && it.stateId !in importedLightIds }
-                        discoveredLights.clear()
-                        discoveredLights.addAll(candidates)
-                        selectedLightIds = emptySet()
-                        showLightImportDialog = candidates.isNotEmpty()
-                        if (candidates.isEmpty()) {
-                            scanResultMessage = if (found.isEmpty()) {
-                                "Keine Hue-Lampen erkannt. Prüfe, ob der ioBroker-Adapter hue.0 aktiv ist und Lampen über ihn bereitstellt."
-                            } else {
-                                "Keine neuen Hue-Lampen gefunden. Bereits ausgewählte oder ausgeblendete Lampen werden nicht erneut angeboten."
+                        if (manualDeviceSearch) {
+                            discoveredLights.clear()
+                            discoveredLights.addAll(candidates)
+                            selectedLightIds = emptySet()
+                            showLightImportDialog = candidates.isNotEmpty()
+                            if (candidates.isEmpty()) {
+                                scanResultMessage = if (found.isEmpty()) {
+                                    "Keine Hue-Lampen erkannt. Prüfe, ob der ioBroker-Adapter hue.0 aktiv ist und Lampen über ihn bereitstellt."
+                                } else {
+                                    "Keine neuen Hue-Lampen gefunden. Bereits ausgewählte oder ausgeblendete Lampen werden nicht erneut angeboten."
+                                }
                             }
                         }
                         // Restore previously selected lights, but never auto-import new ones.
@@ -404,7 +410,7 @@ private fun HomePilotApp() {
                         refreshStates(ioClient, serverUrl, devices, lights)
                     } else {
                         connectionStatus = "Hue-Suche fehlgeschlagen: $err"
-                        scanResultMessage = "Die Hue-Suche ist fehlgeschlagen. Prüfe die ioBroker Simple API und den Adapter hue.0. Details: $err"
+                        if (manualDeviceSearch) scanResultMessage = "Die Hue-Suche ist fehlgeschlagen. Prüfe die ioBroker Simple API und den Adapter hue.0. Details: $err"
                     }
                 }
             }
@@ -501,7 +507,7 @@ private fun HomePilotApp() {
                         Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text,
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
-                            onConnect = { connectToIoBroker() })
+                            onConnect = { connectToIoBroker(manualDeviceSearch = true) })
                     }
                     if (showConnectionAlert) AlertDialog(
                         onDismissRequest = { showConnectionAlert = false },
@@ -793,11 +799,15 @@ private fun LightsScreen(
                 }
             }
             roomItems.forEach { item ->
-                var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(100f) }
+                var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
-                var temp by remember(item.stateId) { mutableFloatStateOf(50f) }
-                var hue by remember(item.stateId) { mutableFloatStateOf(180f) }
-                var saturation by remember(item.stateId) { mutableFloatStateOf(100f) }
+                var temp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.let { ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } ?: 50f) }
+                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } ?: 180f) }
+                var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } ?: 100f) }
+                LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightnessPercent = it.toFloat().coerceIn(1f, 100f) } }
+                LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
+                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
+                LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = Muted, fontSize = 11.sp) }
@@ -805,9 +815,13 @@ private fun LightsScreen(
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
                     if (item.brightnessId != null) {
-                        Text("Helligkeit: ${brightnessPercent.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
-                        Slider(value = brightnessPercent, onValueChange = { brightnessPercent = it }, valueRange = 1f..100f, enabled = connected,
-                            onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightnessPercent.toDouble() * 2.54) })
+                        if (item.currentBrightness == null) {
+                            Text("Aktuelle Helligkeit wird geladen …", color = Muted, fontSize = 12.sp)
+                        } else {
+                            Text("Aktuelle Helligkeit: ${brightnessPercent.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = brightnessPercent, onValueChange = { brightnessPercent = it }, valueRange = 1f..100f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightnessPercent.toDouble() * 2.54) })
+                        }
                         Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
                         Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
                             onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble() * 2.54) })
@@ -878,17 +892,45 @@ private fun LightsScreen(
                         }
                     }
                     if (item.colorTempId != null) {
-                        Text("Farbtemperatur", color = text, fontWeight = FontWeight.SemiBold)
-                        Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
-                            onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + temp.toDouble() / 100.0 * 347.0) })
+                        val currentMired = item.currentColorTemp
+                        Text(
+                            if (currentMired != null && currentMired > 0.0) "Aktuelle Farbtemperatur: ${(1_000_000.0 / currentMired).toInt()} K"
+                            else "Aktuelle Farbtemperatur wird geladen …",
+                            color = if (currentMired != null && currentMired > 0.0) text else Muted,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text("Farbtemperatur einstellen", color = text, fontWeight = FontWeight.SemiBold)
+                        if (currentMired != null) {
+                            Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + temp.toDouble() / 100.0 * 347.0) })
+                        }
                     }
                     if (item.hueId != null && item.saturationId != null) {
-                        Text("Farbton", color = text, fontWeight = FontWeight.SemiBold)
-                        Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
-                            onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
-                        Text("Farbsättigung", color = text, fontWeight = FontWeight.SemiBold)
-                        Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
-                            onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
+                        val hueAvailable = item.currentHue != null && item.currentSaturation != null
+                        if (hueAvailable) {
+                            val previewColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(
+                                hue.coerceIn(0f, 360f),
+                                (saturation / 100f).coerceIn(0f, 1f),
+                                (brightnessPercent / 100f).coerceIn(0.05f, 1f)
+                            )))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Box(Modifier.size(28.dp).clip(CircleShape).background(previewColor))
+                                Column {
+                                    Text("Aktuelle Farbe", color = text, fontWeight = FontWeight.SemiBold)
+                                    Text("Farbton ${hue.toInt()}° · Sättigung ${saturation.toInt()}%", color = Muted, fontSize = 12.sp)
+                                }
+                            }
+                        } else {
+                            Text("Aktuelle Farbe wird geladen …", color = Muted, fontSize = 12.sp)
+                        }
+                        Text("Farbton einstellen", color = text, fontWeight = FontWeight.SemiBold)
+                        if (hueAvailable) {
+                            Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
+                            Text("Farbsättigung einstellen", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
+                        }
                     }
                 }
             }
@@ -996,7 +1038,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 CardBlock(panel, text, item.name, "", Icons.Default.Power) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
+                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Gerät bearbeiten", tint = Blue) }
                     }
                 }
             }
@@ -1007,7 +1049,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 CardBlock(panel, text, item.name, "", Icons.Default.Devices) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(item.detail.ifBlank { item.kind }, color = Muted, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
+                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Gerät bearbeiten", tint = Blue) }
                     }
                 }
             }
@@ -1065,10 +1107,40 @@ private fun updateDeviceState(devices: MutableList<DeviceItem>, lights: MutableL
     if (l >= 0) lights[l] = lights[l].copy(initialOn = state, detail = if (state) "Ein" else "Aus")
 }
 
+private fun updateNumericDeviceValue(devices: MutableList<DeviceItem>, lights: MutableList<DeviceItem>, id: String, field: String, value: Double) {
+    fun update(item: DeviceItem): DeviceItem = when (field) {
+        "brightness" -> item.copy(currentBrightness = value)
+        "colorTemp" -> item.copy(currentColorTemp = value)
+        "hue" -> item.copy(currentHue = value)
+        "saturation" -> item.copy(currentSaturation = value)
+        else -> item
+    }
+    val d = devices.indexOfFirst { it.stateId == id }
+    if (d >= 0) devices[d] = update(devices[d])
+    val l = lights.indexOfFirst { it.stateId == id }
+    if (l >= 0) lights[l] = update(lights[l])
+}
+
 private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableList<DeviceItem>, lights: MutableList<DeviceItem>) {
     (devices + lights).forEach { item ->
         val id = item.stateId ?: return@forEach
         client.getState(url, id) { state, _ -> if (state != null) updateDeviceState(devices, lights, id, state) }
+        val brightnessId = item.brightnessId
+        if (brightnessId != null) client.getNumericState(url, brightnessId) { value ->
+            if (value != null) updateNumericDeviceValue(devices, lights, id, "brightness", value / 2.54)
+        }
+        val colorTempId = item.colorTempId
+        if (colorTempId != null) client.getNumericState(url, colorTempId) { value ->
+            if (value != null) updateNumericDeviceValue(devices, lights, id, "colorTemp", value)
+        }
+        val hueId = item.hueId
+        if (hueId != null) client.getNumericState(url, hueId) { value ->
+            if (value != null) updateNumericDeviceValue(devices, lights, id, "hue", value)
+        }
+        val saturationId = item.saturationId
+        if (saturationId != null) client.getNumericState(url, saturationId) { value ->
+            if (value != null) updateNumericDeviceValue(devices, lights, id, "saturation", value)
+        }
         val powerId = item.powerId
         if (powerId != null) client.getNumericState(url, powerId) { watts ->
             if (watts != null) {
