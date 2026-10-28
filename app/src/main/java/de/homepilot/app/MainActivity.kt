@@ -273,6 +273,9 @@ private fun HomePilotApp() {
     var showDemoNotice by remember { mutableStateOf(false) }
     val lights = remember { mutableStateListOf<DeviceItem>() }
     val devices = remember { mutableStateListOf<DeviceItem>() }
+    val discoveredLights = remember { mutableStateListOf<DeviceItem>() }
+    var showLightImportDialog by remember { mutableStateOf(false) }
+    var selectedLightIds by remember { mutableStateOf(setOf<String>()) }
     var floodAlarm by remember { mutableStateOf(false) }
     var floodBattery by remember { mutableIntStateOf(100) }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -281,6 +284,7 @@ private fun HomePilotApp() {
     var customNames by remember { mutableStateOf(readStringMap(prefs.getString("deviceNames", "{}"))) }
     var deviceRooms by remember { mutableStateOf(readStringMap(prefs.getString("deviceRooms", "{}"))) }
     var hiddenIds by remember { mutableStateOf(prefs.getStringSet("hiddenDevices", emptySet())?.toSet() ?: emptySet()) }
+    var importedLightIds by remember { mutableStateOf(prefs.getStringSet("importedLights", emptySet())?.toSet() ?: emptySet()) }
     var hiddenItems by remember { mutableStateOf(readHiddenItems(prefs.getString("hiddenDeviceItems", "[]"))) }
     var confirmRemoveDevice by remember { mutableStateOf<DeviceItem?>(null) }
     var confirmDeleteRoom by remember { mutableStateOf<String?>(null) }
@@ -349,7 +353,19 @@ private fun HomePilotApp() {
                     } else connectionStatus = "Verbindung steht, Shelly-Geräte konnten aber nicht geladen werden. Bitte prüfen: $err"
                 }
                 ioClient.discoverSwitches(serverUrl, "hue.0") { found, err ->
-                    if (err == null) { lights.clear(); lights.addAll(found.filter { it.stateId !in hiddenIds }); applyCustomConfig(); refreshStates(ioClient, serverUrl, devices, lights) }
+                    if (err == null) {
+                        val candidates = found.filter { it.stateId !in hiddenIds && it.stateId !in importedLightIds }
+                        discoveredLights.clear()
+                        discoveredLights.addAll(candidates)
+                        selectedLightIds = emptySet()
+                        showLightImportDialog = candidates.isNotEmpty()
+                        // Only lights explicitly imported by the user are shown in HomePilot.
+                        lights.removeAll { item -> item.stateId !in importedLightIds }
+                        applyCustomConfig()
+                        refreshStates(ioClient, serverUrl, devices, lights)
+                    } else {
+                        connectionStatus = "Verbindung steht, Hue-Lampen konnten aber nicht geladen werden: $err"
+                    }
                 }
             }
         }
@@ -472,6 +488,44 @@ private fun HomePilotApp() {
                             lights.indices.forEach { i -> if (lights[i].room == room) { lights[i] = lights[i].copy(room = "Nicht zugeordnet"); lights[i].stateId?.let { id -> deviceRooms = deviceRooms.toMutableMap().apply { put(id, "Nicht zugeordnet") } } } }; persistDeviceRooms()
                         }; confirmDeleteRoom = null }) { Text("Raum löschen") } },
                         dismissButton = { TextButton(onClick = { confirmDeleteRoom = null }) { Text("Abbrechen") } }
+                    )
+                    if (showLightImportDialog) AlertDialog(
+                        onDismissRequest = { showLightImportDialog = false },
+                        title = { Text("Hue-Lampen auswählen") },
+                        text = {
+                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Wähle nur die Lampen aus, die du in HomePilot verwenden möchtest. Andere Datenpunkte werden nicht übernommen.", color = Muted, fontSize = 12.sp)
+                                discoveredLights.forEach { item ->
+                                    val id = item.stateId.orEmpty()
+                                    Row(Modifier.fillMaxWidth().clickable {
+                                        selectedLightIds = if (id in selectedLightIds) selectedLightIds - id else selectedLightIds + id
+                                    }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(checked = id in selectedLightIds, onCheckedChange = { checked ->
+                                            selectedLightIds = if (checked) selectedLightIds + id else selectedLightIds - id
+                                        })
+                                        Column(Modifier.weight(1f)) {
+                                            Text(item.name, color = LightText, fontWeight = FontWeight.SemiBold)
+                                            Text(id, color = Muted, fontSize = 9.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                val chosen = discoveredLights.filter { it.stateId in selectedLightIds }
+                                val chosenIds = chosen.mapNotNull { it.stateId }.toSet()
+                                importedLightIds = importedLightIds + chosenIds
+                                prefs.edit().putStringSet("importedLights", importedLightIds).apply()
+                                lights.addAll(chosen.filter { item -> lights.none { it.stateId == item.stateId } })
+                                applyCustomConfig()
+                                refreshStates(ioClient, serverUrl, devices, lights)
+                                showLightImportDialog = false
+                            }) { Text("Auswahl übernehmen (${selectedLightIds.size})") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showLightImportDialog = false }) { Text("Überspringen") }
+                        }
                     )
                     if (showHiddenDevices) AlertDialog(
                         onDismissRequest = { showHiddenDevices = false },
