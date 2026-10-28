@@ -129,14 +129,13 @@ private class IoBrokerClient {
                     val isRealDeviceOutput = when (adapter) {
                         "shelly.0" -> id.matches(Regex("shelly\\.0\\..*(?:Relay\\d*\\.Switch|Relay\\d*\\.Output|\\.Switch)$", RegexOption.IGNORE_CASE))
                         "hue.0" -> {
-                            val hueEntity = listOf(".groups.", ".lights.", ".devices.", ".rooms.", ".zones.")
-                                .any { marker -> id.contains(marker, ignoreCase = true) }
                             val leaf = id.substringAfterLast('.').lowercase()
                             val outputState = leaf in setOf("on", "all_on", "state", "switch")
-                            // Hue adapter versions expose the on/off control with different roles
-                            // and sometimes different leaf names. Since the user explicitly selects
-                            // imports, include plausible boolean controls rather than silently missing them.
-                            hueEntity && type == "boolean" && (outputState || role.contains("switch") || role.contains("light"))
+                            // Hue adapter object paths vary by adapter version and configuration.
+                            // Find plausible boolean on/off states anywhere under hue.0; the user
+                            // explicitly chooses which candidates to import, so discovery is broad
+                            // while import remains opt-in.
+                            type == "boolean" && (outputState || role.contains("switch") || role.contains("light"))
                         }
                         else -> false
                     }
