@@ -286,6 +286,10 @@ private fun HomePilotApp() {
     var confirmDeleteRoom by remember { mutableStateOf<String?>(null) }
     var showHiddenDevices by remember { mutableStateOf(false) }
     var selectedRoom by remember { mutableStateOf<String?>(null) }
+    BackHandler(enabled = selectedTab != Tab.HOME) {
+        selectedTab = Tab.HOME
+        selectedRoom = null
+    }
     var showRoomDialog by remember { mutableStateOf(false) }
     var roomNameInput by remember { mutableStateOf("") }
     var editDevice by remember { mutableStateOf<DeviceItem?>(null) }
@@ -522,10 +526,6 @@ private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
     panel: Color, text: Color, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        SummaryCard(Modifier.weight(1f), "Lichter an", "${lights.count { it.initialOn }} / ${lights.size}", Icons.Default.Lightbulb, panel, text, Color(0xFFE9B949))
-        SummaryCard(Modifier.weight(1f), "Geräte aktiv", "${devices.count { it.initialOn }} / ${devices.size}", Icons.Default.Power, panel, text, Color(0xFF3984D6))
-    }
     Text("Deine Räume", color = text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
     Text("Tippe auf einen Raum für die Geräteübersicht.", color = Muted, fontSize = 13.sp)
     val visibleRooms = rooms.filter { it != "Nicht zugeordnet" }
