@@ -314,6 +314,45 @@ private fun HomePilotApp() {
     var waterOn by remember { mutableStateOf(false) }
     val ioClient = remember { IoBrokerClient() }
     DisposableEffect(Unit) { onDispose { ioClient.disconnect() } }
+
+    fun connectToIoBroker() {
+        prefs.edit().putString("server", serverUrl).apply()
+        connectionStatus = "Verbindung wird aufgebaut …"
+        ioClient.connect(serverUrl) { ok, msg ->
+            connected = ok
+            connectionStatus = if (ok) msg else "Bitte Verbindung prüfen. $msg"
+            if (ok) {
+                ioClient.discoverSwitches(serverUrl, "shelly.0") { found, err ->
+                    if (err == null) {
+                        devices.clear()
+                        devices.addAll(found.filter { it.stateId !in hiddenIds })
+                        val waterId = "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Switch"
+                        val washId = "shelly.0.SHPLG-S#376CC3#1.Relay0.Switch"
+                        if (waterId !in hiddenIds && devices.none { it.stateId == waterId }) devices.add(0, DeviceItem("Wasser", "Katzenbrunnen · Wohnzimmer", "plug", false, "", waterId, "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Power", true, room = "Wohnzimmer"))
+                        else if (waterId !in hiddenIds) {
+                            val wi = devices.indexOfFirst { it.stateId == waterId }
+                            if (wi >= 0) devices[wi] = devices[wi].copy(name = "Wasser", subtitle = "Katzenbrunnen · Wohnzimmer", powerId = "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Power", room = "Wohnzimmer")
+                        }
+                        if (washId !in hiddenIds && devices.none { it.stateId == washId }) devices.add(DeviceItem("Waschmaschine", "Shelly Plug", "plug", false, "", washId, "shelly.0.SHPLG-S#376CC3#1.Relay0.Power", true, room = "Hauswirtschaft"))
+                        else if (washId !in hiddenIds) {
+                            val wi = devices.indexOfFirst { it.stateId == washId }
+                            if (wi >= 0) devices[wi] = devices[wi].copy(name = "Waschmaschine", subtitle = "Shelly Plug", writable = true, powerId = "shelly.0.SHPLG-S#376CC3#1.Relay0.Power", room = "Hauswirtschaft")
+                        }
+                        applyCustomConfig()
+                        refreshStates(ioClient, serverUrl, devices, lights)
+                    } else connectionStatus = "Verbindung steht, Shelly-Geräte konnten aber nicht geladen werden. Bitte prüfen: $err"
+                }
+                ioClient.discoverSwitches(serverUrl, "hue.0") { found, err ->
+                    if (err == null) { lights.clear(); lights.addAll(found.filter { it.stateId !in hiddenIds }); applyCustomConfig(); refreshStates(ioClient, serverUrl, devices, lights) }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        delay(350)
+        connectToIoBroker()
+    }
     LaunchedEffect(connected, serverUrl) {
         while (connected) {
             delay(8000)
@@ -353,7 +392,7 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(lights, devices, floodAlarm, floodBattery, panel, text, onTab = { selectedTab = it })
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, onOpenRoom = { room -> selectedRoom = room; selectedTab = Tab.ROOMS }, onTab = { selectedTab = it })
                         Tab.LIGHTS -> LightsScreen(lights, panel, text, connected, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
@@ -383,38 +422,7 @@ private fun HomePilotApp() {
                         Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text,
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
-                            onConnect = {
-                                prefs.edit().putString("server", serverUrl).apply()
-                                ioClient.connect(serverUrl) { ok, msg ->
-                                    connected = ok; connectionStatus = msg
-                                    if (ok) {
-                                        ioClient.discoverSwitches(serverUrl, "shelly.0") { found, err ->
-                                            if (err == null) {
-                                                devices.clear()
-                                                devices.addAll(found.filter { it.stateId !in hiddenIds })
-                                                // Known labels and safety rule for the two confirmed plugs.
-                                                val waterId = "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Switch"
-                                                val washId = "shelly.0.SHPLG-S#376CC3#1.Relay0.Switch"
-                                                if (waterId !in hiddenIds && devices.none { it.stateId == waterId }) devices.add(0, DeviceItem("Wasser", "Katzenbrunnen · Wohnzimmer", "plug", false, "", waterId, "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Power", true, room = "Wohnzimmer"))
-                                                else if (waterId !in hiddenIds) {
-                                                    val wi = devices.indexOfFirst { it.stateId == waterId }
-                                                    if (wi >= 0) devices[wi] = devices[wi].copy(name = "Wasser", subtitle = "Katzenbrunnen · Wohnzimmer", powerId = "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Power", room = "Wohnzimmer")
-                                                }
-                                                if (washId !in hiddenIds && devices.none { it.stateId == washId }) devices.add(DeviceItem("Waschmaschine", "Shelly Plug", "plug", false, "", washId, "shelly.0.SHPLG-S#376CC3#1.Relay0.Power", true, room = "Hauswirtschaft"))
-                                                else if (washId !in hiddenIds) {
-                                                    val wi = devices.indexOfFirst { it.stateId == washId }
-                                                    if (wi >= 0) devices[wi] = devices[wi].copy(name = "Waschmaschine", subtitle = "Shelly Plug", writable = true, powerId = "shelly.0.SHPLG-S#376CC3#1.Relay0.Power", room = "Hauswirtschaft")
-                                                }
-                                                applyCustomConfig()
-                                                refreshStates(ioClient, serverUrl, devices, lights)
-                                            } else connectionStatus = "Verbunden, Shelly-Geräte konnten nicht geladen werden: $err"
-                                        }
-                                        ioClient.discoverSwitches(serverUrl, "hue.0") { found, err ->
-                                            if (err == null) { lights.clear(); lights.addAll(found.filter { it.stateId !in hiddenIds }); applyCustomConfig(); refreshStates(ioClient, serverUrl, devices, lights) }
-                                        }
-                                    }
-                                }
-                            })
+                            onConnect = { connectToIoBroker() })
                     }
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
                     if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Text("Gerät bearbeiten") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true); Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; persistNames(); persistDeviceRooms(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
@@ -496,30 +504,49 @@ private fun Header(dark: Boolean, text: Color, onSettings: () -> Unit) {
 
 @Composable
 private fun HomeScreen(
-    lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
-    panel: Color, text: Color, onTab: (Tab) -> Unit
+    rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
+    panel: Color, text: Color, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         SummaryCard(Modifier.weight(1f), "Lichter an", "${lights.count { it.initialOn }} / ${lights.size}", Icons.Default.Lightbulb, panel, text)
         SummaryCard(Modifier.weight(1f), "Geräte aktiv", "${devices.count { it.initialOn }} / ${devices.size}", Icons.Default.Power, panel, text)
     }
-    CardBlock(panel, text, "Lichtgruppen", "Alle Räume im Blick", Icons.Default.Lightbulb, action = { onTab(Tab.LIGHTS) }) {
-        lights.take(3).forEach { DeviceRow(it, panel, text, compact = true, onClick = { onTab(Tab.LIGHTS) }) }
-        TextButton(onClick = { onTab(Tab.LIGHTS) }) { Text("Alle Lichter anzeigen") }
-    }
-    CardBlock(panel, text, "Geräte", "Shelly-Steckdosen und Relais", Icons.Default.Devices, action = { onTab(Tab.DEVICES) }) {
-        devices.take(2).forEach { DeviceRow(it, panel, text, compact = true, onClick = { onTab(Tab.DEVICES) }) }
-        TextButton(onClick = { onTab(Tab.DEVICES) }) { Text("Alle Geräte anzeigen") }
-    }
-    CardBlock(panel, text, "Wasserschutz Küche", "Shelly Flood Gen1", Icons.Default.WaterDrop) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Icon(Icons.Default.Info, null, tint = Muted, modifier = Modifier.size(28.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Live-Status noch nicht eingebunden", fontWeight = FontWeight.SemiBold, color = text)
-                Text("Der Wassermelder wird erst als sicher angezeigt, wenn seine echten Datenpunkte angebunden sind.", fontSize = 12.sp, color = Muted)
+    Text("Deine Räume", color = text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+    Text("Tippe auf einen Raum für die Geräteübersicht.", color = Muted, fontSize = 13.sp)
+    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" }
+    visibleRooms.chunked(2).forEach { rowRooms ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            rowRooms.forEach { room ->
+                val count = (devices + lights).count { it.room == room }
+                val roomIcon = when (room.lowercase()) {
+                    "wohnzimmer" -> Icons.Default.Weekend
+                    "küche" -> Icons.Default.Kitchen
+                    "schlafzimmer" -> Icons.Default.Bed
+                    "bad", "badezimmer" -> Icons.Default.Bathtub
+                    "hauswirtschaft" -> Icons.Default.LocalLaundryService
+                    else -> Icons.Default.HomeWork
+                }
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(22.dp))
+                        .background(panel).clickable { onOpenRoom(room) }.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE5F0FC)), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Blue, modifier = Modifier.size(25.dp))
+                    }
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("$count Geräte", color = Muted, fontSize = 12.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(16.dp))
+                    }
+                }
             }
-            TextButton(onClick = { onTab(Tab.SAFETY) }) { Text("Details") }
+            if (rowRooms.size == 1) Spacer(Modifier.weight(1f))
         }
+    }
+    CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
+        Text("Wassermelder-Daten werden eingebunden, sobald die echten Datenpunkte zugeordnet sind.", color = Muted, fontSize = 12.sp)
     }
     Text("Später erweiterbar: KlimaPilot, Mähroboter und Saugroboter.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 }
