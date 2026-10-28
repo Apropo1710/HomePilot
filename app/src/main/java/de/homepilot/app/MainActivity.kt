@@ -798,10 +798,10 @@ private fun LightsScreen(
                 var temp by remember(item.stateId) { mutableFloatStateOf(50f) }
                 var hue by remember(item.stateId) { mutableFloatStateOf(180f) }
                 var saturation by remember(item.stateId) { mutableFloatStateOf(100f) }
-                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Lightbulb) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = Muted, fontSize = 11.sp) }
-                        TextButton(onClick = { onEditDevice(item) }) { Text("Raum") }
+                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Raum zuordnen", tint = Blue) }
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
                     if (item.brightnessId != null) {
@@ -917,10 +917,10 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (lamps.isNotEmpty()) {
             Text("Lampen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             lamps.forEach { item ->
-                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Lightbulb) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
-                        TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
+                        IconButton(onClick = { onEditDevice(item) }) { Icon(Icons.Default.Edit, contentDescription = "Gerät bearbeiten", tint = Blue) }
                     }
                 }
             }
@@ -928,7 +928,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (switches.isNotEmpty()) {
             Text("Schalter & Steckdosen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             switches.forEach { item ->
-                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Power) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Power) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
                         TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
@@ -939,7 +939,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (otherItems.isNotEmpty()) {
             Text("Sonstiges", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             otherItems.forEach { item ->
-                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Devices) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Devices) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(item.detail.ifBlank { item.kind }, color = Muted, modifier = Modifier.weight(1f))
                         TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
