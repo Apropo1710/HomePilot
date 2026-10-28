@@ -765,44 +765,67 @@ private fun LightsScreen(
     defaultBrightness: (DeviceItem) -> Int
 ) {
     Text("Hue-Lichter", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    Text("Echte Zustände aus ioBroker · Aktualisierung beim Verbinden", color = Muted, fontSize = 13.sp)
-    if (!connected) Text("Bitte zuerst unter Einstellungen mit ioBroker verbinden.", color = Muted)
-    else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe, ob die Hue-Objekte in ioBroker unter hue.0 vorhanden sind.", color = Muted)
-    lights.forEach { item ->
-        var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(100f) }
-        var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
-        var temp by remember(item.stateId) { mutableFloatStateOf(50f) }
-        var hue by remember(item.stateId) { mutableFloatStateOf(180f) }
-        var saturation by remember(item.stateId) { mutableFloatStateOf(100f) }
-        CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Lightbulb) {
+    Text("Nach Räumen geordnet · Echte Zustände aus ioBroker", color = Muted, fontSize = 13.sp)
+    if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
+    else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe die Hue-Objekte unter hue.0.", color = Muted)
+    val grouped = lights.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
+    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + "Nicht zugeordnet" + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
+    roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
+        val roomItems = grouped[room].orEmpty().sortedBy { it.name.lowercase() }
+        val accent = when (room.lowercase()) {
+            "wohnzimmer" -> Color(0xFF6C63C7)
+            "küche" -> Color(0xFFE09A22)
+            "schlafzimmer" -> Color(0xFF4787C7)
+            "bad", "badezimmer" -> Color(0xFF159A9C)
+            "hauswirtschaft" -> Color(0xFF2E9B70)
+            "nicht zugeordnet" -> Color(0xFFD97706)
+            else -> listOf(Color(0xFF6C63C7), Color(0xFF159A9C), Color(0xFFE09A22), Color(0xFF4787C7))[roomIndex % 4]
+        }
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.10f else 0.20f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = text)
-                    Text(item.room, color = Muted, fontSize = 11.sp)
+                Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(accent), contentAlignment = Alignment.Center) {
+                    Icon(if (room == "Nicht zugeordnet") Icons.Default.WarningAmber else Icons.Default.HomeWork, null, tint = Color.White)
                 }
-                TextButton(onClick = { onEditDevice(item) }) { Text("Raum") }
-                Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(room, color = text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text("${roomItems.size} ${if (roomItems.size == 1) "Lampe" else "Lampen"}", color = accent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
-            if (item.brightnessId != null) {
-                Text("Helligkeit: ${brightnessPercent.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
-                Slider(value = brightnessPercent, onValueChange = { brightnessPercent = it }, valueRange = 1f..100f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightnessPercent.toDouble() * 2.54) })
-                Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
-                Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
-                    onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble()) })
-            }
-            if (item.colorTempId != null) {
-                Text("Farbtemperatur", color = text, fontWeight = FontWeight.SemiBold)
-                Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + (temp.toDouble() / 100.0 * 347.0)) })
-            }
-            if (item.hueId != null && item.saturationId != null) {
-                Text("Farbton", color = text, fontWeight = FontWeight.SemiBold)
-                Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
-                Text("Farbsättigung", color = text, fontWeight = FontWeight.SemiBold)
-                Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
+            roomItems.forEach { item ->
+                var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(100f) }
+                var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
+                var temp by remember(item.stateId) { mutableFloatStateOf(50f) }
+                var hue by remember(item.stateId) { mutableFloatStateOf(180f) }
+                var saturation by remember(item.stateId) { mutableFloatStateOf(100f) }
+                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Lightbulb) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = Muted, fontSize = 11.sp) }
+                        TextButton(onClick = { onEditDevice(item) }) { Text("Raum") }
+                        Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
+                    }
+                    if (item.brightnessId != null) {
+                        Text("Helligkeit: ${brightnessPercent.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
+                        Slider(value = brightnessPercent, onValueChange = { brightnessPercent = it }, valueRange = 1f..100f, enabled = connected,
+                            onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightnessPercent.toDouble() * 2.54) })
+                        Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
+                        Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
+                            onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble() * 2.54) })
+                    }
+                    if (item.colorTempId != null) {
+                        Text("Farbtemperatur", color = text, fontWeight = FontWeight.SemiBold)
+                        Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
+                            onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + temp.toDouble() / 100.0 * 347.0) })
+                    }
+                    if (item.hueId != null && item.saturationId != null) {
+                        Text("Farbton", color = text, fontWeight = FontWeight.SemiBold)
+                        Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
+                            onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
+                        Text("Farbsättigung", color = text, fontWeight = FontWeight.SemiBold)
+                        Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
+                            onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
+                    }
+                }
             }
         }
     }
@@ -886,9 +909,44 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
     if (selectedRoom != null) {
         TextButton(onClick = { onSelectRoom(null) }) { Icon(Icons.Default.ArrowBack, null); Text("Alle Räume") }
         Text(selectedRoom, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = text)
-        val roomItems = (devices + lights).filter { it.room == selectedRoom }
+        val roomItems = (devices + lights).filter { it.room == selectedRoom }.distinctBy { it.stateId ?: it.name }
+        val lamps = roomItems.filter { it.kind == "light" }
+        val switches = roomItems.filter { it.kind in listOf("plug", "relay", "switch") }
+        val otherItems = roomItems.filter { it.kind !in listOf("light", "plug", "relay", "switch") }
         if (roomItems.isEmpty()) Text("Noch keine Geräte zugeordnet.", color = Muted)
-        roomItems.forEach { item -> CardBlock(panel, text, item.name, item.subtitle, if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power) { Row(verticalAlignment = Alignment.CenterVertically) { Text(item.room, color = Muted, modifier = Modifier.weight(1f)); TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") } } } }
+        if (lamps.isNotEmpty()) {
+            Text("Lampen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
+            lamps.forEach { item ->
+                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Lightbulb) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
+                    }
+                }
+            }
+        }
+        if (switches.isNotEmpty()) {
+            Text("Schalter & Steckdosen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
+            switches.forEach { item ->
+                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Power) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
+                    }
+                }
+            }
+        }
+        if (otherItems.isNotEmpty()) {
+            Text("Sonstiges", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
+            otherItems.forEach { item ->
+                CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Devices) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text(item.detail.ifBlank { item.kind }, color = Muted, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { onEditDevice(item) }) { Text("Bearbeiten") }
+                    }
+                }
+            }
+        }
     } else {
         rooms.forEach { room ->
             val count = (devices + lights).count { it.room == room }
