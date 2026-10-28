@@ -12,8 +12,8 @@ android {
         applicationId = "de.homepilot.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "1.1"
     }
 
     buildTypes {
@@ -23,6 +23,8 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
         debug {
+            // Explicitly use the same stable CI keystore on every test build.
+            signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
         }
