@@ -42,7 +42,9 @@ jobs:
         run: |
           mkdir -p "$HOME/.android"
           base64 --decode .github/debug-keystore.b64 > "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore"
+          base64 --decode .github/debug-keystore.b64 > .github/debug-keystore
+          chmod 600 "$HOME/.android/debug.keystore" .github/debug-keystore
+          sha256sum .github/debug-keystore
 
       - name: Installierbare Release APK bauen
         run: gradle --no-daemon assembleRelease
