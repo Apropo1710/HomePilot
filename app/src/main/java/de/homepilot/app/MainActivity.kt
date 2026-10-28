@@ -163,11 +163,18 @@ private class IoBrokerClient {
                             if (next.isBlank() || next == ancestor || next == adapter) break
                             ancestor = next
                         }
+                        fun isGenericDeviceName(value: String): Boolean {
+                            val normalized = value.trim()
+                            return normalized.isBlank() || normalized.startsWith("{") ||
+                                normalized.equals("Switch", true) || normalized.equals("on", true) ||
+                                normalized.equals("Output", true) || normalized.equals("State", true) ||
+                                normalized.matches(Regex("(?i)(relay|channel|device)\\s*#?\\d*")) ||
+                                normalized.matches(Regex("(?i)(relay|channel)\\d+"))
+                        }
                         val fallbackName = when {
                             friendlyName.isNotBlank() -> friendlyName
-                            name.isNotBlank() && !name.startsWith("{") &&
-                                !name.equals("Switch", true) && !name.equals("on", true) -> name
-                            else -> parent.substringAfterLast('.')
+                            !isGenericDeviceName(name) -> name.trim()
+                            else -> if (adapter == "hue.0") "Hue-Licht" else "Shelly-Gerät"
                         }
                         candidates.add(DeviceItem(fallbackName, if (adapter == "hue.0") "Hue · ioBroker" else "Shelly · ioBroker", if (adapter == "hue.0") "light" else "plug", false, "", id, siblingPower, true))
                     }
