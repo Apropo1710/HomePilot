@@ -26,17 +26,27 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Gradle 8.9 einrichten und Abhängigkeiten cachen
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
       - name: Android SDK einrichten
         uses: android-actions/setup-android@v4
 
+      # Cache SDK platforms/build-tools so sdkmanager does not have to
+      # download the same Android packages on every clean GitHub runner.
+      - name: Android SDK Pakete cachen
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.ANDROID_HOME }}/platform-tools
+            ${{ env.ANDROID_HOME }}/platforms/android-35
+            ${{ env.ANDROID_HOME }}/build-tools/35.0.0
+          key: android-sdk-${{ runner.os }}-platform-35-build-tools-35.0.0-v1
+
       - name: Android SDK Pakete installieren
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
-
-      - name: Gradle 8.9 installieren
-        run: |
-          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /tmp
-          echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
 
       - name: Stabilen Signaturschlüssel aus GitHub Secret einrichten
         env:
