@@ -184,7 +184,16 @@ private class IoBrokerClient {
                             !isGenericDeviceName(name) -> name.trim()
                             else -> if (adapter == "hue.0") "Hue-Licht" else "Shelly-Gerät"
                         }
-                        candidates.add(DeviceItem(fallbackName, if (adapter == "hue.0") "Hue · ioBroker" else "Shelly · ioBroker", if (adapter == "hue.0") "light" else "plug", false, "", id, siblingPower, true))
+                        fun relatedState(vararg endings: String): String? = allIds.firstOrNull { candidateId ->
+                        candidateId.startsWith("$parent.", ignoreCase = true) &&
+                            candidateId.substringAfterLast('.').lowercase() in endings.map { it.lowercase() } &&
+                            objects.optJSONObject(candidateId)?.optJSONObject("common")?.optBoolean("write", false) == true
+                    }
+                    val brightnessId = if (adapter == "hue.0") relatedState("bri", "brightness", "level", "dim") else null
+                    val colorTempId = if (adapter == "hue.0") relatedState("ct", "colortemperature", "color_temperature", "temperature") else null
+                    val hueId = if (adapter == "hue.0") relatedState("hue", "colorhue") else null
+                    val saturationId = if (adapter == "hue.0") relatedState("sat", "saturation") else null
+                    candidates.add(DeviceItem(fallbackName, if (adapter == "hue.0") "Hue · ioBroker" else "Shelly · ioBroker", if (adapter == "hue.0") "light" else "plug", false, "", id, siblingPower, true, room = "Nicht zugeordnet", brightnessId = brightnessId, colorTempId = colorTempId, hueId = hueId, saturationId = saturationId))
                     }
                 }
                 if (adapter != "shelly.0" || candidates.isEmpty()) {
@@ -243,6 +252,15 @@ private class IoBrokerClient {
             else callback(true, "Schaltbefehl gesendet")
         }
     }
+
+    fun setNumericState(baseUrl: String, id: String, value: Double, callback: (Boolean, String) -> Unit) {
+        val encodedId = Uri.encode(id)
+        val encodedValue = Uri.encode(value.toString())
+        request(baseUrl, "/set/$encodedId?value=$encodedValue") { ok, _, error ->
+            if (!ok) callback(false, "Lichtwert konnte nicht gesetzt werden: ${error ?: "unbekannter Fehler"}")
+            else callback(true, "Lichteinstellung gespeichert")
+        }
+    }
 }
 
 class MainActivity : ComponentActivity() {
@@ -271,7 +289,11 @@ private data class DeviceItem(
     val powerId: String? = null,
     val writable: Boolean = true,
     val powerWatts: Double? = null,
-    val room: String = "Nicht zugeordnet"
+    val room: String = "Nicht zugeordnet",
+    val brightnessId: String? = null,
+    val colorTempId: String? = null,
+    val hueId: String? = null,
+    val saturationId: String? = null
 )
 
 @Composable
@@ -433,7 +455,12 @@ private fun HomePilotApp() {
                     }
                     when (selectedTab) {
                         Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, onOpenRoom = { room -> selectedRoom = room; selectedTab = Tab.ROOMS }, onTab = { selectedTab = it })
-                        Tab.LIGHTS -> LightsScreen(lights, panel, text, connected, onToggle = { item, value ->
+                        Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected,
+                            onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
+                            onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
+                            onSetDefaultBrightness = { item, percent -> prefs.edit().putInt("lightOnBrightness:" + (item.stateId ?: item.name), percent).apply() },
+                            defaultBrightness = { item -> prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100) },
+                            onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -718,16 +745,53 @@ private fun DeviceRow(item: DeviceItem, panel: Color, text: Color, compact: Bool
 }
 
 @Composable
-private fun LightsScreen(lights: List<DeviceItem>, panel: Color, text: Color, connected: Boolean, onToggle: (DeviceItem, Boolean) -> Unit) {
+private fun LightsScreen(
+    lights: List<DeviceItem>, rooms: List<String>, panel: Color, text: Color, connected: Boolean,
+    onToggle: (DeviceItem, Boolean) -> Unit,
+    onEditDevice: (DeviceItem) -> Unit,
+    onSetNumeric: (DeviceItem, String, Double) -> Unit,
+    onSetDefaultBrightness: (DeviceItem, Int) -> Unit,
+    defaultBrightness: (DeviceItem) -> Int
+) {
     Text("Hue-Lichter", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     Text("Echte Zustände aus ioBroker · Aktualisierung beim Verbinden", color = Muted, fontSize = 13.sp)
     if (!connected) Text("Bitte zuerst unter Einstellungen mit ioBroker verbinden.", color = Muted)
     else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe, ob die Hue-Objekte in ioBroker unter hue.0 vorhanden sind.", color = Muted)
     lights.forEach { item ->
+        var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(100f) }
+        var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
+        var temp by remember(item.stateId) { mutableFloatStateOf(50f) }
+        var hue by remember(item.stateId) { mutableFloatStateOf(180f) }
+        var saturation by remember(item.stateId) { mutableFloatStateOf(100f) }
         CardBlock(panel, text, item.name, item.subtitle, Icons.Default.Lightbulb) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = text); Text(item.stateId ?: "", color = Muted, fontSize = 10.sp) }
+                Column(Modifier.weight(1f)) {
+                    Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = text)
+                    Text(item.room, color = Muted, fontSize = 11.sp)
+                }
+                TextButton(onClick = { onEditDevice(item) }) { Text("Raum") }
                 Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
+            }
+            if (item.brightnessId != null) {
+                Text("Helligkeit: ${brightnessPercent.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
+                Slider(value = brightnessPercent, onValueChange = { brightnessPercent = it }, valueRange = 1f..100f, enabled = connected,
+                    onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightnessPercent.toDouble()) })
+                Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
+                Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
+                    onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble()) })
+            }
+            if (item.colorTempId != null) {
+                Text("Farbtemperatur", color = text, fontWeight = FontWeight.SemiBold)
+                Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
+                    onValueChangeFinished = { onSetNumeric(item, item.colorTempId, temp.toDouble()) })
+            }
+            if (item.hueId != null && item.saturationId != null) {
+                Text("Farbton", color = text, fontWeight = FontWeight.SemiBold)
+                Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
+                    onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
+                Text("Farbsättigung", color = text, fontWeight = FontWeight.SemiBold)
+                Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
+                    onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble()) })
             }
         }
     }
@@ -842,6 +906,7 @@ private fun writeHiddenItems(items: List<DeviceItem>): String {
         obj.put("name", item.name); obj.put("subtitle", item.subtitle); obj.put("kind", item.kind)
         obj.put("initialOn", item.initialOn); obj.put("detail", item.detail); obj.put("stateId", item.stateId)
         obj.put("powerId", item.powerId); obj.put("writable", item.writable); obj.put("powerWatts", item.powerWatts); obj.put("room", item.room)
+        obj.put("brightnessId", item.brightnessId); obj.put("colorTempId", item.colorTempId); obj.put("hueId", item.hueId); obj.put("saturationId", item.saturationId)
         array.put(obj)
     }
     return array.toString()
@@ -851,7 +916,7 @@ private fun readHiddenItems(raw: String?): List<DeviceItem> = try {
     val array = JSONArray(raw ?: "[]")
     (0 until array.length()).mapNotNull { i ->
         val o = array.optJSONObject(i) ?: return@mapNotNull null
-        DeviceItem(o.optString("name"), o.optString("subtitle"), o.optString("kind", "plug"), o.optBoolean("initialOn"), o.optString("detail"), o.optString("stateId").takeIf { it.isNotBlank() && it != "null" }, o.optString("powerId").takeIf { it.isNotBlank() && it != "null" }, o.optBoolean("writable", true), if (o.has("powerWatts") && !o.isNull("powerWatts")) o.optDouble("powerWatts") else null, o.optString("room", "Nicht zugeordnet"))
+        DeviceItem(o.optString("name"), o.optString("subtitle"), o.optString("kind", "plug"), o.optBoolean("initialOn"), o.optString("detail"), o.optString("stateId").takeIf { it.isNotBlank() && it != "null" }, o.optString("powerId").takeIf { it.isNotBlank() && it != "null" }, o.optBoolean("writable", true), if (o.has("powerWatts") && !o.isNull("powerWatts")) o.optDouble("powerWatts") else null, o.optString("room", "Nicht zugeordnet"), o.optString("brightnessId").takeIf { it.isNotBlank() && it != "null" }, o.optString("colorTempId").takeIf { it.isNotBlank() && it != "null" }, o.optString("hueId").takeIf { it.isNotBlank() && it != "null" }, o.optString("saturationId").takeIf { it.isNotBlank() && it != "null" })
     }
 } catch (_: Exception) { emptyList() }
 
