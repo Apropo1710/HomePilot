@@ -179,8 +179,44 @@ private class IoBrokerClient {
                         candidates.add(DeviceItem(fallbackName, if (adapter == "hue.0") "Hue · ioBroker" else "Shelly · ioBroker", if (adapter == "hue.0") "light" else "plug", false, "", id, siblingPower, true))
                     }
                 }
-                callback(candidates.sortedBy { it.name.lowercase() }, null)
+                if (adapter != "shelly.0" || candidates.isEmpty()) {
+                    callback(candidates.sortedBy { it.name.lowercase() }, null)
+                } else {
+                    // Use the live value of each device's ioBroker ".name" datapoint,
+                    // e.g. shelly.0.SHPLG-1#25E141#1.name -> "Warmes Wasser".
+                    val resolved = java.util.Collections.synchronizedList(candidates.toMutableList())
+                    var remaining = candidates.size
+                    candidates.forEachIndexed { index, item ->
+                        val stateId = item.stateId.orEmpty()
+                        val deviceRoot = stateId.replace(Regex("\\.Relay\\d*\\.(Switch|Output)$", RegexOption.IGNORE_CASE), "")
+                        val nameId = "$deviceRoot.name"
+                        getTextState(baseUrl, nameId) { liveName ->
+                            if (!liveName.isNullOrBlank()) {
+                                val safeName = liveName.trim()
+                                resolved[index] = item.copy(name = safeName)
+                            }
+                            remaining -= 1
+                            if (remaining == 0) {
+                                callback(resolved.sortedBy { it.name.lowercase() }, null)
+                            }
+                        }
+                    }
+                }
             } catch (e: Exception) { callback(emptyList(), "Geräteliste konnte nicht gelesen werden: ${e.message}") }
+        }
+    }
+
+    fun getTextState(baseUrl: String, id: String, callback: (String?) -> Unit) {
+        request(baseUrl, "/get/${Uri.encode(id)}") { ok, body, _ ->
+            val value = if (ok && body != null) runCatching {
+                val json = JSONObject(body)
+                when (val raw = json.opt("val")) {
+                    is String -> raw.trim()
+                    is Number, is Boolean -> raw.toString()
+                    else -> ""
+                }
+            }.getOrNull() else null
+            callback(value?.takeIf { it.isNotBlank() })
         }
     }
 
