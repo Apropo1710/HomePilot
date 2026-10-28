@@ -402,7 +402,7 @@ private fun HomePilotApp() {
                                 if (ok) ioClient.getState(serverUrl, id) { state, err -> if (state != null) updateDeviceState(devices, lights, id, state); if (err != null) connectionStatus = err }
                             }
                         })
-                        Tab.DEVICES -> DevicesScreen(devices, panel, text, connected,
+                        Tab.DEVICES -> DevicesScreen(devices, rooms, panel, text, connected,
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -591,8 +591,8 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
     }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(panel).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(if (panel == Color.White) accent.copy(alpha = 0.14f) else accent.copy(alpha = 0.22f)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
@@ -645,7 +645,7 @@ private fun LightsScreen(lights: List<DeviceItem>, panel: Color, text: Color, co
 }
 
 @Composable
-private fun DevicesScreen(devices: List<DeviceItem>, panel: Color, text: Color, connected: Boolean, onToggle: (DeviceItem, Boolean) -> Unit, onEditDevice: (DeviceItem) -> Unit) {
+private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel: Color, text: Color, connected: Boolean, onToggle: (DeviceItem, Boolean) -> Unit, onEditDevice: (DeviceItem) -> Unit) {
     val unassigned = devices.filter { it.room.isBlank() || it.room == "Nicht zugeordnet" }
     Text("Shelly-Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     Text("Echte Schaltzustände aus ioBroker", color = Muted, fontSize = 13.sp)
@@ -667,16 +667,42 @@ private fun DevicesScreen(devices: List<DeviceItem>, panel: Color, text: Color, 
     }
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
     else if (devices.isEmpty()) Text("Noch keine Shelly-Geräte gefunden.", color = Muted)
-    devices.forEach { item ->
-        CardBlock(panel, text, item.name, item.subtitle, if (item.name == "Wasser") Icons.Default.WaterDrop else Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = text, fontWeight = FontWeight.SemiBold)
-                    if (item.powerWatts != null) Text("Leistung: ${"%.1f".format(item.powerWatts)} W", color = Muted, fontSize = 12.sp)
-                    Text(item.stateId ?: "", color = Muted, fontSize = 9.sp)
-                    if (!item.writable) Text("Schalten aus Sicherheitsgründen gesperrt", color = Muted, fontSize = 10.sp)
+    val grouped = devices.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
+    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + "Nicht zugeordnet" + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
+    roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
+        val roomItems = grouped[room].orEmpty().sortedBy { it.name.lowercase() }
+        val roomAccent = when (room.lowercase()) {
+            "wohnzimmer" -> Color(0xFF6C63C7)
+            "küche" -> Color(0xFFE09A22)
+            "schlafzimmer" -> Color(0xFF4787C7)
+            "bad", "badezimmer" -> Color(0xFF159A9C)
+            "hauswirtschaft" -> Color(0xFF2E9B70)
+            "nicht zugeordnet" -> Color(0xFFD97706)
+            else -> listOf(Color(0xFF6C63C7), Color(0xFF159A9C), Color(0xFFE09A22), Color(0xFF4787C7))[roomIndex % 4]
+        }
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(roomAccent.copy(alpha = if (panel == Color.White) 0.10f else 0.20f)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                    Icon(if (room == "Nicht zugeordnet") Icons.Default.WarningAmber else Icons.Default.HomeWork, null, tint = Color.White)
                 }
-                Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(room, color = text, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                    Text("${roomItems.size} ${if (roomItems.size == 1) "Gerät" else "Geräte"}", color = roomAccent, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+            roomItems.forEach { item ->
+                CardBlock(panel, text, item.name, item.subtitle, if (item.name == "Wasser") Icons.Default.WaterDrop else Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text, fontWeight = FontWeight.SemiBold)
+                            if (item.powerWatts != null) Text("Leistung: ${"%.1f".format(item.powerWatts)} W", color = Muted, fontSize = 12.sp)
+                            Text(item.stateId ?: "", color = Muted, fontSize = 9.sp)
+                            if (!item.writable) Text("Schalten aus Sicherheitsgründen gesperrt", color = Muted, fontSize = 10.sp)
+                        }
+                        Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
+                    }
+                }
             }
         }
     }
