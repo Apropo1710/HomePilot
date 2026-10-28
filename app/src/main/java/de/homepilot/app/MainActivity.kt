@@ -511,7 +511,32 @@ private fun HomePilotApp() {
                                 }
                             })
                         Tab.SAFETY -> SafetyScreen(floodAlarm, floodBattery, panel, text, onAlarm = { floodAlarm = it }, onBattery = { floodBattery = it })
-                        Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text,
+                        Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
+                            onToggle = { item, value ->
+                                val id = item.stateId
+                                if (id != null && item.writable) {
+                                    if (value && item.kind == "light" && item.brightnessId != null) {
+                                        ioClient.setState(serverUrl, id, true) { ok, message ->
+                                            connectionStatus = message
+                                            if (ok) {
+                                                val percent = prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100)
+                                                Handler(Looper.getMainLooper()).postDelayed({
+                                                    ioClient.setNumericState(serverUrl, item.brightnessId, percent * 2.54) { brightnessOk, brightnessMessage ->
+                                                        connectionStatus = brightnessMessage
+                                                        if (brightnessOk) ioClient.getState(serverUrl, id) { state, err -> if (state != null) updateDeviceState(devices, lights, id, state); if (err != null) connectionStatus = err }
+                                                    }
+                                                }, 400)
+                                            }
+                                        }
+                                    } else ioClient.setState(serverUrl, id, value) { ok, message ->
+                                        connectionStatus = message
+                                        if (ok) ioClient.getState(serverUrl, id) { state, err -> if (state != null) updateDeviceState(devices, lights, id, state); if (err != null) connectionStatus = err }
+                                    }
+                                }
+                            },
+                            onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { _, message -> connectionStatus = message } },
+                            onSetDefaultBrightness = { item, percent -> prefs.edit().putInt("lightOnBrightness:" + (item.stateId ?: item.name), percent).apply() },
+                            defaultBrightness = { item -> prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100) },
                             onSelectRoom = { selectedRoom = it }, onAddRoom = { roomNameInput = ""; showRoomDialog = true },
                             onRenameRoom = { old, new -> if (new.isNotBlank() && new !in rooms) { rooms = rooms.map { if (it == old) new.trim() else it }.toMutableList(); persistRooms(); devices.indices.forEach { i -> if (devices[i].room == old) devices[i] = devices[i].copy(room = new.trim()) }; lights.indices.forEach { i -> if (lights[i].room == old) lights[i] = lights[i].copy(room = new.trim()) } } },
                             selectedRoom = selectedRoom, onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
@@ -813,6 +838,7 @@ private fun LightsScreen(
                 }
             }
             roomItems.forEach { item ->
+                var expanded by remember(item.stateId) { mutableStateOf(false) }
                 var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
                 var temp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.let { ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } ?: 50f) }
@@ -827,6 +853,13 @@ private fun LightsScreen(
                         Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = Muted, fontSize = 11.sp) }
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(if (expanded) "Einklappen" else "Erweitern")
+                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+                        }
+                    }
+                    if (expanded) {
                     if (item.brightnessId != null) {
                         if (item.currentBrightness == null) {
                             Text("Aktuelle Helligkeit wird geladen …", color = Muted, fontSize = 12.sp)
@@ -945,6 +978,7 @@ private fun LightsScreen(
                                 onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
                         }
                     }
+                    }
                 }
             }
         }
@@ -1016,7 +1050,9 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
 }
 
 @Composable
-private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: List<DeviceItem>, panel: Color, text: Color,
+private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: List<DeviceItem>, panel: Color, text: Color, connected: Boolean,
+    onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit,
+    onSetDefaultBrightness: (DeviceItem, Int) -> Unit, defaultBrightness: (DeviceItem) -> Int,
     onSelectRoom: (String?) -> Unit, onAddRoom: () -> Unit, onRenameRoom: (String, String) -> Unit,
     selectedRoom: String?, onEditDevice: (DeviceItem) -> Unit,
     hiddenItems: List<DeviceItem>, onShowHidden: () -> Unit,
@@ -1037,9 +1073,50 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (lamps.isNotEmpty()) {
             Text("Lampen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             lamps.forEach { item ->
+                var expanded by remember(item.stateId) { mutableStateOf(false) }
+                var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
+                var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
+                var temp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.let { ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } ?: 50f) }
+                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } ?: 180f) }
+                var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } ?: 100f) }
+                LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightness = it.toFloat().coerceIn(1f, 100f) } }
+                LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
+                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
+                LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                        Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(if (expanded) "Einklappen" else "Erweitern")
+                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+                        }
+                    }
+                    if (expanded) {
+                        if (item.brightnessId != null) {
+                            Text(if (item.currentBrightness != null) "Aktuelle Helligkeit: ${brightness.toInt()}%" else "Aktuelle Helligkeit wird geladen …", color = if (item.currentBrightness != null) text else Muted, fontWeight = FontWeight.SemiBold)
+                            if (item.currentBrightness != null) Slider(value = brightness, onValueChange = { brightness = it }, valueRange = 1f..100f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightness.toDouble() * 2.54) })
+                            Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
+                                onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble() * 2.54) })
+                        }
+                        if (item.colorTempId != null) {
+                            Text(if (item.currentColorTemp != null && item.currentColorTemp > 0.0) "Aktuelle Farbtemperatur: ${(1_000_000.0 / item.currentColorTemp).toInt()} K" else "Farbtemperatur wird geladen …", color = text, fontWeight = FontWeight.SemiBold)
+                            Text("Farbtemperatur einstellen", color = text, fontWeight = FontWeight.SemiBold)
+                            if (item.currentColorTemp != null) Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + temp.toDouble() / 100.0 * 347.0) })
+                        }
+                        if (item.hueId != null && item.saturationId != null) {
+                            Text("Farbton einstellen: ${hue.toInt()}°", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
+                            Text("Farbsättigung einstellen: ${saturation.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
+                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
+                        }
                     }
                 }
             }
