@@ -1239,6 +1239,13 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                             onCheckedChange = { onToggle(item, it) }
                         )
                     }
+                    if (item.powerWatts != null) {
+                        Text(
+                            "Aktuelle Leistungsaufnahme: " + "%.1f".format(java.util.Locale.GERMANY, item.powerWatts) + " W",
+                            color = Muted,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         }
