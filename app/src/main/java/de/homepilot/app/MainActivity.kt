@@ -359,8 +359,9 @@ private fun HomePilotApp() {
                         discoveredLights.addAll(candidates)
                         selectedLightIds = emptySet()
                         showLightImportDialog = candidates.isNotEmpty()
-                        // Only lights explicitly imported by the user are shown in HomePilot.
-                        lights.removeAll { item -> item.stateId !in importedLightIds }
+                        // Restore previously selected lights, but never auto-import new ones.
+                        lights.clear()
+                        lights.addAll(found.filter { it.stateId in importedLightIds && it.stateId !in hiddenIds })
                         applyCustomConfig()
                         refreshStates(ioClient, serverUrl, devices, lights)
                     } else {
