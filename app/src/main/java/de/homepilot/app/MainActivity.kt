@@ -523,8 +523,8 @@ private fun HomeScreen(
     panel: Color, text: Color, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        SummaryCard(Modifier.weight(1f), "Lichter an", "${lights.count { it.initialOn }} / ${lights.size}", Icons.Default.Lightbulb, panel, text)
-        SummaryCard(Modifier.weight(1f), "Geräte aktiv", "${devices.count { it.initialOn }} / ${devices.size}", Icons.Default.Power, panel, text)
+        SummaryCard(Modifier.weight(1f), "Lichter an", "${lights.count { it.initialOn }} / ${lights.size}", Icons.Default.Lightbulb, panel, text, Color(0xFFE9B949))
+        SummaryCard(Modifier.weight(1f), "Geräte aktiv", "${devices.count { it.initialOn }} / ${devices.size}", Icons.Default.Power, panel, text, Color(0xFF3984D6))
     }
     Text("Deine Räume", color = text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
     Text("Tippe auf einen Raum für die Geräteübersicht.", color = Muted, fontSize = 13.sp)
@@ -541,13 +541,22 @@ private fun HomeScreen(
                     "hauswirtschaft" -> Icons.Default.LocalLaundryService
                     else -> Icons.Default.HomeWork
                 }
+                val roomAccent = when (room.lowercase()) {
+                    "wohnzimmer" -> Color(0xFF6C63C7)
+                    "küche" -> Color(0xFFE09A22)
+                    "schlafzimmer" -> Color(0xFF4787C7)
+                    "bad", "badezimmer" -> Color(0xFF159A9C)
+                    "hauswirtschaft" -> Color(0xFF2E9B70)
+                    else -> Blue
+                }
                 Column(
                     Modifier.weight(1f).clip(RoundedCornerShape(22.dp))
-                        .background(panel).clickable { onOpenRoom(room) }.padding(16.dp),
+                        .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
+                        .clickable { onOpenRoom(room) }.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE5F0FC)), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Blue, modifier = Modifier.size(25.dp))
+                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(27.dp))
                     }
                     Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("$count Geräte", color = Muted, fontSize = 12.sp)
@@ -567,9 +576,11 @@ private fun HomeScreen(
 }
 
 @Composable
-private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: ImageVector, panel: Color, text: Color) {
-    Column(modifier.clip(RoundedCornerShape(20.dp)).background(panel).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(icon, null, tint = Blue, modifier = Modifier.size(22.dp))
+private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: ImageVector, panel: Color, text: Color, accent: Color) {
+    Column(modifier.clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.22f else 0.30f)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(accent), contentAlignment = Alignment.Center) {
+            Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
+        }
         Text(title, fontSize = 12.sp, color = Muted)
         Text(value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = text)
     }
