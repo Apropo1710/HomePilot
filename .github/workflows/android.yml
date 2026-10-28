@@ -38,11 +38,14 @@ jobs:
           unzip -q /tmp/gradle.zip -d /tmp
           echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
 
-      - name: Stabilen Debug-Signaturschlüssel einrichten
+      - name: Stabilen Signaturschlüssel aus GitHub Secret einrichten
+        env:
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
+          test -n "$DEBUG_KEYSTORE_BASE64" || { echo "GitHub Secret DEBUG_KEYSTORE_BASE64 fehlt"; exit 1; }
           mkdir -p "$HOME/.android"
-          base64 --decode .github/debug-keystore.b64 > "$HOME/.android/debug.keystore"
-          base64 --decode .github/debug-keystore.b64 > .github/debug-keystore
+          printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > .github/debug-keystore
+          cp .github/debug-keystore "$HOME/.android/debug.keystore"
           chmod 600 "$HOME/.android/debug.keystore" .github/debug-keystore
           sha256sum .github/debug-keystore
 
