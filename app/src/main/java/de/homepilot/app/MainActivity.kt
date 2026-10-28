@@ -812,6 +812,69 @@ private fun LightsScreen(
                         Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
                             onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble() * 2.54) })
                     }
+                    if (item.colorTempId != null || (item.hueId != null && item.saturationId != null)) {
+                        var colorMenuExpanded by remember(item.stateId) { mutableStateOf(false) }
+                        val colorPresets = listOf<Triple<String, Double?, Double?>>(
+                            Triple("Warmweiß", null, 450.0),
+                            Triple("Neutralweiß", null, 285.0),
+                            Triple("Kaltweiß", null, 170.0),
+                            Triple("Rot", 0.0, null),
+                            Triple("Orange", 6000.0, null),
+                            Triple("Gelb", 11000.0, null),
+                            Triple("Grün", 26000.0, null),
+                            Triple("Türkis", 34000.0, null),
+                            Triple("Blau", 44000.0, null),
+                            Triple("Violett", 50000.0, null),
+                            Triple("Pink", 60000.0, null)
+                        ).filter { preset ->
+                            (preset.second == null || (item.hueId != null && item.saturationId != null)) &&
+                            (preset.third == null || item.colorTempId != null)
+                        }
+                        Box {
+                            OutlinedButton(onClick = { colorMenuExpanded = true }, enabled = connected && colorPresets.isNotEmpty()) {
+                                Icon(Icons.Default.Palette, contentDescription = null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Lichtfarbe auswählen")
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                            }
+                            DropdownMenu(expanded = colorMenuExpanded, onDismissRequest = { colorMenuExpanded = false }) {
+                                colorPresets.forEach { preset ->
+                                    DropdownMenuItem(
+                                        text = { Text(preset.first) },
+                                        onClick = {
+                                            colorMenuExpanded = false
+                                            if (preset.third != null && item.colorTempId != null) {
+                                                onSetNumeric(item, item.colorTempId, preset.third)
+                                            }
+                                            if (preset.second != null && item.hueId != null && item.saturationId != null) {
+                                                onSetNumeric(item, item.hueId, preset.second)
+                                                onSetNumeric(item, item.saturationId, 254.0)
+                                            }
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                if (preset.third != null) Icons.Default.LightMode else Icons.Default.Circle,
+                                                contentDescription = null,
+                                                tint = when (preset.first) {
+                                                    "Warmweiß" -> Color(0xFFFFB74D)
+                                                    "Neutralweiß" -> Color(0xFFFFF3D0)
+                                                    "Kaltweiß" -> Color(0xFFB3D9FF)
+                                                    "Rot" -> Color(0xFFE53935)
+                                                    "Orange" -> Color(0xFFFF9800)
+                                                    "Gelb" -> Color(0xFFFFD600)
+                                                    "Grün" -> Color(0xFF43A047)
+                                                    "Türkis" -> Color(0xFF00ACC1)
+                                                    "Blau" -> Color(0xFF1E88E5)
+                                                    "Violett" -> Color(0xFF8E24AA)
+                                                    else -> Color(0xFFEC407A)
+                                                }
+                                            )
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     if (item.colorTempId != null) {
                         Text("Farbtemperatur", color = text, fontWeight = FontWeight.SemiBold)
                         Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
