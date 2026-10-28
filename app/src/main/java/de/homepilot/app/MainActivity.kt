@@ -462,9 +462,20 @@ private fun HomePilotApp() {
                             defaultBrightness = { item -> prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100) },
                             onToggle = { item, value ->
                             val id = item.stateId
-                            if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
-                                connectionStatus = message
-                                if (ok) ioClient.getState(serverUrl, id) { state, err -> if (state != null) updateDeviceState(devices, lights, id, state); if (err != null) connectionStatus = err }
+                            if (id != null && item.writable) {
+                                fun switchLightOn() {
+                                    ioClient.setState(serverUrl, id, value) { ok, message ->
+                                        connectionStatus = message
+                                        if (ok) ioClient.getState(serverUrl, id) { state, err -> if (state != null) updateDeviceState(devices, lights, id, state); if (err != null) connectionStatus = err }
+                                    }
+                                }
+                                if (value && item.brightnessId != null) {
+                                    val percent = prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100)
+                                    ioClient.setNumericState(serverUrl, item.brightnessId, percent * 2.54) { ok, message ->
+                                        connectionStatus = message
+                                        switchLightOn()
+                                    }
+                                } else switchLightOn()
                             }
                         })
                         Tab.DEVICES -> DevicesScreen(devices, rooms, panel, text, connected,
@@ -775,7 +786,7 @@ private fun LightsScreen(
             if (item.brightnessId != null) {
                 Text("Helligkeit: ${brightnessPercent.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
                 Slider(value = brightnessPercent, onValueChange = { brightnessPercent = it }, valueRange = 1f..100f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightnessPercent.toDouble()) })
+                    onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightnessPercent.toDouble() * 2.54) })
                 Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
                 Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
                     onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble()) })
@@ -783,15 +794,15 @@ private fun LightsScreen(
             if (item.colorTempId != null) {
                 Text("Farbtemperatur", color = text, fontWeight = FontWeight.SemiBold)
                 Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.colorTempId, temp.toDouble()) })
+                    onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + (temp.toDouble() / 100.0 * 347.0)) })
             }
             if (item.hueId != null && item.saturationId != null) {
                 Text("Farbton", color = text, fontWeight = FontWeight.SemiBold)
                 Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
+                    onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
                 Text("Farbsättigung", color = text, fontWeight = FontWeight.SemiBold)
                 Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
-                    onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble()) })
+                    onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
             }
         }
     }
