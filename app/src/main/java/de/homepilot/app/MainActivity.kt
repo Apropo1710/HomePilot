@@ -128,7 +128,12 @@ private class IoBrokerClient {
                     val isBooleanSwitch = type == "boolean" && role.contains("switch")
                     val isRealDeviceOutput = when (adapter) {
                         "shelly.0" -> id.matches(Regex("shelly\\.0\\..*(?:Relay\\d*\\.Switch|Relay\\d*\\.Output|\\.Switch)$", RegexOption.IGNORE_CASE))
-                        "hue.0" -> isBooleanSwitch && (id.contains("groups.", ignoreCase = true) || id.contains("lights.", ignoreCase = true) || id.contains("devices.", ignoreCase = true)) && id.substringAfterLast('.').equals("on", ignoreCase = true)
+                        "hue.0" -> {
+                            val hueEntity = id.contains(".groups.", ignoreCase = true) || id.contains(".lights.", ignoreCase = true) || id.contains(".devices.", ignoreCase = true)
+                            val leaf = id.substringAfterLast('.').lowercase()
+                            val outputState = leaf in setOf("on", "state", "switch")
+                            hueEntity && type == "boolean" && outputState && (role.contains("switch") || role.contains("light") || leaf == "on")
+                        }
                         else -> false
                     }
                     if (!isRealDeviceOutput) continue
