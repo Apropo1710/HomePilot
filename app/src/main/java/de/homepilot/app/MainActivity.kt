@@ -131,16 +131,18 @@ private class IoBrokerClient {
                         "hue.0" -> {
                             val leaf = id.substringAfterLast('.').lowercase()
                             val outputState = leaf in setOf("on", "all_on", "state", "switch")
-                            // Hue adapter object paths vary by adapter version and configuration.
-                            // Find plausible boolean on/off states anywhere under hue.0; the user
-                            // explicitly chooses which candidates to import, so discovery is broad
-                            // while import remains opt-in.
                             type == "boolean" && (outputState || role.contains("switch") || role.contains("light"))
+                        }
+                        "tuya" -> {
+                            val leaf = id.substringAfterLast('.').lowercase()
+                            val outputState = leaf in setOf("on", "switch", "state", "power", "light", "relay")
+                            type == "boolean" && common.optBoolean("write", false) &&
+                                (outputState || role.contains("switch") || role.contains("light") || role.contains("button"))
                         }
                         else -> false
                     }
                     if (!isRealDeviceOutput) continue
-                    if (id.startsWith("$adapter.")) {
+                    if ((adapter == "tuya" && id.startsWith("tuya.")) || id.startsWith("$adapter.")) {
                         val parent = id.substringBeforeLast('.')
                         val siblingPower = allIds.firstOrNull { candidateId ->
                             candidateId.substringBeforeLast('.') == parent &&
@@ -182,7 +184,7 @@ private class IoBrokerClient {
                         val fallbackName = when {
                             friendlyName.isNotBlank() -> friendlyName
                             !isGenericDeviceName(name) -> name.trim()
-                            else -> if (adapter == "hue.0") "Hue-Licht" else "Shelly-Gerät"
+                            else -> when (adapter) { "hue.0" -> "Hue-Licht"; "tuya" -> "Tuya-Gerät"; else -> "Shelly-Gerät" }
                         }
                         fun relatedState(vararg endings: String): String? = allIds.firstOrNull { candidateId ->
                         candidateId.startsWith("$parent.", ignoreCase = true) &&
@@ -193,7 +195,9 @@ private class IoBrokerClient {
                     val colorTempId = if (adapter == "hue.0") relatedState("ct", "colortemperature", "color_temperature", "temperature") else null
                     val hueId = if (adapter == "hue.0") relatedState("hue", "colorhue") else null
                     val saturationId = if (adapter == "hue.0") relatedState("sat", "saturation") else null
-                    candidates.add(DeviceItem(fallbackName, if (adapter == "hue.0") "Hue · ioBroker" else "Shelly · ioBroker", if (adapter == "hue.0") "light" else "plug", false, "", id, siblingPower, true, room = "Nicht zugeordnet", brightnessId = brightnessId, colorTempId = colorTempId, hueId = hueId, saturationId = saturationId))
+                    val isHue = adapter == "hue.0"
+                    val isTuya = adapter == "tuya"
+                    candidates.add(DeviceItem(fallbackName, when { isHue -> "Hue · ioBroker"; isTuya -> "Tuya · ioBroker"; else -> "Shelly · ioBroker" }, if (isHue) "light" else "plug", false, "", id, siblingPower, true, room = "Nicht zugeordnet", brightnessId = brightnessId, colorTempId = colorTempId, hueId = hueId, saturationId = saturationId))
                     }
                 }
                 if (adapter != "shelly.0" || candidates.isEmpty()) {
@@ -308,6 +312,10 @@ private fun HomePilotApp() {
     val lights = remember { mutableStateListOf<DeviceItem>() }
     val devices = remember { mutableStateListOf<DeviceItem>() }
     val discoveredLights = remember { mutableStateListOf<DeviceItem>() }
+    val discoveredTuyaDevices = remember { mutableStateListOf<DeviceItem>() }
+    var showTuyaImportDialog by remember { mutableStateOf(false) }
+    var selectedTuyaIds by remember { mutableStateOf(setOf<String>()) }
+    var selectedTuyaRooms by remember { mutableStateOf(emptyMap<String, String>()) }
     var showLightImportDialog by remember { mutableStateOf(false) }
     var scanResultMessage by remember { mutableStateOf<String?>(null) }
     var selectedLightIds by remember { mutableStateOf(setOf<String>()) }
@@ -386,6 +394,26 @@ private fun HomePilotApp() {
                         applyCustomConfig()
                         refreshStates(ioClient, serverUrl, devices, lights)
                     } else connectionStatus = "Verbindung steht, Shelly-Geräte konnten aber nicht geladen werden. Bitte prüfen: $err"
+                }
+                ioClient.discoverSwitches(serverUrl, "tuya") { tuyaFound, tuyaErr ->
+                    if (manualDeviceSearch) {
+                        if (tuyaErr == null) {
+                            val existingIds = devices.mapNotNull { it.stateId }.toSet() + hiddenIds
+                            val candidates = tuyaFound.filter { it.stateId !in existingIds }
+                            discoveredTuyaDevices.clear()
+                            discoveredTuyaDevices.addAll(candidates)
+                            selectedTuyaIds = emptySet()
+                            selectedTuyaRooms = candidates.associate { it.stateId.orEmpty() to "Nicht zugeordnet" }
+                            showTuyaImportDialog = candidates.isNotEmpty()
+                            if (candidates.isEmpty() && tuyaFound.isEmpty()) {
+                                scanResultMessage = "Keine Tuya-Schalter gefunden. Prüfe, ob ein Tuya-Adapter (tuya.0, tuya.1 usw.) aktiv ist und schaltbare Datenpunkte bereitstellt."
+                            } else if (candidates.isEmpty()) {
+                                scanResultMessage = "Keine neuen Tuya-Geräte gefunden. Die bereits eingebundenen oder ausgeblendeten Geräte werden nicht erneut angeboten."
+                            }
+                        } else {
+                            scanResultMessage = "Tuya-Suche fehlgeschlagen: $tuyaErr"
+                        }
+                    }
                 }
                 ioClient.discoverSwitches(serverUrl, "hue.0") { found, err ->
                     if (err == null) {
@@ -595,6 +623,60 @@ private fun HomePilotApp() {
                         title = { Text("Lampensuche") },
                         text = { Text(scanResultMessage ?: "") },
                         confirmButton = { TextButton(onClick = { scanResultMessage = null }) { Text("OK") } }
+                    )
+                    if (showTuyaImportDialog) AlertDialog(
+                        onDismissRequest = { showTuyaImportDialog = false },
+                        title = { Text("Tuya-Geräte auswählen") },
+                        text = {
+                            Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("Wähle die Tuya-Geräte aus und ordne jedes Gerät direkt einem Raum zu. Die Auswahl wird erst nach Bestätigung übernommen.", color = Muted, fontSize = 12.sp)
+                                discoveredTuyaDevices.forEach { item ->
+                                    val id = item.stateId.orEmpty()
+                                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Row(Modifier.fillMaxWidth().clickable {
+                                            selectedTuyaIds = if (id in selectedTuyaIds) selectedTuyaIds - id else selectedTuyaIds + id
+                                        }, verticalAlignment = Alignment.CenterVertically) {
+                                            Checkbox(checked = id in selectedTuyaIds, onCheckedChange = { checked ->
+                                                selectedTuyaIds = if (checked) selectedTuyaIds + id else selectedTuyaIds - id
+                                            })
+                                            Column(Modifier.weight(1f)) {
+                                                Text(item.name, color = LightText, fontWeight = FontWeight.SemiBold)
+                                                Text(id, color = Muted, fontSize = 9.sp)
+                                            }
+                                        }
+                                        var roomMenuExpanded by remember(id) { mutableStateOf(false) }
+                                        OutlinedButton(onClick = { roomMenuExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                                            Text("Raum: ${selectedTuyaRooms[id] ?: "Nicht zugeordnet"}")
+                                        }
+                                        DropdownMenu(expanded = roomMenuExpanded, onDismissRequest = { roomMenuExpanded = false }) {
+                                            rooms.forEach { room ->
+                                                DropdownMenuItem(text = { Text(room) }, onClick = {
+                                                    selectedTuyaRooms = selectedTuyaRooms + (id to room)
+                                                    roomMenuExpanded = false
+                                                })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                val chosen = discoveredTuyaDevices.filter { it.stateId in selectedTuyaIds }
+                                chosen.forEach { item ->
+                                    val id = item.stateId ?: return@forEach
+                                    val room = selectedTuyaRooms[id] ?: "Nicht zugeordnet"
+                                    deviceRooms = deviceRooms.toMutableMap().apply { put(id, room) }
+                                    if (devices.none { it.stateId == id }) devices.add(item.copy(room = room))
+                                }
+                                persistDeviceRooms()
+                                applyCustomConfig()
+                                refreshStates(ioClient, serverUrl, devices, lights)
+                                showTuyaImportDialog = false
+                                scanResultMessage = "Tuya-Geräte übernommen: ${chosen.size}"
+                            }) { Text("Auswahl übernehmen (${selectedTuyaIds.size})") }
+                        },
+                        dismissButton = { TextButton(onClick = { showTuyaImportDialog = false }) { Text("Überspringen") } }
                     )
                     if (showLightImportDialog) AlertDialog(
                         onDismissRequest = { showLightImportDialog = false },
