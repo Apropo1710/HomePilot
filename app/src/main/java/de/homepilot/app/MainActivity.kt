@@ -275,6 +275,7 @@ private fun HomePilotApp() {
     val devices = remember { mutableStateListOf<DeviceItem>() }
     val discoveredLights = remember { mutableStateListOf<DeviceItem>() }
     var showLightImportDialog by remember { mutableStateOf(false) }
+    var scanResultMessage by remember { mutableStateOf<String?>(null) }
     var selectedLightIds by remember { mutableStateOf(setOf<String>()) }
     var floodAlarm by remember { mutableStateOf(false) }
     var floodBattery by remember { mutableIntStateOf(100) }
@@ -359,13 +360,21 @@ private fun HomePilotApp() {
                         discoveredLights.addAll(candidates)
                         selectedLightIds = emptySet()
                         showLightImportDialog = candidates.isNotEmpty()
+                        if (candidates.isEmpty()) {
+                            scanResultMessage = if (found.isEmpty()) {
+                                "Keine Hue-Lampen erkannt. Prüfe, ob der ioBroker-Adapter hue.0 aktiv ist und Lampen über ihn bereitstellt."
+                            } else {
+                                "Keine neuen Hue-Lampen gefunden. Bereits ausgewählte oder ausgeblendete Lampen werden nicht erneut angeboten."
+                            }
+                        }
                         // Restore previously selected lights, but never auto-import new ones.
                         lights.clear()
                         lights.addAll(found.filter { it.stateId in importedLightIds && it.stateId !in hiddenIds })
                         applyCustomConfig()
                         refreshStates(ioClient, serverUrl, devices, lights)
                     } else {
-                        connectionStatus = "Verbindung steht, Hue-Lampen konnten aber nicht geladen werden: $err"
+                        connectionStatus = "Hue-Suche fehlgeschlagen: $err"
+                        scanResultMessage = "Die Hue-Suche ist fehlgeschlagen. Prüfe die ioBroker Simple API und den Adapter hue.0. Details: $err"
                     }
                 }
             }
@@ -489,6 +498,12 @@ private fun HomePilotApp() {
                             lights.indices.forEach { i -> if (lights[i].room == room) { lights[i] = lights[i].copy(room = "Nicht zugeordnet"); lights[i].stateId?.let { id -> deviceRooms = deviceRooms.toMutableMap().apply { put(id, "Nicht zugeordnet") } } } }; persistDeviceRooms()
                         }; confirmDeleteRoom = null }) { Text("Raum löschen") } },
                         dismissButton = { TextButton(onClick = { confirmDeleteRoom = null }) { Text("Abbrechen") } }
+                    )
+                    if (scanResultMessage != null) AlertDialog(
+                        onDismissRequest = { scanResultMessage = null },
+                        title = { Text("Lampensuche") },
+                        text = { Text(scanResultMessage ?: "") },
+                        confirmButton = { TextButton(onClick = { scanResultMessage = null }) { Text("OK") } }
                     )
                     if (showLightImportDialog) AlertDialog(
                         onDismissRequest = { showLightImportDialog = false },
