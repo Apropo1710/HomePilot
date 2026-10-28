@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# Prevent two builds from publishing over the same 'latest' APKs at once.
+concurrency:
+  group: homepilot-apk-release
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -45,13 +50,20 @@ jobs:
       - name: Separate Test-App bauen
         run: gradle --no-daemon assembleDebug
 
-      - name: APK-Signaturen prüfen
+      - name: APK-Paket, Version und Signatur prüfen
         run: |
-          echo 'Release APK:'
+          echo 'Release APK manifest:'
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest application-id app/build/outputs/apk/release/app-release.apk
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-code app/build/outputs/apk/release/app-release.apk
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-name app/build/outputs/apk/release/app-release.apk
+          echo 'Release APK certificate:'
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
-          echo 'Test APK:'
+          echo 'Test APK manifest:'
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest application-id app/build/outputs/apk/debug/app-debug.apk
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-code app/build/outputs/apk/debug/app-debug.apk
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-name app/build/outputs/apk/debug/app-debug.apk
+          echo 'Test APK certificate:'
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk
-          echo 'APK version and signing configuration verification complete.'
 
       - name: APKs als Download bereitstellen
         uses: actions/upload-artifact@v4
