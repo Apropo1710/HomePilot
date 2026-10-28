@@ -310,6 +310,7 @@ private fun HomePilotApp() {
     var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "http://192.168.178.54:8087").let { saved -> if (saved.trimEnd('/').endsWith(":8082")) saved.trimEnd('/').removeSuffix(":8082") + ":8087" else saved }) }
         var connectionStatus by remember { mutableStateOf("Nicht verbunden") }
     var connected by remember { mutableStateOf(false) }
+    var showConnectionAlert by remember { mutableStateOf(false) }
     var washOn by remember { mutableStateOf(false) }
     var waterOn by remember { mutableStateOf(false) }
     val ioClient = remember { IoBrokerClient() }
@@ -321,6 +322,7 @@ private fun HomePilotApp() {
         ioClient.connect(serverUrl) { ok, msg ->
             connected = ok
             connectionStatus = if (ok) msg else "Bitte Verbindung prüfen. $msg"
+            showConnectionAlert = !ok
             if (ok) {
                 ioClient.discoverSwitches(serverUrl, "shelly.0") { found, err ->
                     if (err == null) {
@@ -424,6 +426,18 @@ private fun HomePilotApp() {
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker() })
                     }
+                    if (showConnectionAlert) AlertDialog(
+                        onDismissRequest = { showConnectionAlert = false },
+                        icon = { Icon(Icons.Default.WifiOff, null, tint = Color(0xFFD97706)) },
+                        title = { Text("Keine Verbindung zu ioBroker") },
+                        text = { Text("HomePilot konnte keine Verbindung herstellen. Bitte prüfe, ob ioBroker läuft, dein Smartphone im richtigen WLAN ist und die Serveradresse in den Einstellungen stimmt.\n\nDetails: $connectionStatus") },
+                        confirmButton = {
+                            TextButton(onClick = { showConnectionAlert = false; connectToIoBroker() }) { Text("Erneut versuchen") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showConnectionAlert = false; selectedTab = Tab.SETTINGS }) { Text("Einstellungen prüfen") }
+                        }
+                    )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
                     if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Text("Gerät bearbeiten") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true); Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; persistNames(); persistDeviceRooms(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
                     if (confirmRemoveDevice != null) AlertDialog(
