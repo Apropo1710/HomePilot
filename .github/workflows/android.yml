@@ -6,7 +6,7 @@ on:
     branches: [ main, master ]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -49,3 +49,18 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: APK für direkten Download vorbereiten
+        run: cp app/build/outputs/apk/debug/app-debug.apk HomePilot.apk
+
+      - name: Neueste APK als GitHub-Release bereitstellen
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: HomePilot – neueste Version
+          body: |
+            Automatisch erstellte HomePilot-APK aus dem neuesten erfolgreichen Build.
+            Lade HomePilot.apk herunter und installiere sie auf deinem Android-Gerät.
+          files: HomePilot.apk
+          overwrite_files: true
+          make_latest: true
