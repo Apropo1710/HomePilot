@@ -469,19 +469,33 @@ private fun HomePilotApp() {
                             onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) {
-                                fun switchLightOn() {
+                                if (value && item.brightnessId != null) {
+                                    // Switch the lamp on first. Many Hue lights reset brightness
+                                    // during power-on, so applying brightness before this command
+                                    // can be overwritten by the lamp itself.
+                                    ioClient.setState(serverUrl, id, true) { ok, message ->
+                                        connectionStatus = message
+                                        if (ok) {
+                                            val percent = prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100)
+                                            Handler(Looper.getMainLooper()).postDelayed({
+                                                ioClient.setNumericState(serverUrl, item.brightnessId, percent * 2.54) { brightnessOk, brightnessMessage ->
+                                                    connectionStatus = brightnessMessage
+                                                    if (brightnessOk) {
+                                                        ioClient.getState(serverUrl, id) { state, err ->
+                                                            if (state != null) updateDeviceState(devices, lights, id, state)
+                                                            if (err != null) connectionStatus = err
+                                                        }
+                                                    }
+                                                }
+                                            }, 400)
+                                        }
+                                    }
+                                } else {
                                     ioClient.setState(serverUrl, id, value) { ok, message ->
                                         connectionStatus = message
                                         if (ok) ioClient.getState(serverUrl, id) { state, err -> if (state != null) updateDeviceState(devices, lights, id, state); if (err != null) connectionStatus = err }
                                     }
                                 }
-                                if (value && item.brightnessId != null) {
-                                    val percent = prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100)
-                                    ioClient.setNumericState(serverUrl, item.brightnessId, percent * 2.54) { ok, message ->
-                                        connectionStatus = message
-                                        switchLightOn()
-                                    }
-                                } else switchLightOn()
                             }
                         })
                         Tab.DEVICES -> DevicesScreen(devices, rooms, panel, text, connected,
