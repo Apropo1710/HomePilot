@@ -12,13 +12,15 @@ android {
         applicationId = "de.homepilot.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.9"
+        versionCode = 5
+        versionName = "1.0"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Stable signing for installable sideloaded APKs.
+            signingConfig = signingConfigs.getByName("debug")
         }
         debug {
             applicationIdSuffix = ".debug"
