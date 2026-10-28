@@ -403,6 +403,7 @@ private fun HomePilotApp() {
                             }
                         })
                         Tab.DEVICES -> DevicesScreen(devices, panel, text, connected,
+                            onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onToggle = { item, value ->
                                 val id = item.stateId
                                 if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
@@ -575,16 +576,18 @@ private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: 
 }
 
 @Composable
-private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String, icon: ImageVector, action: (() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
+private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String, icon: ImageVector, action: (() -> Unit)? = null, actionIcon: ImageVector = Icons.Default.ChevronRight, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(panel).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, null, tint = Blue, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(if (panel == Color.White) Color(0xFFEAF2FC) else Color(0xFF293747)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Blue, modifier = Modifier.size(22.dp))
+            }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
                 Text(subtitle, color = Muted, fontSize = 12.sp)
             }
-            if (action != null) IconButton(onClick = action) { Icon(Icons.Default.ChevronRight, null, tint = Muted) }
+            if (action != null) IconButton(onClick = action) { Icon(actionIcon, null, tint = Blue) }
         }
         content()
     }
@@ -630,13 +633,13 @@ private fun LightsScreen(lights: List<DeviceItem>, panel: Color, text: Color, co
 }
 
 @Composable
-private fun DevicesScreen(devices: List<DeviceItem>, panel: Color, text: Color, connected: Boolean, onToggle: (DeviceItem, Boolean) -> Unit) {
+private fun DevicesScreen(devices: List<DeviceItem>, panel: Color, text: Color, connected: Boolean, onToggle: (DeviceItem, Boolean) -> Unit, onEditDevice: (DeviceItem) -> Unit) {
     Text("Shelly-Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     Text("Echte Schaltzustände aus ioBroker", color = Muted, fontSize = 13.sp)
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
     else if (devices.isEmpty()) Text("Noch keine Shelly-Geräte gefunden.", color = Muted)
     devices.forEach { item ->
-        CardBlock(panel, text, item.name, item.subtitle, if (item.name == "Wasser") Icons.Default.WaterDrop else Icons.Default.Power) {
+        CardBlock(panel, text, item.name, item.subtitle, if (item.name == "Wasser") Icons.Default.WaterDrop else Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Column(Modifier.weight(1f)) {
                     Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = text, fontWeight = FontWeight.SemiBold)
