@@ -694,7 +694,7 @@ private fun HomePilotApp() {
                     )
                     if (showLightImportDialog) AlertDialog(
                         onDismissRequest = { showLightImportDialog = false },
-                        title = { Text("Hue-Lampen auswählen") },
+                        title = { Text("Hue-Geräte auswählen") },
                         text = {
                             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text("Wähle nur die Lampen aus, die du in HomePilot verwenden möchtest. Andere Datenpunkte werden nicht übernommen.", color = Muted, fontSize = 12.sp)
@@ -719,7 +719,6 @@ private fun HomePilotApp() {
                                         discoveredLights.removeAll { it.stateId == id }
                                         selectedLightIds = selectedLightIds - id
                                     }) { Text("Ausblenden") }
-                                }
                                 }
                             }
                         },
