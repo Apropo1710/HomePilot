@@ -1233,6 +1233,11 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 CardBlock(panel, text, item.name, "", Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                        Switch(
+                            checked = item.initialOn,
+                            enabled = connected && item.writable && item.stateId != null,
+                            onCheckedChange = { onToggle(item, it) }
+                        )
                     }
                 }
             }
