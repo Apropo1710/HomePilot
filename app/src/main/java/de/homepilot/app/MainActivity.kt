@@ -843,11 +843,13 @@ private fun LightsScreen(
                                         text = { Text(preset.first) },
                                         onClick = {
                                             colorMenuExpanded = false
-                                            if (preset.third != null && item.colorTempId != null) {
-                                                onSetNumeric(item, item.colorTempId, preset.third)
+                                            val temperatureValue = preset.third
+                                            val hueValue = preset.second
+                                            if (temperatureValue != null && item.colorTempId != null) {
+                                                onSetNumeric(item, item.colorTempId, temperatureValue)
                                             }
-                                            if (preset.second != null && item.hueId != null && item.saturationId != null) {
-                                                onSetNumeric(item, item.hueId, preset.second)
+                                            if (hueValue != null && item.hueId != null && item.saturationId != null) {
+                                                onSetNumeric(item, item.hueId, hueValue)
                                                 onSetNumeric(item, item.saturationId, 254.0)
                                             }
                                         },
