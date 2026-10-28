@@ -12,19 +12,26 @@ android {
         applicationId = "de.homepilot.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 7
-        versionName = "1.2"
+        versionCode = 8
+        versionName = "1.3"
+    }
+
+    signingConfigs {
+        create("ciStable") {
+            storeFile = file("../.github/debug-keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Stable signing for installable sideloaded APKs.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("ciStable")
         }
         debug {
-            // Explicitly use the same stable CI keystore on every test build.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("ciStable")
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
         }
