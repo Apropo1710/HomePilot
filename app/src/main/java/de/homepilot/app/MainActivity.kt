@@ -577,10 +577,22 @@ private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: 
 
 @Composable
 private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String, icon: ImageVector, action: (() -> Unit)? = null, actionIcon: ImageVector = Icons.Default.ChevronRight, content: @Composable ColumnScope.() -> Unit) {
+    val accent = when (icon) {
+        Icons.Default.WaterDrop -> Color(0xFF159A9C)
+        Icons.Default.Lightbulb -> Color(0xFFE6A323)
+        Icons.Default.Power, Icons.Default.Devices -> Color(0xFF3984D6)
+        Icons.Default.HomeWork, Icons.Default.Weekend, Icons.Default.Kitchen -> Color(0xFF7B61C9)
+        Icons.Default.Cloud -> Color(0xFF398FBA)
+        Icons.Default.Palette -> Color(0xFFD46A9A)
+        Icons.Default.Shield -> Color(0xFF2E9B70)
+        Icons.Default.VisibilityOff -> Color(0xFF7A8797)
+        Icons.Default.RoomPreferences -> Color(0xFFE29A25)
+        else -> Blue
+    }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(panel).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(if (panel == Color.White) Color(0xFFEAF2FC) else Color(0xFF293747)), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = Blue, modifier = Modifier.size(22.dp))
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(if (panel == Color.White) accent.copy(alpha = 0.14f) else accent.copy(alpha = 0.22f)), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = accent, modifier = Modifier.size(22.dp))
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
@@ -634,8 +646,25 @@ private fun LightsScreen(lights: List<DeviceItem>, panel: Color, text: Color, co
 
 @Composable
 private fun DevicesScreen(devices: List<DeviceItem>, panel: Color, text: Color, connected: Boolean, onToggle: (DeviceItem, Boolean) -> Unit, onEditDevice: (DeviceItem) -> Unit) {
+    val unassigned = devices.filter { it.room.isBlank() || it.room == "Nicht zugeordnet" }
     Text("Shelly-Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     Text("Echte Schaltzustände aus ioBroker", color = Muted, fontSize = 13.sp)
+    CardBlock(panel, text, "Noch keinem Raum zugeordnet", "${unassigned.size} ${if (unassigned.size == 1) "Gerät" else "Geräte"}", Icons.Default.RoomPreferences) {
+        if (unassigned.isEmpty()) {
+            Text("Alle Geräte haben bereits einen Raum.", color = Green, fontSize = 13.sp)
+        } else {
+            Text("Diese Geräte brauchen noch einen Raum:", color = Muted, fontSize = 12.sp)
+            unassigned.forEach { item ->
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF1D6)).clickable { onEditDevice(item) }.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.WarningAmber, null, tint = Color(0xFFB66A00))
+                    Spacer(Modifier.width(8.dp))
+                    Text(item.name, color = Color(0xFF754500), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Icon(Icons.Default.Edit, null, tint = Color(0xFFB66A00))
+                }
+            }
+            Text("Tippe auf ein Gerät, um es zuzuweisen.", color = Muted, fontSize = 11.sp)
+        }
+    }
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
     else if (devices.isEmpty()) Text("Noch keine Shelly-Geräte gefunden.", color = Muted)
     devices.forEach { item ->
