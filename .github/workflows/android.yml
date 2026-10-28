@@ -42,25 +42,34 @@ jobs:
       - name: Installierbare Release APK bauen
         run: gradle --no-daemon assembleRelease
 
-      - name: APK als Download bereitstellen
+      - name: Separate Test-App bauen
+        run: gradle --no-daemon assembleDebug
+
+      - name: APKs als Download bereitstellen
         uses: actions/upload-artifact@v4
         with:
-          name: HomePilot-debug-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          name: HomePilot-release-und-test-apks
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: APK für direkten Download vorbereiten
-        run: cp app/build/outputs/apk/release/app-release.apk HomePilot.apk
+      - name: APKs für direkten Download vorbereiten
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk HomePilot.apk
+          cp app/build/outputs/apk/debug/app-debug.apk HomePilot-Test.apk
 
-      - name: Neueste APK als GitHub-Release bereitstellen
+      - name: Neueste APKs als GitHub-Release bereitstellen
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: HomePilot – neueste Version
           body: |
-            Automatisch erstellte HomePilot-APK aus dem neuesten erfolgreichen Build.
-            Lade HomePilot.apk herunter und installiere sie auf deinem Android-Gerät.
-          files: HomePilot.apk
+            HomePilot.apk ist die normale Version.
+            HomePilot-Test.apk ist eine separate Test-App und kann parallel installiert werden.
+          files: |
+            HomePilot.apk
+            HomePilot-Test.apk
           overwrite_files: true
           make_latest: true
