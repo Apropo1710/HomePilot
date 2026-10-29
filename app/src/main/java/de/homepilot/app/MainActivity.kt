@@ -29,6 +29,8 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -794,7 +796,6 @@ private fun Header(dark: Boolean, text: Color, onSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("HOMEPILOT", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-            Text("Dein Zuhause", color = text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text("Smart Home auf einen Blick", color = if (dark) Color(0xFFB2C1D0) else Muted, fontSize = 13.sp)
         }
         IconButton(onClick = onSettings, modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(if (dark) Color(0xFF1B2734) else Color.White)) {
@@ -835,7 +836,6 @@ private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
     panel: Color, text: Color, selectedRoom: String?, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
-    Text("Dein Zuhause", color = text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
     RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom, listOf("Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }))
     val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (selectedRoom == null || it == selectedRoom) }
     visibleRooms.chunked(2).forEach { rowRooms ->
@@ -858,17 +858,24 @@ private fun HomeScreen(
                     "hauswirtschaft" -> Color(0xFF2E9B70)
                     else -> Blue
                 }
+                val roomDevices = (devices + lights).filter { it.room == room }
+                val switchedOn = roomDevices.count { it.initialOn }
                 Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(22.dp))
-                        .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
+                    Modifier.weight(1f)
+                        .shadow(7.dp, RoundedCornerShape(22.dp), clip = false)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Brush.linearGradient(
+                            colors = if (panel == Color.White) listOf(roomAccent.copy(alpha = 0.22f), roomAccent.copy(alpha = 0.10f), Color(0xFFFFFFFF))
+                            else listOf(roomAccent.copy(alpha = 0.34f), roomAccent.copy(alpha = 0.18f), panel)
+                        ))
                         .clickable { onOpenRoom(room) }.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
                         Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(27.dp))
                     }
                     Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("$count Geräte", color = Muted, fontSize = 12.sp)
+                    Text("$count Geräte · $switchedOn eingeschaltet", color = Muted, fontSize = 12.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                         Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(16.dp))
@@ -909,7 +916,17 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.RoomPreferences -> Color(0xFFE29A25)
         else -> Blue
     }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(
+        Modifier.fillMaxWidth()
+            .shadow(5.dp, RoundedCornerShape(22.dp), clip = false)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Brush.linearGradient(
+                colors = if (panel == Color.White) listOf(accent.copy(alpha = 0.17f), accent.copy(alpha = 0.07f), panel)
+                else listOf(accent.copy(alpha = 0.27f), accent.copy(alpha = 0.13f), panel)
+            ))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
