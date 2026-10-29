@@ -403,13 +403,14 @@ private fun HomePilotApp() {
     var confirmDeleteRoom by remember { mutableStateOf<String?>(null) }
     var showHiddenDevices by remember { mutableStateOf(false) }
     var selectedRoom by remember { mutableStateOf<String?>(null) }
-    BackHandler(enabled = selectedTab != Tab.HOME || tabHistory.isNotEmpty()) {
-        if (tabHistory.isNotEmpty()) {
+    BackHandler(enabled = selectedRoom != null || selectedTab != Tab.HOME || tabHistory.isNotEmpty()) {
+        if (selectedRoom != null) {
+            selectedRoom = null
+        } else if (tabHistory.isNotEmpty()) {
             selectedTab = tabHistory.last()
             tabHistory = tabHistory.dropLast(1)
         } else {
             selectedTab = Tab.HOME
-            selectedRoom = null
         }
     }
     var showRoomDialog by remember { mutableStateOf(false) }
@@ -1681,8 +1682,5 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     }
     CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
         Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
-    }
-    CardBlock(panel, text, "App-Informationen", "Version und Status", Icons.Default.Info) {
-        Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontSize = 12.sp)
     }
 }
