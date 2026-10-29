@@ -62,9 +62,6 @@ jobs:
       - name: Installierbare Release APK bauen
         run: gradle --no-daemon assembleRelease
 
-      - name: Separate Test-App bauen
-        run: gradle --no-daemon assembleDebug
-
       - name: APK-Paket, Version und Signatur prüfen
         run: |
           echo 'Release APK manifest:'
@@ -73,27 +70,17 @@ jobs:
           $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-name app/build/outputs/apk/release/app-release.apk
           echo 'Release APK certificate:'
           $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
-          echo 'Test APK manifest:'
-          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest application-id app/build/outputs/apk/debug/app-debug.apk
-          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-code app/build/outputs/apk/debug/app-debug.apk
-          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-name app/build/outputs/apk/debug/app-debug.apk
-          echo 'Test APK certificate:'
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/debug/app-debug.apk
 
       - name: APKs als Download bereitstellen
         uses: actions/upload-artifact@v4
         with:
-          name: HomePilot-release-und-test-apks
-          path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/debug/app-debug.apk
+          name: HomePilot-release-apk
+          path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: APKs für direkten Download vorbereiten
-        run: |
-          cp app/build/outputs/apk/release/app-release.apk HomePilot.apk
-          cp app/build/outputs/apk/debug/app-debug.apk HomePilot-Test.apk
+      - name: APK für direkten Download vorbereiten
+        run: cp app/build/outputs/apk/release/app-release.apk HomePilot.apk
 
       - name: Neueste APKs als GitHub-Release bereitstellen
         uses: softprops/action-gh-release@v2
@@ -101,10 +88,8 @@ jobs:
           tag_name: latest
           name: HomePilot – neueste Version
           body: |
-            HomePilot.apk ist die normale Version.
-            HomePilot-Test.apk ist eine separate Test-App und kann parallel installiert werden.
+            HomePilot.apk ist die normale HomePilot-Version.
           files: |
             HomePilot.apk
-            HomePilot-Test.apk
           overwrite_files: true
           make_latest: true
