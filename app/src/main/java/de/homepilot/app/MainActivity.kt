@@ -808,7 +808,7 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
     val entries = rooms.filter { it != "Nicht zugeordnet" }.map { room -> room to { onSelectRoom(room) } } + extraItems
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(5.dp)
     ) {
         entries.chunked(3).forEach { rowItems ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -903,7 +903,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.Power, Icons.Default.Devices -> Color(0xFF3984D6)
         Icons.Default.HomeWork, Icons.Default.Weekend, Icons.Default.Kitchen -> Color(0xFF7B61C9)
         Icons.Default.Cloud -> Color(0xFF398FBA)
-        Icons.Default.Palette -> Color(0xFFD46A9A)
+        Icons.Default.Palette -> Color(0xFF398FBA)
         Icons.Default.Shield -> Color(0xFF2E9B70)
         Icons.Default.VisibilityOff -> Color(0xFF7A8797)
         Icons.Default.RoomPreferences -> Color(0xFFE29A25)
