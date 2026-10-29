@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -726,8 +727,8 @@ private fun HomePilotApp() {
                             TextButton(onClick = { showConnectionAlert = false; navigateTo(Tab.SETTINGS) }) { Text("Einstellungen prüfen") }
                         }
                     )
-                    if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
-                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true); Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; persistNames(); persistDeviceRooms(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
+                    if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true, trailingIcon = { InputConfirmIcon() }) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
+                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() }); Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; persistNames(); persistDeviceRooms(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
                     if (confirmRemoveDevice != null) AlertDialog(
                         onDismissRequest = { confirmRemoveDevice = null },
                         title = { Text("Gerät entfernen?") },
@@ -778,7 +779,7 @@ private fun HomePilotApp() {
                                                 selectedTuyaIds = if (checked) selectedTuyaIds + id else selectedTuyaIds - id
                                             })
                                             Column(Modifier.weight(1f)) {
-                                                OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                                OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
                                                 Text(id, color = Muted, fontSize = 9.sp)
                                             }
                                         }
@@ -842,7 +843,7 @@ private fun HomePilotApp() {
                                             selectedLightIds = if (checked) selectedLightIds + id else selectedLightIds - id
                                         })
                                         Column(Modifier.weight(1f)) {
-                                            OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                            OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
                                             Text(id, color = Muted, fontSize = 9.sp)
                                         }
                                     }
@@ -953,6 +954,14 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
     }
 }
 
+@Composable
+private fun InputConfirmIcon() {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    IconButton(onClick = { keyboardController?.hide() }) {
+        Icon(Icons.Default.Check, contentDescription = "Eingabe bestätigen", tint = Green)
+    }
+}
+
 private data class ForecastDay(val date: String, val code: Int, val high: Double, val low: Double, val rain: Int?)
 private fun weatherDescription(code: Int): String = when (code) {
     0 -> "Sonnig"; 1 -> "Überwiegend sonnig"; 2 -> "Heiter bis wolkig"; 3 -> "Bewölkt"
@@ -966,9 +975,14 @@ private fun fetchWeather(city: String): Pair<String, List<ForecastDay>> {
         val c = (URL(url).openConnection() as HttpURLConnection).apply { connectTimeout = 8000; readTimeout = 8000; requestMethod = "GET"; setRequestProperty("Accept", "application/json") }
         try { if (c.responseCode !in 200..299) throw IllegalStateException("Wetterdienst nicht erreichbar"); return JSONObject(c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }) } finally { c.disconnect() }
     }
-    val encoded = java.net.URLEncoder.encode(city.trim(), "UTF-8")
-    val geo = getJson("https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=1&language=de&format=json")
-    val place = geo.optJSONArray("results")?.optJSONObject(0) ?: throw IllegalStateException("Ort nicht gefunden")
+    // German postcodes and town names must be resolved in Germany, not globally.
+    val entered = city.trim()
+    val postcodeAndPlace = Regex("^(\\d{5})\\s+(.+)$").matchEntire(entered)
+    val searchTerm = postcodeAndPlace?.groupValues?.get(2) ?: entered
+    val encoded = java.net.URLEncoder.encode(searchTerm, "UTF-8")
+    val geo = getJson("https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=10&language=de&format=json&countryCode=DE")
+    val results = geo.optJSONArray("results")
+    val place = results?.optJSONObject(0) ?: throw IllegalStateException("Ort in Deutschland nicht gefunden. Bitte Ort oder Postleitzahl prüfen.")
     val lat = place.optDouble("latitude"); val lon = place.optDouble("longitude")
     val display = place.optString("name", city) + (place.optString("admin1").takeIf { it.isNotBlank() }?.let { ", $it" } ?: "")
     val data = getJson("https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=5&timezone=Europe%2FBerlin")
@@ -1092,10 +1106,13 @@ private fun HomeScreen(
     OutlinedTextField(value = searchQuery, onValueChange = onSearch, modifier = Modifier.fillMaxWidth(), singleLine = true,
         leadingIcon = { Icon(Icons.Default.Search, null) },
         trailingIcon = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
             if (searchQuery.isNotEmpty()) {
                 IconButton(onClick = { onSearch("") }) {
                     Icon(Icons.Default.Close, contentDescription = "Suche löschen")
                 }
+            }
+            InputConfirmIcon()
             }
         },
         placeholder = { Text("Räume und Geräte suchen") })
@@ -1594,7 +1611,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
             }
         }
     }
-    if (renameRoom != null) AlertDialog(onDismissRequest = { renameRoom = null }, title = { Text("Raum umbenennen") }, text = { OutlinedTextField(value = renameValue, onValueChange = { renameValue = it }, singleLine = true, label = { Text("Name") }) }, confirmButton = { TextButton(onClick = { onRenameRoom(renameRoom!!, renameValue); renameRoom = null }) { Text("Speichern") } }, dismissButton = { TextButton(onClick = { renameRoom = null }) { Text("Abbrechen") } })
+    if (renameRoom != null) AlertDialog(onDismissRequest = { renameRoom = null }, title = { Text("Raum umbenennen") }, text = { OutlinedTextField(value = renameValue, onValueChange = { renameValue = it }, singleLine = true, label = { Text("Name") }, trailingIcon = { InputConfirmIcon() }) }, confirmButton = { TextButton(onClick = { onRenameRoom(renameRoom!!, renameValue); renameRoom = null }) { Text("Speichern") } }, dismissButton = { TextButton(onClick = { renameRoom = null }) { Text("Abbrechen") } })
 }
 
 
@@ -1737,12 +1754,12 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         }
     }
     CardBlock(panel, text, "Wetter", "5-Tage-Prognose auf der Startseite", Icons.Default.WbSunny) {
-        OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
         Text("Voreingestellt: 56751 Kaan. Änderungen werden automatisch gespeichert.", color = Muted, fontSize = 12.sp)
         Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.", color = Muted, fontSize = 11.sp)
     }
     CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
-        OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
         Text(status, color = if (connected) Green else Muted, fontSize = 12.sp)
         if (!connected) {
             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
