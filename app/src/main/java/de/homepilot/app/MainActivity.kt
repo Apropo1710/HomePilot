@@ -566,7 +566,7 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onTab = { navigateTo(it) })
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onTab = { navigateTo(it) })
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -930,7 +930,7 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
 
 @Composable
 private fun HomeScreen(
-    rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
+    rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
     panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
     OutlinedTextField(value = searchQuery, onValueChange = onSearch, modifier = Modifier.fillMaxWidth(), singleLine = true,
