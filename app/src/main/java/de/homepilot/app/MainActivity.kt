@@ -492,8 +492,8 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, onOpenRoom = { room -> selectedRoom = room; selectedTab = Tab.ROOMS }, onTab = { selectedTab = it })
-                        Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected,
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, selectedRoom, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; selectedTab = Tab.ROOMS }, onTab = { selectedTab = it })
+                        Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
                             onSetDefaultBrightness = { item, percent -> prefs.edit().putInt("lightOnBrightness:" + (item.stateId ?: item.name), percent).apply() },
@@ -530,7 +530,7 @@ private fun HomePilotApp() {
                                 }
                             }
                         })
-                        Tab.DEVICES -> DevicesScreen(devices, rooms, panel, text, connected,
+                        Tab.DEVICES -> DevicesScreen(devices, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -790,13 +790,29 @@ private fun Header(dark: Boolean, text: Color, onSettings: () -> Unit) {
 }
 
 @Composable
+private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, text: Color, onSelectRoom: (String) -> Unit, extraItems: List<Pair<String, () -> Unit>> = emptyList()) {
+    val entries = rooms.filter { it != "Nicht zugeordnet" }.map { room -> room to { onSelectRoom(room) } } + extraItems
+    entries.chunked(3).forEach { rowItems ->
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            rowItems.forEach { (label, action) ->
+                val selected = label == selectedRoom
+                Button(onClick = action, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (selected) Blue else panel, contentColor = if (selected) Color.White else text),
+                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)) { Text(label, fontSize = 12.sp, maxLines = 2, textAlign = TextAlign.Center) }
+            }
+            repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
+        }
+    }
+}
+
+@Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
-    panel: Color, text: Color, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
+    panel: Color, text: Color, selectedRoom: String?, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
-    Text("Deine Räume", color = text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-    Text("Tippe auf einen Raum für die Geräteübersicht.", color = Muted, fontSize = 13.sp)
-    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" }
+    Text("Dein Zuhause", color = text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
+    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
+    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (selectedRoom == null || it == selectedRoom) }
     visibleRooms.chunked(2).forEach { rowRooms ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             rowRooms.forEach { room ->
@@ -910,18 +926,20 @@ private fun DeviceRow(item: DeviceItem, panel: Color, text: Color, compact: Bool
 @Composable
 private fun LightsScreen(
     lights: List<DeviceItem>, rooms: List<String>, panel: Color, text: Color, connected: Boolean,
+    selectedRoom: String?, onSelectRoom: (String) -> Unit,
     onToggle: (DeviceItem, Boolean) -> Unit,
     onEditDevice: (DeviceItem) -> Unit,
     onSetNumeric: (DeviceItem, String, Double) -> Unit,
     onSetDefaultBrightness: (DeviceItem, Int) -> Unit,
     defaultBrightness: (DeviceItem) -> Int
 ) {
-    Text("Hue-Lichter", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    Text("Nach Räumen geordnet · Echte Zustände aus ioBroker", color = Muted, fontSize = 13.sp)
+    Text("Licht", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
     else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe die Hue-Objekte unter hue.0.", color = Muted)
-    val grouped = lights.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
-    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + "Nicht zugeordnet" + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
+    val visibleLights = lights.filter { selectedRoom == null || it.room == selectedRoom }
+    val grouped = visibleLights.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
+    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
     roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
         val roomItems = grouped[room].orEmpty().sortedBy { it.name.lowercase() }
         val accent = when (room.lowercase()) {
@@ -1093,10 +1111,11 @@ private fun LightsScreen(
 }
 
 @Composable
-private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel: Color, text: Color, connected: Boolean, onToggle: (DeviceItem, Boolean) -> Unit, onEditDevice: (DeviceItem) -> Unit) {
+private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel: Color, text: Color, connected: Boolean, selectedRoom: String?, onSelectRoom: (String) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onEditDevice: (DeviceItem) -> Unit) {
+    val visibleDevices = devices.filter { selectedRoom == null || it.room == selectedRoom }
     val unassigned = devices.filter { it.room.isBlank() || it.room == "Nicht zugeordnet" }
-    Text("Shelly-Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    Text("Echte Schaltzustände aus ioBroker", color = Muted, fontSize = 13.sp)
+    Text("Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
     CardBlock(panel, text, "Noch keinem Raum zugeordnet", "${unassigned.size} ${if (unassigned.size == 1) "Gerät" else "Geräte"}", Icons.Default.RoomPreferences) {
         if (unassigned.isEmpty()) {
             Text("Alle Geräte haben bereits einen Raum.", color = Green, fontSize = 13.sp)
@@ -1115,8 +1134,8 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
     }
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
     else if (devices.isEmpty()) Text("Noch keine Shelly-Geräte gefunden.", color = Muted)
-    val grouped = devices.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
-    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + "Nicht zugeordnet" + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
+    val grouped = visibleDevices.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
+    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
     roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
         val roomItems = grouped[room].orEmpty().sortedBy { it.name.lowercase() }
         val roomAccent = when (room.lowercase()) {
@@ -1168,22 +1187,18 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
     var renameValue by remember { mutableStateOf("") }
     val activeRoom = selectedRoom ?: rooms.firstOrNull()
     Text("Räume", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        rooms.forEach { room ->
-            val isSelected = room == activeRoom
-            Button(onClick = { onSelectRoom(room) }, shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) Blue else panel, contentColor = if (isSelected) Color.White else text),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) { Text(room, maxLines = 1, fontSize = 13.sp) }
-        }
-        Button(onClick = onAddRoom, shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = panel, contentColor = text), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) { Icon(Icons.Default.Add, null); Text("Raum", fontSize = 13.sp) }
-    }
+    RoomMenu(rooms, activeRoom, panel, text, { onSelectRoom(it) }, listOf(
+        "Ohne Raum" to { onSelectRoom("Nicht zugeordnet") },
+        "Ausgeblendet" to onShowHidden,
+        "+ Raum" to onAddRoom
+    ))
     if (activeRoom != null) {
         Text(activeRoom, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = text)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             TextButton(onClick = { renameRoom = activeRoom; renameValue = activeRoom }) { Text("Umbenennen") }
             if (activeRoom != "Nicht zugeordnet") TextButton(onClick = { onRequestDeleteRoom(activeRoom) }) { Text("Löschen") }
         }
-        val roomItems = (devices + lights).filter { it.room == activeRoom }.distinctBy { it.stateId ?: it.name }
+        val roomItems = if (activeRoom == "Nicht zugeordnet") (devices + lights).filter { it.room.isBlank() || it.room == "Nicht zugeordnet" }.distinctBy { it.stateId ?: it.name } else (devices + lights).filter { it.room == activeRoom }.distinctBy { it.stateId ?: it.name }
         val lamps = roomItems.filter { it.kind == "light" }
         val switches = roomItems.filter { it.kind in listOf("plug", "relay", "switch") }
         val otherItems = roomItems.filter { it.kind !in listOf("light", "plug", "relay", "switch") }
