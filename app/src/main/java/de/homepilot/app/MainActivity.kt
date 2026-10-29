@@ -579,7 +579,16 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onTab = { navigateTo(it) })
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onToggle = { item, value ->
+                            val id = item.stateId
+                            if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
+                                connectionStatus = message
+                                if (ok) ioClient.getState(serverUrl, id) { state, err ->
+                                    if (state != null) updateDeviceState(devices, lights, id, state)
+                                    if (err != null) connectionStatus = err
+                                }
+                            }
+                        })
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -881,7 +890,7 @@ private fun HomePilotApp() {
                     Spacer(Modifier.height(10.dp))
                 }
                 NavigationBar(containerColor = panel) {
-                    listOf(Tab.HOME, Tab.ROOMS, Tab.FAVORITES, Tab.ENERGY, Tab.MORE).forEach { tab ->
+                    listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { navigateTo(tab) },
@@ -944,8 +953,31 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit
 ) {
+    if (selectedRoom != null) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            IconButton(onClick = { onSelectRoom("") }, modifier = Modifier.size(38.dp)) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Zurück zur Startseite", tint = Blue)
+            }
+            Text(selectedRoom, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+        }
+        val roomItems = (devices + lights).filter {
+            if (selectedRoom == "Nicht zugeordnet") it.room.isBlank() || it.room == "Nicht zugeordnet" else it.room == selectedRoom
+        }.distinctBy { it.stateId ?: it.name }
+        if (roomItems.isEmpty()) Text("In diesem Raum sind noch keine Geräte zugeordnet.", color = Muted)
+        roomItems.forEach { item ->
+            CardBlock(panel, text, item.name, item.room + " · " + if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet",
+                if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                    Switch(checked = item.initialOn, enabled = item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
+                }
+                if (item.powerWatts != null) Text("Leistung: " + String.format(java.util.Locale.GERMANY, "%.1f W", item.powerWatts), color = Muted, fontSize = 12.sp)
+            }
+        }
+        return
+    }
     OutlinedTextField(value = searchQuery, onValueChange = onSearch, modifier = Modifier.fillMaxWidth(), singleLine = true,
         leadingIcon = { Icon(Icons.Default.Search, null) }, placeholder = { Text("Räume und Geräte suchen") })
     val allDevices = devices + lights
