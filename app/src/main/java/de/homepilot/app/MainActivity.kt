@@ -563,7 +563,7 @@ private fun HomePilotApp() {
                                     }
                                 }
                             })
-                        Tab.SAFETY -> SafetyScreen(floodAlarm, floodBattery, panel, text, onAlarm = { floodAlarm = it }, onBattery = { floodBattery = it })
+                        Tab.SAFETY -> SafetyScreen(floodAlarm, floodBattery, panel, text, floodKnown, floodTemperature)
                         Tab.FAVORITES -> FavoritesScreen(devices + lights, favoriteIds, panel, text, onToggle = { item -> item.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }, onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker() }, onSearchDevices = { connectToIoBroker(manualDeviceSearch = true) }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
@@ -1465,12 +1465,22 @@ private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableL
 }
 
 @Composable
-private fun SafetyScreen(alarm: Boolean, battery: Int, panel: Color, text: Color, onAlarm: (Boolean) -> Unit, onBattery: (Int) -> Unit) {
+private fun SafetyScreen(alarm: Boolean, battery: Int, panel: Color, text: Color, known: Boolean, temperature: Double?) {
     Text("Sicherheit", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    CardBlock(panel, text, "Wassermelder Küche", "Shelly Flood Gen1", Icons.Default.WaterDrop) {
-        Icon(Icons.Default.Info, null, tint = Muted, modifier = Modifier.size(30.dp))
-        Text("Die echten Datenpunkte des Wassermelders sind noch nicht zugeordnet. Deshalb zeigt HomePilot hier bewusst keinen vermeintlich sicheren Zustand an.", color = text)
-        Text("Als nächstes binden wir den tatsächlichen Alarm- und Batteriestatus aus ioBroker an.", color = Muted, fontSize = 12.sp)
+    CardBlock(panel, text, "Wassermelder Küche", "Shelly Flood Gen1 · Daten aus ioBroker", Icons.Default.WaterDrop) {
+        if (alarm) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.Warning, null, tint = Color(0xFFD62828), modifier = Modifier.size(34.dp))
+                Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
+            }
+        } else if (known) {
+            Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green)
+        } else {
+            Text("Status unbekannt – noch keine gültige Meldung vom Sensor erhalten.", color = text)
+        }
+        Text("Batterie: " + battery + "%", color = text)
+        temperature?.let { Text("Temperatur: " + String.format(java.util.Locale.GERMANY, "%.1f °C", it), color = text) }
+        Text("Der Sensor meldet sich nur gelegentlich. Ein fehlendes Online-Signal wird daher nicht als Defekt gewertet.", color = Muted, fontSize = 12.sp)
     }
 }
 
