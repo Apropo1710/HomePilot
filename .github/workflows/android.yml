@@ -2,6 +2,8 @@ name: HomePilot Android APK
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: write
@@ -79,6 +81,11 @@ jobs:
 
       - name: APK für direkten Download vorbereiten
         run: cp app/build/outputs/apk/release/app-release.apk HomePilot.apk
+
+      - name: Alte Test-APK aus Release entfernen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete-asset latest HomePilot-Test.apk --yes || true
 
       - name: Neueste APKs als GitHub-Release bereitstellen
         uses: softprops/action-gh-release@v2

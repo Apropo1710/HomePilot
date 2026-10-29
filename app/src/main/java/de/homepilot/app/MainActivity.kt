@@ -1048,7 +1048,8 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
             if (energy != null) {
                 val unit = item.energyUnit?.ifBlank { "Wh" } ?: "Wh"
                 val kwh = when (unit.lowercase()) { "kwh" -> energy; "wh" -> energy / 1000.0; else -> null }
-                Text("Gesamtverbrauch: " + String.format(java.util.Locale.GERMANY, if (unit.equals("kWh", true)) "%.2f kWh" else "%.0f %s", energy, unit), color = Muted, fontSize = 12.sp)
+                val energyText = if (unit.equals("kWh", true)) String.format(java.util.Locale.GERMANY, "%.2f kWh", energy) else String.format(java.util.Locale.GERMANY, "%.0f %s", energy, unit)
+                Text("Gesamtverbrauch: " + energyText, color = Muted, fontSize = 12.sp)
                 if (kwh != null && pricePerKwh != null) Text("Geschätzte Gesamtkosten: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * pricePerKwh), color = Muted, fontSize = 12.sp)
             } else Text("Gesamtverbrauch: kein Energiedatenpunkt verfügbar", color = Muted, fontSize = 11.sp)
         }
