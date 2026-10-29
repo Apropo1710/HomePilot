@@ -983,7 +983,7 @@ private fun HomeScreen(
         leadingIcon = { Icon(Icons.Default.Search, null) }, placeholder = { Text("Räume und Geräte suchen") })
     val allDevices = devices + lights
     if (searchQuery.isNotBlank()) {
-        allDevices.filter { it.name.contains(searchQuery, true) || it.room.contains(searchQuery, true) || it.subtitle.contains(searchQuery, true) }.forEach { item ->
+        allDevices.filter { it.name.contains(searchQuery, true) || it.room.contains(searchQuery, true) }.forEach { item ->
             CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Devices, action = { onOpenRoom(item.room) }) {}
         }
     }
