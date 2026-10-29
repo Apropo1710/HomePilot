@@ -157,6 +157,12 @@ private class IoBrokerClient {
                                 (candidateId.substringAfterLast('.').contains("power", ignoreCase = true) ||
                                  (objects.optJSONObject(candidateId)?.optJSONObject("common")?.optString("unit", "") == "W"))
                         }
+                        val siblingEnergy = allIds.firstOrNull { candidateId ->
+                            val unit = objects.optJSONObject(candidateId)?.optJSONObject("common")?.optString("unit", "").orEmpty()
+                            candidateId.substringBeforeLast('.') == parent &&
+                                (candidateId.substringAfterLast('.').contains("energy", ignoreCase = true) || unit.equals("Wh", true) || unit.equals("kWh", true))
+                        }
+                        val siblingEnergyUnit = siblingEnergy?.let { objects.optJSONObject(it)?.optJSONObject("common")?.optString("unit", "").orEmpty() }
                         // Prefer the human-readable device/channel name from ioBroker's
                         // object hierarchy over generic state labels such as "Switch".
                         fun objectName(objectId: String): String {
@@ -205,7 +211,7 @@ private class IoBrokerClient {
                     val saturationId = if (adapter == "hue.0") relatedState("sat", "saturation") else null
                     val isHue = adapter == "hue.0"
                     val isTuya = adapter == "tuya"
-                    candidates.add(DeviceItem(fallbackName, when { isHue -> "Hue · ioBroker"; isTuya -> "Tuya · ioBroker"; else -> "Shelly · ioBroker" }, if (isHue) "light" else "plug", false, "", id, siblingPower, true, room = "Nicht zugeordnet", brightnessId = brightnessId, colorTempId = colorTempId, hueId = hueId, saturationId = saturationId))
+                    candidates.add(DeviceItem(fallbackName, when { isHue -> "Hue · ioBroker"; isTuya -> "Tuya · ioBroker"; else -> "Shelly · ioBroker" }, if (isHue) "light" else "plug", false, "", id, siblingPower, true, room = "Nicht zugeordnet", brightnessId = brightnessId, colorTempId = colorTempId, hueId = hueId, saturationId = saturationId, energyId = siblingEnergy, energyUnit = siblingEnergyUnit))
                     }
                 }
                 if (adapter != "shelly.0" || candidates.isEmpty()) {
@@ -335,7 +341,10 @@ private data class DeviceItem(
     val currentBrightness: Double? = null,
     val currentColorTemp: Double? = null,
     val currentHue: Double? = null,
-    val currentSaturation: Double? = null
+    val currentSaturation: Double? = null,
+    val energyId: String? = null,
+    val energyUnit: String? = null,
+    val energyValue: Double? = null
 )
 
 @Composable
@@ -1019,10 +1028,29 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
         val p = price.replace(",", ".").toDoubleOrNull()
         if (p != null && p >= 0) Text("Aktuelle Leistung: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * p), color = text)
     }
+    val energyReadings = items.mapNotNull { item ->
+        val raw = item.energyValue ?: return@mapNotNull null
+        when (item.energyUnit?.lowercase()) {
+            "wh" -> raw / 1000.0
+            "kwh" -> raw
+            else -> null
+        }
+    }
+    if (energyReadings.isNotEmpty()) {
+        val kwh = energyReadings.sum()
+        CardBlock(panel, text, "Erfasster Energieverbrauch", "Summe der echten ioBroker-Energiedatenpunkte", Icons.Default.Assessment) {
+            Text(String.format(java.util.Locale.GERMANY, "%.3f kWh", kwh), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Blue)
+            val p = price.replace(",", ".").toDoubleOrNull()
+            if (p != null && p >= 0) Text("Geschätzte Kosten für diesen Zählerstand: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * p), color = text)
+        }
+    } else {
+        Text("Kein kumulierter Verbrauch verfügbar. HomePilot zeigt kWh und Gesamtkosten erst an, wenn ioBroker echte Energiedatenpunkte mit Einheit Wh oder kWh bereitstellt.", color = Muted, fontSize = 12.sp)
+    }
     items.filter { it.powerId != null }.forEach { item -> CardBlock(panel, text, item.name, item.room, Icons.Default.Power) {
         Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Messwert nicht verfügbar", color = text)
+        val rawEnergy = item.energyValue
+        if (rawEnergy != null) Text("Energiezähler: " + String.format(java.util.Locale.GERMANY, "%.3f %s", rawEnergy, item.energyUnit ?: ""), color = Muted, fontSize = 11.sp)
     } }
-    Text("Historische kWh-Werte werden nur angezeigt, wenn ein echter Energiedatenpunkt verfügbar ist.", color = Muted, fontSize = 12.sp)
 }
 
 @Composable
@@ -1472,6 +1500,7 @@ private fun writeHiddenItems(items: List<DeviceItem>): String {
         obj.put("name", item.name); obj.put("subtitle", item.subtitle); obj.put("kind", item.kind)
         obj.put("initialOn", item.initialOn); obj.put("detail", item.detail); obj.put("stateId", item.stateId)
         obj.put("powerId", item.powerId); obj.put("writable", item.writable); obj.put("powerWatts", item.powerWatts); obj.put("room", item.room)
+        obj.put("energyId", item.energyId); obj.put("energyUnit", item.energyUnit); obj.put("energyValue", item.energyValue)
         obj.put("brightnessId", item.brightnessId); obj.put("colorTempId", item.colorTempId); obj.put("hueId", item.hueId); obj.put("saturationId", item.saturationId)
         array.put(obj)
     }
@@ -1482,7 +1511,10 @@ private fun readHiddenItems(raw: String?): List<DeviceItem> = try {
     val array = JSONArray(raw ?: "[]")
     (0 until array.length()).mapNotNull { i ->
         val o = array.optJSONObject(i) ?: return@mapNotNull null
-        DeviceItem(o.optString("name"), o.optString("subtitle"), o.optString("kind", "plug"), o.optBoolean("initialOn"), o.optString("detail"), o.optString("stateId").takeIf { it.isNotBlank() && it != "null" }, o.optString("powerId").takeIf { it.isNotBlank() && it != "null" }, o.optBoolean("writable", true), if (o.has("powerWatts") && !o.isNull("powerWatts")) o.optDouble("powerWatts") else null, o.optString("room", "Nicht zugeordnet"), o.optString("brightnessId").takeIf { it.isNotBlank() && it != "null" }, o.optString("colorTempId").takeIf { it.isNotBlank() && it != "null" }, o.optString("hueId").takeIf { it.isNotBlank() && it != "null" }, o.optString("saturationId").takeIf { it.isNotBlank() && it != "null" })
+        DeviceItem(o.optString("name"), o.optString("subtitle"), o.optString("kind", "plug"), o.optBoolean("initialOn"), o.optString("detail"), o.optString("stateId").takeIf { it.isNotBlank() && it != "null" }, o.optString("powerId").takeIf { it.isNotBlank() && it != "null" }, o.optBoolean("writable", true), if (o.has("powerWatts") && !o.isNull("powerWatts")) o.optDouble("powerWatts") else null, o.optString("room", "Nicht zugeordnet"), o.optString("brightnessId").takeIf { it.isNotBlank() && it != "null" }, o.optString("colorTempId").takeIf { it.isNotBlank() && it != "null" }, o.optString("hueId").takeIf { it.isNotBlank() && it != "null" }, o.optString("saturationId").takeIf { it.isNotBlank() && it != "null" },
+            energyId = o.optString("energyId").takeIf { it.isNotBlank() && it != "null" },
+            energyUnit = o.optString("energyUnit").takeIf { it.isNotBlank() && it != "null" },
+            energyValue = if (o.has("energyValue") && !o.isNull("energyValue")) o.optDouble("energyValue") else null)
     }
 } catch (_: Exception) { emptyList() }
 
@@ -1511,6 +1543,13 @@ private fun updateNumericDeviceValue(devices: MutableList<DeviceItem>, lights: M
     if (l >= 0) lights[l] = update(lights[l])
 }
 
+private fun updateDeviceMeasurement(devices: MutableList<DeviceItem>, lights: MutableList<DeviceItem>, id: String, update: (DeviceItem) -> DeviceItem) {
+    val d = devices.indexOfFirst { it.stateId == id }
+    if (d >= 0) devices[d] = update(devices[d])
+    val l = lights.indexOfFirst { it.stateId == id }
+    if (l >= 0) lights[l] = update(lights[l])
+}
+
 private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableList<DeviceItem>, lights: MutableList<DeviceItem>) {
     (devices + lights).forEach { item ->
         val id = item.stateId ?: return@forEach
@@ -1533,10 +1572,11 @@ private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableL
         }
         val powerId = item.powerId
         if (powerId != null) client.getNumericState(url, powerId) { watts ->
-            if (watts != null) {
-                val d = devices.indexOfFirst { it.stateId == id }
-                if (d >= 0) devices[d] = devices[d].copy(powerWatts = watts)
-            }
+            if (watts != null) updateDeviceMeasurement(devices, lights, id) { it.copy(powerWatts = watts) }
+        }
+        val energyId = item.energyId
+        if (energyId != null) client.getNumericState(url, energyId) { value ->
+            if (value != null) updateDeviceMeasurement(devices, lights, id) { it.copy(energyValue = value) }
         }
     }
 }
