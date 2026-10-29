@@ -758,7 +758,7 @@ private fun HomePilotApp() {
                                 Text("Wähle die Tuya-Geräte aus und ordne jedes Gerät direkt einem Raum zu. Die Auswahl wird erst nach Bestätigung übernommen.", color = Muted, fontSize = 12.sp)
                                 discoveredTuyaDevices.forEach { item ->
                                     val id = item.stateId.orEmpty()
-                                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                         Row(Modifier.fillMaxWidth().clickable {
                                             selectedTuyaIds = if (id in selectedTuyaIds) selectedTuyaIds - id else selectedTuyaIds + id
                                         }, verticalAlignment = Alignment.CenterVertically) {
@@ -977,22 +977,22 @@ private fun HomeScreen(
                     else -> Blue
                 }
                 Column(
-                    Modifier.weight(1f).heightIn(min = 112.dp, max = 122.dp)
+                    Modifier.weight(1f).heightIn(min = 150.dp, max = 162.dp)
                         .clip(RoundedCornerShape(17.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                         .clickable { onOpenRoom(room) }.padding(horizontal = 9.dp, vertical = 7.dp),
+                         .clickable { onOpenRoom(room) }.padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Box(Modifier.size(27.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(21.dp))
                     }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
                     val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 9.sp, maxLines = 1)
+                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 11.sp, maxLines = 1)
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
-                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(12.dp))
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -1034,15 +1034,9 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
     Text("Energie", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     val measured = items.filter { it.powerId != null && it.powerWatts != null }
     val watts = measured.sumOf { it.powerWatts ?: 0.0 }
-    val pricePerKwh = price.replace(",", ".").toDoubleOrNull()?.takeIf { it >= 0 }
     CardBlock(panel, text, "Aktuelle Gesamtleistung", "Verfügbare Messwerte", Icons.Default.Bolt) {
         Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Blue)
         Text("${measured.size} Geräte mit aktuellem Leistungswert", color = Muted, fontSize = 12.sp)
-        if (pricePerKwh != null) Text("Laufende Kosten: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * pricePerKwh), color = text, fontSize = 12.sp)
-    }
-    CardBlock(panel, text, "Strompreis", "Wird lokal gespeichert", Icons.Default.Euro) {
-        OutlinedTextField(value = price, onValueChange = onPrice, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("€/kWh") })
-        if (pricePerKwh == null) Text("Bitte einen gültigen Preis ab 0 eingeben.", color = Color(0xFFD62828), fontSize = 12.sp)
     }
     if (measured.isEmpty()) Text("Aktuell sind keine echten Leistungswerte verfügbar.", color = Muted)
     items.filter { it.powerId != null }.forEach { item ->
@@ -1054,7 +1048,6 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
                 val kwh = when (unit.lowercase()) { "kwh" -> energy; "wh" -> energy / 1000.0; else -> null }
                 val energyText = if (unit.equals("kWh", true)) String.format(java.util.Locale.GERMANY, "%.2f kWh", energy) else String.format(java.util.Locale.GERMANY, "%.0f %s", energy, unit)
                 Text("Gesamtverbrauch: " + energyText, color = Muted, fontSize = 12.sp)
-                if (kwh != null && pricePerKwh != null) Text("Geschätzte Gesamtkosten: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * pricePerKwh), color = Muted, fontSize = 12.sp)
             } else Text("Gesamtverbrauch: kein Energiedatenpunkt verfügbar", color = Muted, fontSize = 11.sp)
         }
     }
@@ -1389,10 +1382,14 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
     var renameRoom by remember { mutableStateOf<String?>(null) }
     var renameValue by remember { mutableStateOf("") }
     val activeRoom = selectedRoom ?: rooms.firstOrNull()
-    Text("Räume", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Räume", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+        IconButton(onClick = onAddRoom, modifier = Modifier.size(34.dp)) {
+            Icon(Icons.Default.AddCircle, contentDescription = "Raum hinzufügen", tint = Blue, modifier = Modifier.size(23.dp))
+        }
+    }
     RoomMenu(rooms, activeRoom, panel, text, { onSelectRoom(it) }, listOf(
-        "Ohne Raum" to { onSelectRoom("Nicht zugeordnet") },
-        "+ Raum" to onAddRoom
+        "Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }
     ))
     if (activeRoom != null) {
         Text(activeRoom, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = text)
