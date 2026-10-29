@@ -391,6 +391,7 @@ private fun HomePilotApp() {
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
     var favoriteOrder by remember { mutableStateOf(prefs.getString("favoriteOrder", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList()) }
+    var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
     var searchQuery by remember { mutableStateOf("") }
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
     var customNames by remember { mutableStateOf(readStringMap(prefs.getString("deviceNames", "{}"))) }
@@ -659,7 +660,7 @@ private fun HomePilotApp() {
                                 }
                             },
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
-                        Tab.ENERGY -> EnergyScreen(devices + lights, panel, text)
+                        Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
                         Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
@@ -818,7 +819,7 @@ private fun HomePilotApp() {
                         onDismissRequest = { showLightImportDialog = false },
                         title = { Text("Hue-Geräte auswählen") },
                         text = {
-                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Text("Wähle nur die Lampen aus, die du in HomePilot verwenden möchtest. Andere Datenpunkte werden nicht übernommen.", color = Muted, fontSize = 12.sp)
                                 discoveredLights.forEach { item ->
                                     val id = item.stateId.orEmpty()
@@ -976,22 +977,22 @@ private fun HomeScreen(
                     else -> Blue
                 }
                 Column(
-                    Modifier.weight(1f).heightIn(min = 140.dp, max = 150.dp)
+                    Modifier.weight(1f).heightIn(min = 124.dp, max = 132.dp)
                         .clip(RoundedCornerShape(17.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                         .clickable { onOpenRoom(room) }.padding(horizontal = 12.dp, vertical = 10.dp),
+                         .clickable { onOpenRoom(room) }.padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(10.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(19.dp))
+                    Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(17.dp))
                     }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp, maxLines = 1)
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
                     val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} eingeschaltet", color = Muted, fontSize = 11.sp, maxLines = 2)
+                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 10.sp, maxLines = 1)
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(15.dp))
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(14.dp))
                     }
                 }
             }
@@ -1029,28 +1030,41 @@ private fun FavoritesScreen(items: List<DeviceItem>, favoriteIds: Set<String>, f
 }
 
 @Composable
-private fun EnergyScreen(items: List<DeviceItem>, panel: Color, text: Color) {
+private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (String) -> Unit, panel: Color, text: Color) {
     Text("Energie", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     val measured = items.filter { it.powerId != null && it.powerWatts != null }
     val watts = measured.sumOf { it.powerWatts ?: 0.0 }
+    val pricePerKwh = price.replace(",", ".").toDoubleOrNull()?.takeIf { it >= 0 }
     CardBlock(panel, text, "Aktuelle Gesamtleistung", "Verfügbare Messwerte", Icons.Default.Bolt) {
         Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Blue)
         Text("${measured.size} Geräte mit aktuellem Leistungswert", color = Muted, fontSize = 12.sp)
+    }
+    CardBlock(panel, text, "Strompreis", "Tarif für Kostenschätzungen", Icons.Default.Euro) {
+        OutlinedTextField(value = price, onValueChange = onPrice, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("€/kWh") })
+        if (pricePerKwh != null) {
+            val perHour = watts / 1000.0 * pricePerKwh
+            Text("Bei aktueller Leistung: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", perHour), color = text, fontSize = 13.sp)
+            Text("Hochgerechnet: " + String.format(java.util.Locale.GERMANY, "%.2f €/Tag", perHour * 24), color = Muted, fontSize = 12.sp)
+        } else Text("Bitte einen gültigen Preis ab 0 €/kWh eingeben.", color = Muted, fontSize = 12.sp)
     }
     if (measured.isEmpty()) Text("Aktuell sind keine echten Leistungswerte verfügbar.", color = Muted)
     items.filter { it.powerId != null }.forEach { item ->
         CardBlock(panel, text, item.name, item.room, Icons.Default.Power) {
             Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Leistungswert nicht verfügbar", color = text, fontSize = 15.sp)
             val energy = item.energyValue
+            val unit = item.energyUnit?.ifBlank { "Wh" } ?: "Wh"
             if (energy != null) {
-                val unit = item.energyUnit?.ifBlank { "Wh" } ?: "Wh"
                 val energyText = if (unit.equals("kWh", true)) String.format(java.util.Locale.GERMANY, "%.2f kWh", energy) else String.format(java.util.Locale.GERMANY, "%.0f %s", energy, unit)
                 Text("Gesamtverbrauch: " + energyText, color = Muted, fontSize = 12.sp)
+                if (pricePerKwh != null && (unit.equals("kWh", true) || unit.equals("Wh", true))) {
+                    val kwh = if (unit.equals("kWh", true)) energy else energy / 1000.0
+                    Text("Geschätzte Verbrauchskosten: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * pricePerKwh), color = Muted, fontSize = 12.sp)
+                }
             } else Text("Gesamtverbrauch: kein Energiedatenpunkt verfügbar", color = Muted, fontSize = 11.sp)
         }
     }
+    Text("Kosten sind Schätzungen aus aktuellem Leistungswert und deinem Tarif. Es wird keine Verbrauchshistorie erfunden.", color = Muted, fontSize = 11.sp)
 }
-
 @Composable
 private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: ImageVector, panel: Color, text: Color, accent: Color) {
     Column(modifier.clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.22f else 0.30f)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
