@@ -580,7 +580,7 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, rooms = rooms, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -954,7 +954,7 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, rooms: List<String>, onSetNumeric: (DeviceItem, String, Double) -> Unit
 ) {
     if (selectedRoom != null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -963,11 +963,18 @@ private fun HomeScreen(
             }
             Text(selectedRoom, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
         }
+        RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) },
+            listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
         val roomItems = (devices + lights).filter {
             if (selectedRoom == "Nicht zugeordnet") it.room.isBlank() || it.room == "Nicht zugeordnet" else it.room == selectedRoom
         }.distinctBy { it.stateId ?: it.name }
         if (roomItems.isEmpty()) Text("In diesem Raum sind noch keine Geräte zugeordnet.", color = Muted)
         roomItems.forEach { item ->
+            var expanded by remember(item.stateId) { mutableStateOf(false) }
+            var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
+            var colorTemp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.toFloat() ?: 285f) }
+            var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.toFloat() ?: 0f) }
+            var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.toFloat() ?: 254f) }
             CardBlock(panel, text, item.name, item.room + " · " + if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet",
                 if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -975,6 +982,38 @@ private fun HomeScreen(
                     Switch(checked = item.initialOn, enabled = item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                 }
                 if (item.powerWatts != null) Text("Leistung: " + String.format(java.util.Locale.GERMANY, "%.1f W", item.powerWatts), color = Muted, fontSize = 12.sp)
+                if (item.kind == "light" && (item.brightnessId != null || item.colorTempId != null || item.hueId != null)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = { expanded = !expanded }) {
+                            Text(if (expanded) "Einklappen" else "Erweitern")
+                            Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = null)
+                        }
+                    }
+                    if (expanded) {
+                        item.brightnessId?.let { id ->
+                            Text("Helligkeit: ${brightness.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = brightness.coerceIn(1f, 100f), onValueChange = { brightness = it },
+                                valueRange = 1f..100f, enabled = item.writable,
+                                onValueChangeFinished = { onSetNumeric(item, id, brightness.toDouble() * 2.54) })
+                        }
+                        item.colorTempId?.let { id ->
+                            Text("Farbtemperatur: ${colorTemp.toInt()} mired", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = colorTemp.coerceIn(153f, 500f), onValueChange = { colorTemp = it },
+                                valueRange = 153f..500f, enabled = item.writable,
+                                onValueChangeFinished = { onSetNumeric(item, id, colorTemp.toDouble()) })
+                        }
+                        if (item.hueId != null && item.saturationId != null) {
+                            Text("Farbton: ${hue.toInt()}", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = hue.coerceIn(0f, 65535f), onValueChange = { hue = it },
+                                valueRange = 0f..65535f, enabled = item.writable,
+                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
+                            Text("Sättigung: ${saturation.toInt()}", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = saturation.coerceIn(0f, 254f), onValueChange = { saturation = it },
+                                valueRange = 0f..254f, enabled = item.writable,
+                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble()) })
+                        }
+                    }
+                }
             }
         }
         return
