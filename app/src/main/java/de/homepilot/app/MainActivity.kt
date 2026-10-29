@@ -309,6 +309,13 @@ private data class DeviceItem(
 private fun HomePilotApp() {
     var dark by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(Tab.HOME) }
+    var tabHistory by remember { mutableStateOf(listOf<Tab>()) }
+    fun navigateTo(tab: Tab) {
+        if (tab != selectedTab) {
+            tabHistory = tabHistory + selectedTab
+            selectedTab = tab
+        }
+    }
     var showDemoNotice by remember { mutableStateOf(false) }
     val lights = remember { mutableStateListOf<DeviceItem>() }
     val devices = remember { mutableStateListOf<DeviceItem>() }
@@ -335,9 +342,14 @@ private fun HomePilotApp() {
     var confirmDeleteRoom by remember { mutableStateOf<String?>(null) }
     var showHiddenDevices by remember { mutableStateOf(false) }
     var selectedRoom by remember { mutableStateOf<String?>(null) }
-    BackHandler(enabled = selectedTab != Tab.HOME) {
-        selectedTab = Tab.HOME
-        selectedRoom = null
+    BackHandler(enabled = selectedTab != Tab.HOME || tabHistory.isNotEmpty()) {
+        if (tabHistory.isNotEmpty()) {
+            selectedTab = tabHistory.last()
+            tabHistory = tabHistory.dropLast(1)
+        } else {
+            selectedTab = Tab.HOME
+            selectedRoom = null
+        }
     }
     var showRoomDialog by remember { mutableStateOf(false) }
     var roomNameInput by remember { mutableStateOf("") }
@@ -474,7 +486,7 @@ private fun HomePilotApp() {
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Header(dark = dark, text = text, onSettings = { selectedTab = Tab.SETTINGS })
+                    Header(dark = dark, text = text, onSettings = { navigateTo(Tab.SETTINGS) })
                     if (showDemoNotice) {
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -492,7 +504,7 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, selectedRoom, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; selectedTab = Tab.ROOMS }, onTab = { selectedTab = it })
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, selectedRoom, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onTab = { navigateTo(it) })
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -580,7 +592,7 @@ private fun HomePilotApp() {
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
-                            onOpenLights = { selectedTab = Tab.LIGHTS }, onOpenDevices = { selectedTab = Tab.DEVICES }, onOpenRooms = { selectedTab = Tab.ROOMS })
+                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
                     }
                     if (showConnectionAlert) AlertDialog(
                         onDismissRequest = { showConnectionAlert = false },
@@ -591,7 +603,7 @@ private fun HomePilotApp() {
                             TextButton(onClick = { showConnectionAlert = false; connectToIoBroker() }) { Text("Erneut versuchen") }
                         },
                         dismissButton = {
-                            TextButton(onClick = { showConnectionAlert = false; selectedTab = Tab.SETTINGS }) { Text("Einstellungen prüfen") }
+                            TextButton(onClick = { showConnectionAlert = false; navigateTo(Tab.SETTINGS) }) { Text("Einstellungen prüfen") }
                         }
                     )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
@@ -764,7 +776,7 @@ private fun HomePilotApp() {
                     listOf(Tab.HOME, Tab.SAFETY, Tab.SETTINGS).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
-                            onClick = { selectedTab = tab },
+                            onClick = { navigateTo(tab) },
                             icon = { Icon(tab.icon, contentDescription = tab.label) },
                             label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
                             alwaysShowLabel = true
@@ -795,12 +807,12 @@ private fun Header(dark: Boolean, text: Color, onSettings: () -> Unit) {
 private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, text: Color, onSelectRoom: (String) -> Unit, extraItems: List<Pair<String, () -> Unit>> = emptyList()) {
     val entries = rooms.filter { it != "Nicht zugeordnet" }.map { room -> room to { onSelectRoom(room) } } + extraItems
     entries.chunked(3).forEach { rowItems ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             rowItems.forEach { (label, action) ->
                 val selected = label == selectedRoom
-                Button(onClick = action, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp),
+                Button(onClick = action, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = if (selected) Blue else panel, contentColor = if (selected) Color.White else text),
-                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)) { Text(label, fontSize = 12.sp, maxLines = 2, textAlign = TextAlign.Center) }
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp)) { Text(label, fontSize = 11.sp, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 13.sp) }
             }
             repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
         }
@@ -858,7 +870,7 @@ private fun HomeScreen(
     CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
         Text("Wassermelder-Daten werden eingebunden, sobald die echten Datenpunkte zugeordnet sind.", color = Muted, fontSize = 12.sp)
     }
-    Text("Später erweiterbar: KlimaPilot, Mähroboter und Saugroboter.", color = Muted, fontSize = 12.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+    
 }
 
 @Composable
@@ -1403,16 +1415,11 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Text(status, color = if (connected) Green else Muted, fontSize = 12.sp)
         if (!connected) {
             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
-        } else {
-            Text("Die Verbindung zu ioBroker ist aktiv.", color = Green, fontSize = 12.sp)
         }
         Text("Verbindung über Simple API auf Port 8087. In der aktuellen ioBroker-Konfiguration erfolgt der Zugriff ohne Anmeldung.", color = Muted, fontSize = 11.sp)
     }
-    CardBlock(panel, text, "Gerätesuche", "Neue oder geänderte Geräte finden", Icons.Default.Search) {
-        Button(onClick = onSearchDevices, modifier = Modifier.fillMaxWidth()) { Text("Geräte suchen") }
-        Text("Die Gerätesuche ist unabhängig von der Verbindungseinstellung. Bei fehlender Verbindung bitte zuerst verbinden.", color = Muted, fontSize = 11.sp)
-    }
-    CardBlock(panel, text, "Bedienseiten", "Licht, Geräte und Räume öffnen", Icons.Default.Tune) {
+    CardBlock(panel, text, "Geräte-Einstellungen", "Geräte suchen und Bedienseiten öffnen", Icons.Default.Tune) {
+        Button(onClick = onSearchDevices, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Search, null); Spacer(Modifier.width(8.dp)); Text("Geräte suchen") }
         Button(onClick = onOpenLights, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb, null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
         Button(onClick = onOpenDevices, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices, null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
         Button(onClick = onOpenRooms, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork, null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
@@ -1420,7 +1427,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
         Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
     }
-    CardBlock(panel, text, "Geplante Erweiterungen", "Nach erfolgreichem Verbindungstest", Icons.Default.AddCircle) {
-        Text("• Live-Erkennung von Hue- und Shelly-Schaltern\n• Wassermelder-Datenpunkte als nächster Schritt\n• Später: KlimaPilot und Roboter", color = text, fontSize = 13.sp, lineHeight = 22.sp)
+    CardBlock(panel, text, "Geplante Erweiterungen", "Weitere Smart-Home-Funktionen", Icons.Default.AddCircle) {
+        Text("• Wassermelder-Datenpunkte\n• Roboter-Einbindung", color = text, fontSize = 13.sp, lineHeight = 22.sp)
     }
 }
