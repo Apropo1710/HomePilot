@@ -806,15 +806,26 @@ private fun Header(dark: Boolean, text: Color, onSettings: () -> Unit) {
 @Composable
 private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, text: Color, onSelectRoom: (String) -> Unit, extraItems: List<Pair<String, () -> Unit>> = emptyList()) {
     val entries = rooms.filter { it != "Nicht zugeordnet" }.map { room -> room to { onSelectRoom(room) } } + extraItems
-    entries.chunked(3).forEach { rowItems ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            rowItems.forEach { (label, action) ->
-                val selected = label == selectedRoom
-                Button(onClick = action, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = if (selected) Blue else panel, contentColor = if (selected) Color.White else text),
-                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp)) { Text(label, fontSize = 11.sp, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 13.sp) }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        entries.chunked(3).forEach { rowItems ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                rowItems.forEach { (label, action) ->
+                    val selected = label == selectedRoom
+                    Button(
+                        onClick = action,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (selected) Blue else panel, contentColor = if (selected) Color.White else text),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp)
+                    ) {
+                        Text(label, fontSize = 13.sp, maxLines = 2, textAlign = TextAlign.Center, lineHeight = 15.sp)
+                    }
+                }
+                repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
             }
-            repeat(3 - rowItems.size) { Spacer(Modifier.weight(1f)) }
         }
     }
 }
