@@ -1165,13 +1165,24 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
     onRequestDeleteRoom: (String) -> Unit) {
     var renameRoom by remember { mutableStateOf<String?>(null) }
     var renameValue by remember { mutableStateOf("") }
-    Text("Räume & Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    Text("Räume und Zuordnungen selbst verwalten", color = Muted, fontSize = 13.sp)
-    Button(onClick = onAddRoom, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Add, null); Spacer(Modifier.width(8.dp)); Text("Raum hinzufügen") }
-    if (selectedRoom != null) {
-        TextButton(onClick = { onSelectRoom(null) }) { Icon(Icons.Default.ArrowBack, null); Text("Alle Räume") }
-        Text(selectedRoom, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = text)
-        val roomItems = (devices + lights).filter { it.room == selectedRoom }.distinctBy { it.stateId ?: it.name }
+    val activeRoom = selectedRoom ?: rooms.firstOrNull()
+    Text("Räume", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    Row(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        rooms.forEach { room ->
+            val isSelected = room == activeRoom
+            Button(onClick = { onSelectRoom(room) }, shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = if (isSelected) Blue else panel, contentColor = if (isSelected) Color.White else text),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)) { Text(room, maxLines = 1, fontSize = 13.sp) }
+        }
+        Button(onClick = onAddRoom, shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = panel, contentColor = text), contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)) { Icon(Icons.Default.Add, null); Text("Raum", fontSize = 13.sp) }
+    }
+    if (activeRoom != null) {
+        Text(activeRoom, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = text)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TextButton(onClick = { renameRoom = activeRoom; renameValue = activeRoom }) { Text("Umbenennen") }
+            if (activeRoom != "Nicht zugeordnet") TextButton(onClick = { onRequestDeleteRoom(activeRoom) }) { Text("Löschen") }
+        }
+        val roomItems = (devices + lights).filter { it.room == activeRoom }.distinctBy { it.stateId ?: it.name }
         val lamps = roomItems.filter { it.kind == "light" }
         val switches = roomItems.filter { it.kind in listOf("plug", "relay", "switch") }
         val otherItems = roomItems.filter { it.kind !in listOf("light", "plug", "relay", "switch") }
@@ -1259,22 +1270,12 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 }
             }
         }
-    } else {
-        rooms.forEach { room ->
-            val count = (devices + lights).count { it.room == room }
-            CardBlock(panel, text, room, "$count Geräte", Icons.Default.HomeWork, action = { onSelectRoom(room) }) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { renameRoom = room; renameValue = room }) { Text("Umbenennen") }
-                    if (room != "Nicht zugeordnet") TextButton(onClick = { onRequestDeleteRoom(room) }) { Text("Löschen") }
-                }
-            }
-        }
-        CardBlock(panel, text, "Ausgeblendete Geräte", "${hiddenItems.size} ausgeblendet · bei Bedarf wieder hinzufügen", Icons.Default.VisibilityOff, action = onShowHidden) {
-            TextButton(onClick = onShowHidden) { Text("Ausgeblendete Geräte verwalten") }
-        }
-        CardBlock(panel, text, "Geräte verwalten", "Umbenennen und Räume zuweisen", Icons.Default.Devices) {
-            (devices + lights).distinctBy { it.stateId }.forEach { item -> Row(Modifier.fillMaxWidth().clickable { onEditDevice(item) }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(item.name, color = text, fontWeight = FontWeight.SemiBold); Text(item.room, color = Muted, fontSize = 12.sp) }; Icon(Icons.Default.Edit, null, tint = Blue) } }
-        }
+    }
+    CardBlock(panel, text, "Ausgeblendete Geräte", "${hiddenItems.size} ausgeblendet · bei Bedarf wieder hinzufügen", Icons.Default.VisibilityOff, action = onShowHidden) {
+        TextButton(onClick = onShowHidden) { Text("Ausgeblendete Geräte verwalten") }
+    }
+    CardBlock(panel, text, "Geräte verwalten", "Umbenennen und Räume zuweisen", Icons.Default.Devices) {
+        (devices + lights).distinctBy { it.stateId }.forEach { item -> Row(Modifier.fillMaxWidth().clickable { onEditDevice(item) }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(item.name, color = text, fontWeight = FontWeight.SemiBold); Text(item.room, color = Muted, fontSize = 12.sp) }; Icon(Icons.Default.Edit, null, tint = Blue) } }
     }
     if (renameRoom != null) AlertDialog(onDismissRequest = { renameRoom = null }, title = { Text("Raum umbenennen") }, text = { OutlinedTextField(value = renameValue, onValueChange = { renameValue = it }, singleLine = true, label = { Text("Name") }) }, confirmButton = { TextButton(onClick = { onRenameRoom(renameRoom!!, renameValue); renameRoom = null }) { Text("Speichern") } }, dismissButton = { TextButton(onClick = { renameRoom = null }) { Text("Abbrechen") } })
 }
