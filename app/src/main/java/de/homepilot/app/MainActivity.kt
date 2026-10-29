@@ -1019,7 +1019,15 @@ private fun HomeScreen(
         return
     }
     OutlinedTextField(value = searchQuery, onValueChange = onSearch, modifier = Modifier.fillMaxWidth(), singleLine = true,
-        leadingIcon = { Icon(Icons.Default.Search, null) }, placeholder = { Text("Räume und Geräte suchen") })
+        leadingIcon = { Icon(Icons.Default.Search, null) },
+        trailingIcon = {
+            if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = { onSearch("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "Suche löschen")
+                }
+            }
+        },
+        placeholder = { Text("Räume und Geräte suchen") })
     val allDevices = devices + lights
     if (searchQuery.isNotBlank()) {
         allDevices.filter { it.name.contains(searchQuery, true) || it.room.contains(searchQuery, true) }.forEach { item ->
