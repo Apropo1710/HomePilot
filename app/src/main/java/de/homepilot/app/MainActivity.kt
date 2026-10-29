@@ -307,6 +307,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     FAVORITES("Favoriten", Icons.Default.Star),
     ENERGY("Energie", Icons.Default.Bolt),
     MORE("Mehr", Icons.Default.MoreHoriz),
+    DEVICE_HEALTH("Geräteprobleme", Icons.Default.HealthAndSafety),
     LIGHTS("Licht", Icons.Default.Lightbulb),
     DEVICES("Geräte", Icons.Default.Devices),
     SAFETY("Sicherheit", Icons.Default.Shield),
@@ -660,7 +661,8 @@ private fun HomePilotApp() {
                             },
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
+                        Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -698,7 +700,7 @@ private fun HomePilotApp() {
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
-                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
+                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) })
                     }
                     if (showConnectionAlert) AlertDialog(
                         onDismissRequest = { showConnectionAlert = false },
@@ -975,22 +977,22 @@ private fun HomeScreen(
                     else -> Blue
                 }
                 Column(
-                    Modifier.weight(1f).heightIn(min = 126.dp, max = 138.dp)
+                    Modifier.weight(1f).heightIn(min = 112.dp, max = 122.dp)
                         .clip(RoundedCornerShape(17.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                        .clickable { onOpenRoom(room) }.padding(horizontal = 10.dp, vertical = 9.dp),
+                         .clickable { onOpenRoom(room) }.padding(horizontal = 9.dp, vertical = 7.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Box(Modifier.size(27.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(15.dp))
                     }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
                     val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 10.sp, maxLines = 1)
+                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 9.sp, maxLines = 1)
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
-                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(14.dp))
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
+                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(12.dp))
                     }
                 }
             }
@@ -1083,17 +1085,17 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.RoomPreferences -> Color(0xFFE29A25)
         else -> Blue
     }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(horizontal = 9.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(accent), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(31.dp).clip(RoundedCornerShape(10.dp)).background(accent), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
             }
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 Text(subtitle, color = Muted, fontSize = 10.sp)
             }
-            if (action != null) IconButton(onClick = action, modifier = Modifier.size(34.dp)) { Icon(actionIcon, null, tint = Blue, modifier = Modifier.size(19.dp)) }
+            if (action != null) IconButton(onClick = action, modifier = Modifier.size(32.dp)) { Icon(actionIcon, null, tint = Blue, modifier = Modifier.size(18.dp)) }
         }
         content()
     }
@@ -1104,10 +1106,10 @@ private fun DeviceRow(item: DeviceItem, panel: Color, text: Color, compact: Bool
     Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp))
             .background(if (item.initialOn) Color(0xFF1769AA).copy(alpha = 0.07f) else Color.Transparent)
-            .clickable(onClick = onClick).padding(vertical = if (compact) 9.dp else 13.dp, horizontal = 8.dp),
+            .clickable(onClick = onClick).padding(vertical = if (compact) 7.dp else 10.dp, horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(11.dp)
     ) {
-        Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(if (item.initialOn) Color(0xFFDCEBFA) else if (panel == Color.White) Color(0xFFF0F3F7) else Color(0xFF293747)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(if (item.initialOn) Color(0xFFDCEBFA) else if (panel == Color.White) Color(0xFFF0F3F7) else Color(0xFF293747)), contentAlignment = Alignment.Center) {
             Icon(when (item.kind) { "light" -> Icons.Default.Lightbulb; "plug" -> Icons.Default.Power; "relay" -> Icons.Default.ToggleOn; else -> Icons.Default.Devices }, null, tint = Blue)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -1587,6 +1589,30 @@ private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableL
 }
 
 @Composable
+private fun DeviceHealthScreen(items: List<DeviceItem>, connected: Boolean, connectionStatus: String, floodBattery: Int, floodBatteryKnown: Boolean, panel: Color, text: Color) {
+    Text("Geräteprobleme", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    val missingPower = items.filter { it.powerId != null && it.powerWatts == null }
+    val hasAlerts = !connected || missingPower.isNotEmpty() || (floodBatteryKnown && floodBattery < 20)
+    CardBlock(panel, text, if (hasAlerts) "Prüfung erforderlich" else "Keine bekannten Probleme", if (hasAlerts) "Es gibt Hinweise, die geprüft werden sollten." else "Verbindung und verfügbare Messwerte sehen unauffällig aus.", if (hasAlerts) Icons.Default.Warning else Icons.Default.CheckCircle) {
+        Text(if (connected) "ioBroker-Verbindung: verbunden" else "ioBroker-Verbindung: fehlgeschlagen", color = if (connected) Green else Color(0xFFD62828), fontSize = 13.sp)
+        if (!connected && connectionStatus.isNotBlank()) Text(connectionStatus, color = Muted, fontSize = 12.sp)
+    }
+    if (!connected) CardBlock(panel, text, "Verbindung prüfen", "HomePilot kann derzeit keine Daten abrufen", Icons.Default.WifiOff) {
+        Text("Prüfe die ioBroker-Adresse und die Netzwerkverbindung. Bei Fernzugriff WireGuard manuell aktivieren.", color = text, fontSize = 13.sp)
+    }
+    if (missingPower.isNotEmpty()) CardBlock(panel, text, "Leistungsmessung fehlt", "Für diese Geräte ist ein Messdatenpunkt hinterlegt, liefert aber derzeit keinen Zahlenwert.", Icons.Default.Bolt) {
+        missingPower.forEach { item -> Text("• ${item.name} · ${item.room}", color = text, fontSize = 13.sp) }
+    }
+    if (floodBatteryKnown && floodBattery < 20) CardBlock(panel, text, "Wassermelder-Batterie niedrig", "Batteriestand ${floodBattery}%", Icons.Default.BatteryAlert) {
+        Text("Batterie des Shelly Flood zeitnah prüfen.", color = text, fontSize = 13.sp)
+    }
+    if (missingPower.isEmpty() && (connected || !connected) && !(floodBatteryKnown && floodBattery < 20)) CardBlock(panel, text, "Messwerte", "Keine fehlenden Leistungswerte erkannt", Icons.Default.CheckCircle) {
+        Text("Es werden nur Hinweise angezeigt, die aus den tatsächlich vorhandenen Datenpunkten abgeleitet werden können.", color = Muted, fontSize = 12.sp)
+    }
+    Text("Ein fehlender Messwert bedeutet nicht automatisch, dass ein Gerät offline oder defekt ist. Geräte ohne zuverlässigen Online-Datenpunkt werden nicht pauschal als offline markiert.", color = Muted, fontSize = 12.sp)
+}
+
+@Composable
 private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, panel: Color, text: Color, known: Boolean, temperature: Double?) {
     Text("Sicherheit", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     CardBlock(panel, text, "Wassermelder Küche", "Shelly Flood Gen1 · Daten aus ioBroker", Icons.Default.WaterDrop) {
@@ -1603,7 +1629,7 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 @Composable
 private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color,
     serverUrl: String, onServerUrl: (String) -> Unit, status: String, connected: Boolean, onConnect: () -> Unit,
-    onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit) {
+    onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit) {
     Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     CardBlock(panel, text, "Darstellung", "Helles Design standardmäßig", Icons.Default.Palette) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1619,6 +1645,9 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         }
         Text("Verbindung über Simple API auf Port 8087. In der aktuellen ioBroker-Konfiguration erfolgt der Zugriff ohne Anmeldung.", color = Muted, fontSize = 11.sp)
     }
+    CardBlock(panel, text, "Geräteprobleme", "Fehlende Messwerte und bekannte Warnungen prüfen", Icons.Default.HealthAndSafety, action = onOpenHealth) {
+        Button(onClick = onOpenHealth, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety, null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
+    }
     CardBlock(panel, text, "Geräte-Einstellungen", "Geräte suchen und Bedienseiten öffnen", Icons.Default.Tune) {
         Button(onClick = onSearchDevices, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Search, null); Spacer(Modifier.width(8.dp)); Text("Geräte suchen") }
         Button(onClick = onOpenLights, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb, null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
@@ -1628,7 +1657,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
         Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
     }
-    CardBlock(panel, text, "Geplante Erweiterungen", "Weitere Smart-Home-Funktionen", Icons.Default.AddCircle) {
-        Text("• Wassermelder-Datenpunkte\n• Roboter-Einbindung", color = text, fontSize = 13.sp, lineHeight = 22.sp)
+    CardBlock(panel, text, "App-Informationen", "Version und Status", Icons.Default.Info) {
+        Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontSize = 12.sp)
     }
 }
