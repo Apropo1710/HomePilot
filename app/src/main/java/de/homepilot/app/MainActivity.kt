@@ -296,8 +296,7 @@ class MainActivity : ComponentActivity() {
 
 private fun postWaterAlarmNotification(context: Context) {
     if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
-    val builder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, "homepilot_water_alarm")
-        else @Suppress("DEPRECATION") Notification.Builder(context)
+    val builder = Notification.Builder(context, "homepilot_water_alarm")
     val notification = builder.setSmallIcon(android.R.drawable.ic_dialog_alert)
         .setContentTitle("HomePilot: Wasseralarm!")
         .setContentText("Der Wassermelder Küche meldet Wasser. Bitte sofort prüfen.")
@@ -540,7 +539,7 @@ private fun HomePilotApp() {
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Header(dark = dark, text = text, onSettings = { navigateTo(Tab.SETTINGS) })
+                    Header(dark = dark, text = text, connected = connected, status = connectionStatus, onSettings = { navigateTo(Tab.SETTINGS) })
                     if (showDemoNotice) {
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -876,12 +875,16 @@ private fun HomePilotApp() {
 }
 
 @Composable
-private fun Header(dark: Boolean, text: Color, onSettings: () -> Unit) {
+private fun Header(dark: Boolean, text: Color, connected: Boolean, status: String, onSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text("HOMEPILOT", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("HOMEPILOT", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                Icon(if (connected) Icons.Default.CheckCircle else Icons.Default.Cancel, contentDescription = if (connected) "ioBroker verbunden" else "ioBroker nicht verbunden", tint = if (connected) Green else Color(0xFFD62828), modifier = Modifier.size(14.dp))
+            }
             Text("Dein Zuhause", color = text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text("Smart Home auf einen Blick", color = if (dark) Color(0xFFB2C1D0) else Muted, fontSize = 13.sp)
+            if (!connected && status.startsWith("Bitte Verbindung prüfen")) Text(status, color = Color(0xFFD62828), fontSize = 11.sp, maxLines = 2)
         }
         IconButton(onClick = onSettings, modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(if (dark) Color(0xFF1B2734) else Color.White)) {
             Icon(Icons.Default.Settings, contentDescription = "Einstellungen", tint = text)
