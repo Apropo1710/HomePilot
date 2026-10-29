@@ -335,6 +335,7 @@ private fun HomePilotApp() {
     var floodTemperature by remember { mutableStateOf<Double?>(null) }
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
     var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
+    var searchQuery by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
@@ -512,7 +513,7 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, selectedRoom, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onTab = { navigateTo(it) })
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it }, onOpenRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onTab = { navigateTo(it) })
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -843,10 +844,17 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
-    panel: Color, text: Color, selectedRoom: String?, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
+    OutlinedTextField(value = searchQuery, onValueChange = onSearch, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) }, placeholder = { Text("Räume und Geräte suchen") })
+    val allDevices = devices + lights
+    if (searchQuery.isNotBlank()) allDevices.filter { it.name.contains(searchQuery, true) || it.room.contains(searchQuery, true) || it.subtitle.contains(searchQuery, true) }.forEach { item ->
+        CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Devices, action = { onOpenRoom(item.room) }) {
+            item.powerWatts?.let { Text(String.format(java.util.Locale.GERMANY, "%.1f W", it), color = Muted) }
+        }
+    }
     RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom, listOf("Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }))
-    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (selectedRoom == null || it == selectedRoom) }
+    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (selectedRoom == null || it == selectedRoom) && (searchQuery.isBlank() || it.contains(searchQuery, true) || allDevices.any { d -> d.room == it && d.name.contains(searchQuery, true) }) }
     visibleRooms.chunked(2).forEach { rowRooms ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             rowRooms.forEach { room ->
