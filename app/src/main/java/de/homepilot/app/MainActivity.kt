@@ -811,7 +811,7 @@ private fun HomeScreen(
     panel: Color, text: Color, selectedRoom: String?, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
     Text("Dein Zuhause", color = text, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
+    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom, listOf("Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }))
     val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (selectedRoom == null || it == selectedRoom) }
     visibleRooms.chunked(2).forEach { rowRooms ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1116,20 +1116,22 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
     val unassigned = devices.filter { it.room.isBlank() || it.room == "Nicht zugeordnet" }
     Text("Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
-    CardBlock(panel, text, "Noch keinem Raum zugeordnet", "${unassigned.size} ${if (unassigned.size == 1) "Gerät" else "Geräte"}", Icons.Default.RoomPreferences) {
-        if (unassigned.isEmpty()) {
-            Text("Alle Geräte haben bereits einen Raum.", color = Green, fontSize = 13.sp)
-        } else {
-            Text("Diese Geräte brauchen noch einen Raum:", color = Muted, fontSize = 12.sp)
-            unassigned.forEach { item ->
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF1D6)).clickable { onEditDevice(item) }.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.WarningAmber, null, tint = Color(0xFFB66A00))
-                    Spacer(Modifier.width(8.dp))
-                    Text(item.name, color = Color(0xFF754500), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                    Icon(Icons.Default.Edit, null, tint = Color(0xFFB66A00))
+    if (selectedRoom == "Nicht zugeordnet") {
+        CardBlock(panel, text, "Noch keinem Raum zugeordnet", "${unassigned.size} ${if (unassigned.size == 1) "Gerät" else "Geräte"}", Icons.Default.RoomPreferences) {
+            if (unassigned.isEmpty()) {
+                Text("Alle Geräte haben bereits einen Raum.", color = Green, fontSize = 13.sp)
+            } else {
+                Text("Diese Geräte brauchen noch einen Raum:", color = Muted, fontSize = 12.sp)
+                unassigned.forEach { item ->
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF1D6)).clickable { onEditDevice(item) }.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.WarningAmber, null, tint = Color(0xFFB66A00))
+                        Spacer(Modifier.width(8.dp))
+                        Text(item.name, color = Color(0xFF754500), fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                        Icon(Icons.Default.Edit, null, tint = Color(0xFFB66A00))
+                    }
                 }
+                Text("Tippe auf ein Gerät, um es zuzuweisen.", color = Muted, fontSize = 11.sp)
             }
-            Text("Tippe auf ein Gerät, um es zuzuweisen.", color = Muted, fontSize = 11.sp)
         }
     }
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
