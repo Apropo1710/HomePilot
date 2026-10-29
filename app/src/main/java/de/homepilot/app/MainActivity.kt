@@ -578,7 +578,9 @@ private fun HomePilotApp() {
                         Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text,
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
-                            onConnect = { connectToIoBroker(manualDeviceSearch = true) })
+                            onConnect = { connectToIoBroker(manualDeviceSearch = false) },
+                            onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
+                            onOpenLights = { selectedTab = Tab.LIGHTS }, onOpenDevices = { selectedTab = Tab.DEVICES }, onOpenRooms = { selectedTab = Tab.ROOMS })
                     }
                     if (showConnectionAlert) AlertDialog(
                         onDismissRequest = { showConnectionAlert = false },
@@ -759,7 +761,7 @@ private fun HomePilotApp() {
                     Spacer(Modifier.height(10.dp))
                 }
                 NavigationBar(containerColor = panel) {
-                    listOf(Tab.HOME, Tab.LIGHTS, Tab.DEVICES, Tab.SAFETY, Tab.ROOMS, Tab.SETTINGS).forEach { tab ->
+                    listOf(Tab.HOME, Tab.SAFETY, Tab.SETTINGS).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { selectedTab = tab },
@@ -1387,7 +1389,8 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, panel: Color, text: Color
 
 @Composable
 private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color,
-    serverUrl: String, onServerUrl: (String) -> Unit, status: String, connected: Boolean, onConnect: () -> Unit) {
+    serverUrl: String, onServerUrl: (String) -> Unit, status: String, connected: Boolean, onConnect: () -> Unit,
+    onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit) {
     Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     CardBlock(panel, text, "Darstellung", "Helles Design standardmäßig", Icons.Default.Palette) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1395,11 +1398,24 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
             Switch(checked = dark, onCheckedChange = onDark)
         }
     }
-    CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Verbindung konfigurieren", Icons.Default.Cloud) {
+    CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
         OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Text(status, color = if (connected) Green else Muted, fontSize = 12.sp)
-        Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text(if (connected) "Geräte erneut suchen" else "Verbinden und Geräte suchen") }
+        if (!connected) {
+            Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
+        } else {
+            Text("Die Verbindung zu ioBroker ist aktiv.", color = Green, fontSize = 12.sp)
+        }
         Text("Verbindung über Simple API auf Port 8087. In der aktuellen ioBroker-Konfiguration erfolgt der Zugriff ohne Anmeldung.", color = Muted, fontSize = 11.sp)
+    }
+    CardBlock(panel, text, "Gerätesuche", "Neue oder geänderte Geräte finden", Icons.Default.Search) {
+        Button(onClick = onSearchDevices, modifier = Modifier.fillMaxWidth()) { Text("Geräte suchen") }
+        Text("Die Gerätesuche ist unabhängig von der Verbindungseinstellung. Bei fehlender Verbindung bitte zuerst verbinden.", color = Muted, fontSize = 11.sp)
+    }
+    CardBlock(panel, text, "Bedienseiten", "Licht, Geräte und Räume öffnen", Icons.Default.Tune) {
+        Button(onClick = onOpenLights, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb, null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
+        Button(onClick = onOpenDevices, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices, null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
+        Button(onClick = onOpenRooms, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork, null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
     }
     CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
         Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
