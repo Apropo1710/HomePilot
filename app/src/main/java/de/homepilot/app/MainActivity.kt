@@ -598,7 +598,7 @@ private fun HomePilotApp() {
                         onDismissRequest = { showConnectionAlert = false },
                         icon = { Icon(Icons.Default.WifiOff, null, tint = Color(0xFFD97706)) },
                         title = { Text("Keine Verbindung zu ioBroker") },
-                        text = { Text("HomePilot konnte keine Verbindung herstellen. Bitte prüfe, ob ioBroker läuft, dein Smartphone im richtigen WLAN ist und die Serveradresse in den Einstellungen stimmt.\n\nDetails: $connectionStatus") },
+                        text = { Text("HomePilot konnte keine Verbindung herstellen. Bitte prüfe, ob ioBroker läuft, die Serveradresse in den Einstellungen stimmt und dein Smartphone eine Verbindung zum Heimnetz hat. Wenn du von unterwegs zugreifst, aktiviere WireGuard bitte selbst und tippe danach auf „Erneut versuchen“.\n\nDetails: $connectionStatus") },
                         confirmButton = {
                             TextButton(onClick = { showConnectionAlert = false; connectToIoBroker() }) { Text("Erneut versuchen") }
                         },
