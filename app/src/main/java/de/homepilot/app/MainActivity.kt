@@ -2,6 +2,12 @@ package de.homepilot.app
 
 import android.os.Bundle
 import android.content.Context
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.os.Build
+import android.content.pm.PackageManager
+import android.Manifest
 import android.os.Handler
 import android.os.Looper
 import android.net.Uri
@@ -277,7 +283,21 @@ private class IoBrokerClient {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ensureWaterNotificationChannel()
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7301)
+        }
         setContent { HomePilotApp() }
+    }
+
+    private fun ensureWaterNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel("homepilot_water_alarm", "HomePilot Wasseralarm", NotificationManager.IMPORTANCE_HIGH).apply {
+                description = "Sofortige Warnung bei erkanntem Wasser"
+                enableVibration(true)
+            }
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
     }
 }
 
@@ -318,6 +338,27 @@ private data class DeviceItem(
 )
 
 @Composable
+private fun postWaterAlarmNotification(context: Context) {
+    if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
+    val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && manager.getNotificationChannel("homepilot_water_alarm") == null) {
+        manager.createNotificationChannel(NotificationChannel("homepilot_water_alarm", "HomePilot Wasseralarm", NotificationManager.IMPORTANCE_HIGH))
+    }
+    val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Notification.Builder(context, "homepilot_water_alarm")
+    } else {
+        @Suppress("DEPRECATION")
+        Notification.Builder(context)
+    }.setSmallIcon(android.R.drawable.ic_dialog_alert)
+        .setContentTitle("HomePilot: Wasseralarm!")
+        .setContentText("Der Wassermelder Küche hat Wasser erkannt.")
+        .setStyle(Notification.BigTextStyle().bigText("Der Shelly Flood in der Küche meldet Wasser. Bitte sofort prüfen."))
+        .setCategory(Notification.CATEGORY_ALARM)
+        .setAutoCancel(true)
+        .build()
+    manager.notify(7302, notification)
+}
+
 private fun HomePilotApp() {
     var dark by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(Tab.HOME) }
@@ -350,6 +391,7 @@ private fun HomePilotApp() {
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
     var favoriteOrder by remember { mutableStateOf(prefs.getString("favoriteOrder", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
+    var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
     var customNames by remember { mutableStateOf(readStringMap(prefs.getString("deviceNames", "{}"))) }
     var deviceRooms by remember { mutableStateOf(readStringMap(prefs.getString("deviceRooms", "{}"))) }
@@ -489,8 +531,10 @@ private fun HomePilotApp() {
             refreshStates(ioClient, serverUrl, devices, lights)
             ioClient.getState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.flood") { alarm, _ ->
                 if (alarm != null) {
+                    val newlyDetected = alarm && !floodAlarm
                     floodKnown = true
                     floodAlarm = alarm
+                    if (newlyDetected) postWaterAlarmNotification(context)
                 }
             }
             ioClient.getNumericState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.battery") { value ->
@@ -615,7 +659,7 @@ private fun HomePilotApp() {
                                 }
                             },
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
-                        Tab.ENERGY -> EnergyScreen(devices + lights, panel, text)
+                        Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
@@ -931,20 +975,20 @@ private fun HomeScreen(
                     else -> Blue
                 }
                 Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
+                    Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                        .clickable { onOpenRoom(room) }.padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                        .clickable { onOpenRoom(room) }.padding(7.dp),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
-                    Box(Modifier.size(32.dp).clip(RoundedCornerShape(10.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Box(Modifier.size(29.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(16.dp))
                     }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
                     val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 9.sp)
+                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 9.sp, maxLines = 1)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
-                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(15.dp))
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
+                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(14.dp))
                     }
                 }
             }
@@ -982,21 +1026,31 @@ private fun FavoritesScreen(items: List<DeviceItem>, favoriteIds: Set<String>, f
 }
 
 @Composable
-private fun EnergyScreen(items: List<DeviceItem>, panel: Color, text: Color) {
+private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (String) -> Unit, panel: Color, text: Color) {
     Text("Energie", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     val measured = items.filter { it.powerId != null && it.powerWatts != null }
-    if (measured.isEmpty()) {
-        Text("Aktuell sind keine echten Leistungswerte verfügbar.", color = Muted)
-        return
-    }
     val watts = measured.sumOf { it.powerWatts ?: 0.0 }
-    CardBlock(panel, text, "Aktuelle Gesamtleistung", "Summe der aktuell verfügbaren Messwerte", Icons.Default.Bolt) {
-        Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Blue)
-        Text("${measured.size} Geräte mit aktuellem Leistungswert", color = Muted)
+    val pricePerKwh = price.replace(",", ".").toDoubleOrNull()?.takeIf { it >= 0 }
+    CardBlock(panel, text, "Aktuelle Gesamtleistung", "Verfügbare Messwerte", Icons.Default.Bolt) {
+        Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Blue)
+        Text("${measured.size} Geräte mit aktuellem Leistungswert", color = Muted, fontSize = 12.sp)
+        if (pricePerKwh != null) Text("Laufende Kosten: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * pricePerKwh), color = text, fontSize = 12.sp)
     }
-    measured.forEach { item ->
+    CardBlock(panel, text, "Strompreis", "Wird lokal gespeichert", Icons.Default.Euro) {
+        OutlinedTextField(value = price, onValueChange = onPrice, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("€/kWh") })
+        if (pricePerKwh == null) Text("Bitte einen gültigen Preis ab 0 eingeben.", color = Color(0xFFD62828), fontSize = 12.sp)
+    }
+    if (measured.isEmpty()) Text("Aktuell sind keine echten Leistungswerte verfügbar.", color = Muted)
+    items.filter { it.powerId != null }.forEach { item ->
         CardBlock(panel, text, item.name, item.room, Icons.Default.Power) {
-            Text(String.format(java.util.Locale.GERMANY, "%.1f W", item.powerWatts!!), color = text, fontSize = 16.sp)
+            Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Leistungswert nicht verfügbar", color = text, fontSize = 15.sp)
+            val energy = item.energyValue
+            if (energy != null) {
+                val unit = item.energyUnit?.ifBlank { "Wh" } ?: "Wh"
+                val kwh = when (unit.lowercase()) { "kwh" -> energy; "wh" -> energy / 1000.0; else -> null }
+                Text("Gesamtverbrauch: " + String.format(java.util.Locale.GERMANY, if (unit.equals("kWh", true)) "%.2f kWh" else "%.0f %s", energy, unit), color = Muted, fontSize = 12.sp)
+                if (kwh != null && pricePerKwh != null) Text("Geschätzte Gesamtkosten: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * pricePerKwh), color = Muted, fontSize = 12.sp)
+            } else Text("Gesamtverbrauch: kein Energiedatenpunkt verfügbar", color = Muted, fontSize = 11.sp)
         }
     }
 }
