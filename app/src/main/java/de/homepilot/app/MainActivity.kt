@@ -975,19 +975,21 @@ private fun HomeScreen(
                     else -> Blue
                 }
                 Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(18.dp))
+                    Modifier.weight(1f).heightIn(min = 126.dp, max = 138.dp)
+                        .clip(RoundedCornerShape(17.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                        .clickable { onOpenRoom(room) }.padding(7.dp),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                        .clickable { onOpenRoom(room) }.padding(horizontal = 10.dp, vertical = 9.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Box(Modifier.size(29.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
                         Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(16.dp))
                     }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
                     val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 9.sp, maxLines = 1)
+                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 10.sp, maxLines = 1)
+                    Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                         Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(14.dp))
                     }
                 }
@@ -1081,7 +1083,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.RoomPreferences -> Color(0xFFE29A25)
         else -> Blue
     }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)) .background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(9.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(accent), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
@@ -1091,7 +1093,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
                 Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Text(subtitle, color = Muted, fontSize = 10.sp)
             }
-            if (action != null) IconButton(onClick = action) { Icon(actionIcon, null, tint = Blue) }
+            if (action != null) IconButton(onClick = action, modifier = Modifier.size(34.dp)) { Icon(actionIcon, null, tint = Blue, modifier = Modifier.size(19.dp)) }
         }
         content()
     }
