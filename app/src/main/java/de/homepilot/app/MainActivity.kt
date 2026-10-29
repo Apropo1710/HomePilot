@@ -278,11 +278,10 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Tab(val label: String, val icon: ImageVector) {
-    HOME("Übersicht", Icons.Default.Home),
-    LIGHTS("Licht", Icons.Default.Lightbulb),
-    DEVICES("Geräte", Icons.Default.Devices),
-    SAFETY("Sicherheit", Icons.Default.Shield),
-    ROOMS("Räume", Icons.Default.HomeWork),
+    HOME("Zuhause", Icons.Default.Home), ROOMS("Räume", Icons.Default.HomeWork),
+    FAVORITES("Favoriten", Icons.Default.Star), ENERGY("Energie", Icons.Default.Bolt),
+    MORE("Mehr", Icons.Default.MoreHoriz), LIGHTS("Licht", Icons.Default.Lightbulb),
+    DEVICES("Geräte", Icons.Default.Devices), SAFETY("Sicherheit", Icons.Default.Shield),
     SETTINGS("Einstellungen", Icons.Default.Settings)
 }
 
@@ -332,6 +331,10 @@ private fun HomePilotApp() {
     var selectedLightIds by remember { mutableStateOf(setOf<String>()) }
     var floodAlarm by remember { mutableStateOf(false) }
     var floodBattery by remember { mutableIntStateOf(100) }
+    var floodKnown by remember { mutableStateOf(false) }
+    var floodTemperature by remember { mutableStateOf<Double?>(null) }
+    var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
+    var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
@@ -471,6 +474,9 @@ private fun HomePilotApp() {
         while (connected) {
             delay(8000)
             refreshStates(ioClient, serverUrl, devices, lights)
+            ioClient.getState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.flood") { alarm, _ -> if (alarm != null) { floodKnown = true; floodAlarm = alarm } }
+            ioClient.getNumericState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.battery") { value -> if (value != null) floodBattery = value.toInt().coerceIn(0, 100) }
+            ioClient.getNumericState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.temperatureC") { value -> if (value != null) floodTemperature = value }
         }
     }
 
@@ -557,6 +563,9 @@ private fun HomePilotApp() {
                                 }
                             })
                         Tab.SAFETY -> SafetyScreen(floodAlarm, floodBattery, panel, text, onAlarm = { floodAlarm = it }, onBattery = { floodBattery = it })
+                        Tab.FAVORITES -> FavoritesScreen(devices + lights, favoriteIds, panel, text, onToggle = { item -> item.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }, onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
+                        Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker() }, onSearchDevices = { connectToIoBroker(manualDeviceSearch = true) }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -775,7 +784,7 @@ private fun HomePilotApp() {
                     Spacer(Modifier.height(10.dp))
                 }
                 NavigationBar(containerColor = panel) {
-                    listOf(Tab.HOME, Tab.SAFETY, Tab.SETTINGS).forEach { tab ->
+                    listOf(Tab.HOME, Tab.ROOMS, Tab.FAVORITES, Tab.ENERGY, Tab.MORE).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { navigateTo(tab) },
@@ -889,6 +898,36 @@ private fun HomeScreen(
         Text("Wassermelder-Daten werden eingebunden, sobald die echten Datenpunkte zugeordnet sind.", color = Muted, fontSize = 12.sp)
     }
     
+}
+
+@Composable
+private fun FavoritesScreen(items: List<DeviceItem>, favoriteIds: Set<String>, panel: Color, text: Color, onToggle: (DeviceItem) -> Unit, onEdit: (DeviceItem) -> Unit) {
+    Text("Favoriten", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    val favs = items.filter { it.stateId != null && it.stateId in favoriteIds }
+    if (favs.isEmpty()) Text("Noch keine Favoriten. Markiere Geräte über die Gerätebearbeitung.", color = Muted)
+    favs.forEach { item -> CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Star, action = { onEdit(item) }, actionIcon = Icons.Default.Edit) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            if (item.powerWatts != null) Text(String.format(java.util.Locale.GERMANY, "%.1f W", item.powerWatts), modifier = Modifier.weight(1f), color = Muted)
+            IconButton(onClick = { onToggle(item) }) { Icon(Icons.Default.Star, "Favorit entfernen", tint = Blue) }
+        }
+    } }
+}
+@Composable
+private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (String) -> Unit, panel: Color, text: Color) {
+    Text("Energie", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    val measured = items.filter { it.powerId != null && it.powerWatts != null }
+    val watts = measured.sumOf { it.powerWatts ?: 0.0 }
+    CardBlock(panel, text, "Aktuelle Gesamtleistung", "Summe verfügbarer Shelly-Messwerte", Icons.Default.Bolt) {
+        Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Blue)
+        Text("Gemessene Geräte: " + measured.size, color = Muted)
+    }
+    CardBlock(panel, text, "Strompreis", "Kosten-Schätzung pro kWh", Icons.Default.Euro) {
+        OutlinedTextField(value = price, onValueChange = onPrice, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("€/kWh") })
+        val p = price.replace(",", ".").toDoubleOrNull()
+        if (p != null && p >= 0) Text("Aktuelle Leistung: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * p), color = text)
+    }
+    items.filter { it.powerId != null }.forEach { item -> CardBlock(panel, text, item.name, item.room, Icons.Default.Power) { Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Messwert nicht verfügbar", color = text) } }
+    Text("Historische kWh-Werte erscheinen nur bei einem echten Energiedatenpunkt; es wird keine Verbrauchshistorie erfunden.", color = Muted, fontSize = 12.sp)
 }
 
 @Composable
