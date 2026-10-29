@@ -29,8 +29,6 @@ import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -278,10 +276,14 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Tab(val label: String, val icon: ImageVector) {
-    HOME("Zuhause", Icons.Default.Home), ROOMS("Räume", Icons.Default.HomeWork),
-    FAVORITES("Favoriten", Icons.Default.Star), ENERGY("Energie", Icons.Default.Bolt),
-    MORE("Mehr", Icons.Default.MoreHoriz), LIGHTS("Licht", Icons.Default.Lightbulb),
-    DEVICES("Geräte", Icons.Default.Devices), SAFETY("Sicherheit", Icons.Default.Shield),
+    HOME("Zuhause", Icons.Default.Home),
+    ROOMS("Räume", Icons.Default.HomeWork),
+    FAVORITES("Favoriten", Icons.Default.Star),
+    ENERGY("Energie", Icons.Default.Bolt),
+    MORE("Mehr", Icons.Default.MoreHoriz),
+    LIGHTS("Licht", Icons.Default.Lightbulb),
+    DEVICES("Geräte", Icons.Default.Devices),
+    SAFETY("Sicherheit", Icons.Default.Shield),
     SETTINGS("Einstellungen", Icons.Default.Settings)
 }
 
@@ -333,11 +335,11 @@ private fun HomePilotApp() {
     var floodBattery by remember { mutableIntStateOf(100) }
     var floodKnown by remember { mutableStateOf(false) }
     var floodTemperature by remember { mutableStateOf<Double?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
     var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
+    var searchQuery by remember { mutableStateOf("") }
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
     var customNames by remember { mutableStateOf(readStringMap(prefs.getString("deviceNames", "{}"))) }
     var deviceRooms by remember { mutableStateOf(readStringMap(prefs.getString("deviceRooms", "{}"))) }
@@ -475,9 +477,15 @@ private fun HomePilotApp() {
         while (connected) {
             delay(8000)
             refreshStates(ioClient, serverUrl, devices, lights)
-            ioClient.getState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.flood") { alarm, _ -> if (alarm != null) { floodKnown = true; floodAlarm = alarm } }
-            ioClient.getNumericState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.battery") { value -> if (value != null) floodBattery = value.toInt().coerceIn(0, 100) }
-            ioClient.getNumericState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.temperatureC") { value -> if (value != null) floodTemperature = value }
+            ioClient.getState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.flood") { alarm, _ ->
+                if (alarm != null) { floodKnown = true; floodAlarm = alarm }
+            }
+            ioClient.getNumericState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.battery") { value ->
+                if (value != null) floodBattery = value.toInt().coerceIn(0, 100)
+            }
+            ioClient.getNumericState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.temperatureC") { value ->
+                if (value != null) floodTemperature = value
+            }
         }
     }
 
@@ -563,10 +571,15 @@ private fun HomePilotApp() {
                                     }
                                 }
                             })
-                        Tab.SAFETY -> SafetyScreen(floodAlarm, floodBattery, panel, text, floodKnown, floodTemperature)
-                        Tab.FAVORITES -> FavoritesScreen(devices + lights, favoriteIds, panel, text, onToggle = { item -> item.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }, onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
+                        Tab.SAFETY -> SafetyScreen(floodAlarm, floodBattery, panel, text, floodKnown, floodTemperature, onAlarm = { floodAlarm = it }, onBattery = { floodBattery = it })
+                        Tab.FAVORITES -> FavoritesScreen(devices + lights, favoriteIds, panel, text, onToggle = { item ->
+                            item.stateId?.let { id ->
+                                favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id
+                                prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply()
+                            }
+                        }, onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker() }, onSearchDevices = { connectToIoBroker(manualDeviceSearch = true) }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -619,7 +632,7 @@ private fun HomePilotApp() {
                         }
                     )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
-                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Text("Gerät bearbeiten") }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true); Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; persistNames(); persistDeviceRooms(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
+                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true); Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; persistNames(); persistDeviceRooms(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
                     if (confirmRemoveDevice != null) AlertDialog(
                         onDismissRequest = { confirmRemoveDevice = null },
                         title = { Text("Gerät entfernen?") },
@@ -806,6 +819,7 @@ private fun Header(dark: Boolean, text: Color, onSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Text("HOMEPILOT", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Text("Dein Zuhause", color = text, fontSize = 26.sp, fontWeight = FontWeight.Bold)
             Text("Smart Home auf einen Blick", color = if (dark) Color(0xFFB2C1D0) else Muted, fontSize = 13.sp)
         }
         IconButton(onClick = onSettings, modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(if (dark) Color(0xFF1B2734) else Color.White)) {
@@ -846,11 +860,12 @@ private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int,
     panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit
 ) {
-    OutlinedTextField(value = searchQuery, onValueChange = onSearch, modifier = Modifier.fillMaxWidth(), singleLine = true, leadingIcon = { Icon(Icons.Default.Search, null) }, placeholder = { Text("Räume und Geräte suchen") })
+    OutlinedTextField(value = searchQuery, onValueChange = onSearch, modifier = Modifier.fillMaxWidth(), singleLine = true,
+        leadingIcon = { Icon(Icons.Default.Search, null) }, placeholder = { Text("Räume und Geräte suchen") })
     val allDevices = devices + lights
-    if (searchQuery.isNotBlank()) allDevices.filter { it.name.contains(searchQuery, true) || it.room.contains(searchQuery, true) || it.subtitle.contains(searchQuery, true) }.forEach { item ->
-        CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Devices, action = { onOpenRoom(item.room) }) {
-            item.powerWatts?.let { Text(String.format(java.util.Locale.GERMANY, "%.1f W", it), color = Muted) }
+    if (searchQuery.isNotBlank()) {
+        allDevices.filter { it.name.contains(searchQuery, true) || it.room.contains(searchQuery, true) || it.subtitle.contains(searchQuery, true) }.forEach { item ->
+            CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Devices, action = { onOpenRoom(item.room) }) {}
         }
     }
     RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom, listOf("Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }))
@@ -875,8 +890,6 @@ private fun HomeScreen(
                     "hauswirtschaft" -> Color(0xFF2E9B70)
                     else -> Blue
                 }
-                val roomDevices = (devices + lights).filter { it.room == room }
-                val switchedOn = roomDevices.count { it.initialOn }
                 Column(
                     Modifier.weight(1f).clip(RoundedCornerShape(22.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
@@ -887,7 +900,7 @@ private fun HomeScreen(
                         Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(27.dp))
                     }
                     Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("$count Geräte · $switchedOn eingeschaltet", color = Muted, fontSize = 12.sp)
+                    Text("$count Geräte", color = Muted, fontSize = 12.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                         Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(16.dp))
@@ -898,10 +911,7 @@ private fun HomeScreen(
         }
     }
     CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
-        when {
-            floodAlarm -> Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
-            else -> Text("Letzter gemeldeter Status: " + if (floodKnown) "kein Wasser erkannt" else "Status unbekannt", color = if (floodKnown) Green else Muted, fontSize = 12.sp)
-        }
+        Text("Wassermelder-Daten werden eingebunden, sobald die echten Datenpunkte zugeordnet sind.", color = Muted, fontSize = 12.sp)
     }
     
 }
@@ -910,21 +920,22 @@ private fun HomeScreen(
 private fun FavoritesScreen(items: List<DeviceItem>, favoriteIds: Set<String>, panel: Color, text: Color, onToggle: (DeviceItem) -> Unit, onEdit: (DeviceItem) -> Unit) {
     Text("Favoriten", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     val favs = items.filter { it.stateId != null && it.stateId in favoriteIds }
-    if (favs.isEmpty()) Text("Noch keine Favoriten. Markiere Geräte über die Gerätebearbeitung.", color = Muted)
+    if (favs.isEmpty()) Text("Noch keine Favoriten. Öffne die Gerätebearbeitung und markiere Geräte.", color = Muted)
     favs.forEach { item -> CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Star, action = { onEdit(item) }, actionIcon = Icons.Default.Edit) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (item.powerWatts != null) Text(String.format(java.util.Locale.GERMANY, "%.1f W", item.powerWatts), modifier = Modifier.weight(1f), color = Muted)
+            Text(if (item.initialOn) "Ein" else "Aus", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
             IconButton(onClick = { onToggle(item) }) { Icon(Icons.Default.Star, "Favorit entfernen", tint = Blue) }
         }
     } }
 }
+
 @Composable
 private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (String) -> Unit, panel: Color, text: Color) {
     Text("Energie", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     val measured = items.filter { it.powerId != null && it.powerWatts != null }
     val watts = measured.sumOf { it.powerWatts ?: 0.0 }
     CardBlock(panel, text, "Aktuelle Gesamtleistung", "Summe verfügbarer Shelly-Messwerte", Icons.Default.Bolt) {
-        Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Blue)
+        Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Blue)
         Text("Gemessene Geräte: " + measured.size, color = Muted)
     }
     CardBlock(panel, text, "Strompreis", "Kosten-Schätzung pro kWh", Icons.Default.Euro) {
@@ -932,8 +943,10 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
         val p = price.replace(",", ".").toDoubleOrNull()
         if (p != null && p >= 0) Text("Aktuelle Leistung: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * p), color = text)
     }
-    items.filter { it.powerId != null }.forEach { item -> CardBlock(panel, text, item.name, item.room, Icons.Default.Power) { Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Messwert nicht verfügbar", color = text) } }
-    Text("Historische kWh-Werte erscheinen nur bei einem echten Energiedatenpunkt; es wird keine Verbrauchshistorie erfunden.", color = Muted, fontSize = 12.sp)
+    items.filter { it.powerId != null }.forEach { item -> CardBlock(panel, text, item.name, item.room, Icons.Default.Power) {
+        Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Messwert nicht verfügbar", color = text)
+    } }
+    Text("Historische kWh-Werte werden nur angezeigt, wenn ein echter Energiedatenpunkt verfügbar ist.", color = Muted, fontSize = 12.sp)
 }
 
 @Composable
@@ -1453,19 +1466,12 @@ private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableL
 }
 
 @Composable
-private fun SafetyScreen(alarm: Boolean, battery: Int, panel: Color, text: Color, known: Boolean, temperature: Double?) {
+private fun SafetyScreen(alarm: Boolean, battery: Int, panel: Color, text: Color, known: Boolean, temperature: Double?, onAlarm: (Boolean) -> Unit, onBattery: (Int) -> Unit) {
     Text("Sicherheit", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     CardBlock(panel, text, "Wassermelder Küche", "Shelly Flood Gen1 · Daten aus ioBroker", Icons.Default.WaterDrop) {
-        if (alarm) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Default.Warning, null, tint = Color(0xFFD62828), modifier = Modifier.size(34.dp))
-                Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
-            }
-        } else if (known) {
-            Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green)
-        } else {
-            Text("Status unbekannt – noch keine gültige Meldung vom Sensor erhalten.", color = text)
-        }
+        if (alarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
+        else if (known) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green)
+        else Text("Status unbekannt – noch keine gültige Meldung vom Sensor erhalten.", color = text)
         Text("Batterie: " + battery + "%", color = text)
         temperature?.let { Text("Temperatur: " + String.format(java.util.Locale.GERMANY, "%.1f °C", it), color = text) }
         Text("Der Sensor meldet sich nur gelegentlich. Ein fehlendes Online-Signal wird daher nicht als Defekt gewertet.", color = Muted, fontSize = 12.sp)
