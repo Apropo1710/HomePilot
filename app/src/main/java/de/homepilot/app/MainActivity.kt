@@ -1,14 +1,7 @@
 package de.homepilot.app
 
 import android.os.Bundle
-import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Handler
 import android.os.Looper
 import android.net.Uri
@@ -282,33 +275,10 @@ private class IoBrokerClient {
 }
 
 class MainActivity : ComponentActivity() {
-    private val notificationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel("homepilot_water_alarm", "Wasseralarm", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "Warnungen des HomePilot-Wassermelders"
-                enableVibration(true)
-            }
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-        }
-        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
         setContent { HomePilotApp() }
     }
-}
-
-private fun postWaterAlarmNotification(context: Context) {
-    if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
-    val builder = Notification.Builder(context, "homepilot_water_alarm")
-    val notification = builder.setSmallIcon(android.R.drawable.ic_dialog_alert)
-        .setContentTitle("HomePilot: Wasseralarm!")
-        .setContentText("Der Wassermelder Küche meldet Wasser. Bitte sofort prüfen.")
-        .setStyle(Notification.BigTextStyle().bigText("Der Shelly Flood in der Küche meldet Wasser. Bitte den Bereich sofort kontrollieren."))
-        .setAutoCancel(true).setCategory(Notification.CATEGORY_ALARM).setPriority(Notification.PRIORITY_MAX).build()
-    (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(1701, notification)
 }
 
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -521,7 +491,6 @@ private fun HomePilotApp() {
             ioClient.getState(serverUrl, "shelly.0.SHWT-1#AC5FD3#1.sensor.flood") { alarm, _ ->
                 if (alarm != null) {
                     floodKnown = true
-                    if (alarm && !floodAlarm) postWaterAlarmNotification(context)
                     floodAlarm = alarm
                 }
             }
@@ -966,18 +935,18 @@ private fun HomeScreen(
                 Column(
                     Modifier.weight(1f).clip(RoundedCornerShape(20.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                        .clickable { onOpenRoom(room) }.padding(13.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                        .clickable { onOpenRoom(room) }.padding(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(23.dp))
+                    Box(Modifier.size(36.dp).clip(RoundedCornerShape(11.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(20.dp))
                     }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} eingeschaltet", color = Muted, fontSize = 11.sp)
+                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 10.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(16.dp))
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
+                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(15.dp))
                     }
                 }
             }
@@ -1023,10 +992,18 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
         Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Blue)
         Text("Gemessene Geräte: " + measured.size, color = Muted)
     }
-    CardBlock(panel, text, "Strompreis", "Kosten-Schätzung pro kWh", Icons.Default.Euro) {
-        OutlinedTextField(value = price, onValueChange = onPrice, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("€/kWh") })
+    var priceDraft by remember(price) { mutableStateOf(price) }
+    val parsedPrice = priceDraft.replace(",", ".").toDoubleOrNull()
+    CardBlock(panel, text, "Strompreis", "Preis pro Kilowattstunde", Icons.Default.Euro) {
+        OutlinedTextField(value = priceDraft, onValueChange = { priceDraft = it }, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("€/kWh") }, isError = parsedPrice == null || parsedPrice < 0)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Beispiel: 0,35 €/kWh", color = Muted, fontSize = 11.sp, modifier = Modifier.weight(1f))
+            Button(onClick = { if (parsedPrice != null && parsedPrice >= 0) onPrice(String.format(java.util.Locale.US, "%.4f", parsedPrice)) }, enabled = parsedPrice != null && parsedPrice >= 0) {
+                Text("Speichern")
+            }
+        }
         val p = price.replace(",", ".").toDoubleOrNull()
-        if (p != null && p >= 0) Text("Aktuelle Leistung: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * p), color = text)
+        if (p != null && p >= 0) Text("Bei aktueller Leistung: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * p), color = text)
     }
     val energyReadings = items.mapNotNull { item ->
         val raw = item.energyValue ?: return@mapNotNull null
@@ -1040,16 +1017,17 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
         val kwh = energyReadings.sum()
         CardBlock(panel, text, "Erfasster Energieverbrauch", "Summe der echten ioBroker-Energiedatenpunkte", Icons.Default.Assessment) {
             Text(String.format(java.util.Locale.GERMANY, "%.3f kWh", kwh), fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Blue)
+            Text("Zeitraum: kumulierter Zählerstand seit dem letzten Reset – kein Tages-/Monatsfilter.", color = Muted, fontSize = 11.sp)
             val p = price.replace(",", ".").toDoubleOrNull()
             if (p != null && p >= 0) Text("Geschätzte Kosten für diesen Zählerstand: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * p), color = text)
         }
     } else {
-        Text("Kein kumulierter Verbrauch verfügbar. HomePilot zeigt kWh und Gesamtkosten erst an, wenn ioBroker echte Energiedatenpunkte mit Einheit Wh oder kWh bereitstellt.", color = Muted, fontSize = 12.sp)
+        Text("Kein kumulierter Verbrauch verfügbar. HomePilot zeigt kWh und Kosten erst an, wenn ioBroker echte Energiedatenpunkte mit Einheit Wh oder kWh bereitstellt. Ein Tages- oder Monatszeitraum ist ohne historische Messwerte nicht verfügbar.", color = Muted, fontSize = 12.sp)
     }
     items.filter { it.powerId != null }.forEach { item -> CardBlock(panel, text, item.name, item.room, Icons.Default.Power) {
         Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Messwert nicht verfügbar", color = text)
         val rawEnergy = item.energyValue
-        if (rawEnergy != null) Text("Energiezähler: " + String.format(java.util.Locale.GERMANY, "%.3f %s", rawEnergy, item.energyUnit ?: ""), color = Muted, fontSize = 11.sp)
+        if (rawEnergy != null) Text("Zählerstand (kumuliert): " + String.format(java.util.Locale.GERMANY, "%.3f %s", rawEnergy, item.energyUnit ?: ""), color = Muted, fontSize = 11.sp)
     } }
 }
 
@@ -1078,15 +1056,15 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.RoomPreferences -> Color(0xFFE29A25)
         else -> Blue
     }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(13.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(11.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(accent), contentAlignment = Alignment.Center) {
-                Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(accent), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
             }
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(subtitle, color = Muted, fontSize = 11.sp)
+                Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Text(subtitle, color = Muted, fontSize = 10.sp)
             }
             if (action != null) IconButton(onClick = action) { Icon(actionIcon, null, tint = Blue) }
         }
