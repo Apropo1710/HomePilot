@@ -333,11 +333,11 @@ private fun HomePilotApp() {
     var floodBattery by remember { mutableIntStateOf(100) }
     var floodKnown by remember { mutableStateOf(false) }
     var floodTemperature by remember { mutableStateOf<Double?>(null) }
-    var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
-    var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
     var searchQuery by remember { mutableStateOf("") }
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
+    var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
+    var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
     var customNames by remember { mutableStateOf(readStringMap(prefs.getString("deviceNames", "{}"))) }
     var deviceRooms by remember { mutableStateOf(readStringMap(prefs.getString("deviceRooms", "{}"))) }
