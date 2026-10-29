@@ -878,15 +878,10 @@ private fun HomeScreen(
                 val roomDevices = (devices + lights).filter { it.room == room }
                 val switchedOn = roomDevices.count { it.initialOn }
                 Column(
-                    Modifier.weight(1f)
-                        .shadow(7.dp, RoundedCornerShape(22.dp), clip = false)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Brush.linearGradient(
-                            colors = if (panel == Color.White) listOf(roomAccent.copy(alpha = 0.22f), roomAccent.copy(alpha = 0.10f), Color(0xFFFFFFFF))
-                            else listOf(roomAccent.copy(alpha = 0.34f), roomAccent.copy(alpha = 0.18f), panel)
-                        ))
+                    Modifier.weight(1f).clip(RoundedCornerShape(22.dp))
+                        .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
                         .clickable { onOpenRoom(room) }.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Box(Modifier.size(48.dp).clip(RoundedCornerShape(15.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
                         Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(27.dp))
@@ -903,7 +898,10 @@ private fun HomeScreen(
         }
     }
     CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
-        Text("Wassermelder-Daten werden eingebunden, sobald die echten Datenpunkte zugeordnet sind.", color = Muted, fontSize = 12.sp)
+        when {
+            floodAlarm -> Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
+            else -> Text("Letzter gemeldeter Status: " + if (floodKnown) "kein Wasser erkannt" else "Status unbekannt", color = if (floodKnown) Green else Muted, fontSize = 12.sp)
+        }
     }
     
 }
@@ -963,17 +961,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.RoomPreferences -> Color(0xFFE29A25)
         else -> Blue
     }
-    Column(
-        Modifier.fillMaxWidth()
-            .shadow(5.dp, RoundedCornerShape(22.dp), clip = false)
-            .clip(RoundedCornerShape(22.dp))
-            .background(Brush.linearGradient(
-                colors = if (panel == Color.White) listOf(accent.copy(alpha = 0.17f), accent.copy(alpha = 0.07f), panel)
-                else listOf(accent.copy(alpha = 0.27f), accent.copy(alpha = 0.13f), panel)
-            ))
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(accent), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
