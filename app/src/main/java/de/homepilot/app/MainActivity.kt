@@ -391,8 +391,8 @@ private fun HomePilotApp() {
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
     var favoriteOrder by remember { mutableStateOf(prefs.getString("favoriteOrder", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList()) }
-    var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
     var searchQuery by remember { mutableStateOf("") }
+    var energyPrice by remember { mutableStateOf(prefs.getString("energyPrice", "0.35") ?: "0.35") }
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
     var customNames by remember { mutableStateOf(readStringMap(prefs.getString("deviceNames", "{}"))) }
     var deviceRooms by remember { mutableStateOf(readStringMap(prefs.getString("deviceRooms", "{}"))) }
@@ -662,7 +662,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -700,7 +700,7 @@ private fun HomePilotApp() {
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
-                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) })
+                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
                     }
                     if (showConnectionAlert) AlertDialog(
                         onDismissRequest = { showConnectionAlert = false },
@@ -819,7 +819,7 @@ private fun HomePilotApp() {
                         onDismissRequest = { showLightImportDialog = false },
                         title = { Text("Hue-Geräte auswählen") },
                         text = {
-                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text("Wähle nur die Lampen aus, die du in HomePilot verwenden möchtest. Andere Datenpunkte werden nicht übernommen.", color = Muted, fontSize = 12.sp)
                                 discoveredLights.forEach { item ->
                                     val id = item.stateId.orEmpty()
@@ -954,8 +954,8 @@ private fun HomeScreen(
             CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Devices, action = { onOpenRoom(item.room) }) {}
         }
     }
-    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom, listOf("Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }))
-    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (selectedRoom == null || it == selectedRoom) && (searchQuery.isBlank() || it.contains(searchQuery, true) || allDevices.any { d -> d.room == it && d.name.contains(searchQuery, true) }) }
+    RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
+    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (searchQuery.isBlank() || it.contains(searchQuery, true) || allDevices.any { d -> d.room == it && d.name.contains(searchQuery, true) }) }
     visibleRooms.chunked(2).forEach { rowRooms ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             rowRooms.forEach { room ->
@@ -977,22 +977,22 @@ private fun HomeScreen(
                     else -> Blue
                 }
                 Column(
-                    Modifier.weight(1f).heightIn(min = 124.dp, max = 132.dp)
+                    Modifier.weight(1f).heightIn(min = 112.dp, max = 122.dp)
                         .clip(RoundedCornerShape(17.dp))
                         .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                         .clickable { onOpenRoom(room) }.padding(horizontal = 10.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                         .clickable { onOpenRoom(room) }.padding(horizontal = 9.dp, vertical = 7.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Box(Modifier.size(30.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(17.dp))
+                    Box(Modifier.size(27.dp).clip(RoundedCornerShape(9.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
+                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(15.dp))
                     }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
                     val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 10.sp, maxLines = 1)
+                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 9.sp, maxLines = 1)
                     Spacer(Modifier.weight(1f))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
-                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(14.dp))
+                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 10.sp)
+                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(12.dp))
                     }
                 }
             }
@@ -1038,33 +1038,28 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
     CardBlock(panel, text, "Aktuelle Gesamtleistung", "Verfügbare Messwerte", Icons.Default.Bolt) {
         Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Blue)
         Text("${measured.size} Geräte mit aktuellem Leistungswert", color = Muted, fontSize = 12.sp)
+        if (pricePerKwh != null) Text("Laufende Kosten: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", watts / 1000.0 * pricePerKwh), color = text, fontSize = 12.sp)
     }
-    CardBlock(panel, text, "Strompreis", "Tarif für Kostenschätzungen", Icons.Default.Euro) {
+    CardBlock(panel, text, "Strompreis", "Wird lokal gespeichert", Icons.Default.Euro) {
         OutlinedTextField(value = price, onValueChange = onPrice, modifier = Modifier.fillMaxWidth(), singleLine = true, label = { Text("€/kWh") })
-        if (pricePerKwh != null) {
-            val perHour = watts / 1000.0 * pricePerKwh
-            Text("Bei aktueller Leistung: " + String.format(java.util.Locale.GERMANY, "%.3f €/Stunde", perHour), color = text, fontSize = 13.sp)
-            Text("Hochgerechnet: " + String.format(java.util.Locale.GERMANY, "%.2f €/Tag", perHour * 24), color = Muted, fontSize = 12.sp)
-        } else Text("Bitte einen gültigen Preis ab 0 €/kWh eingeben.", color = Muted, fontSize = 12.sp)
+        if (pricePerKwh == null) Text("Bitte einen gültigen Preis ab 0 eingeben.", color = Color(0xFFD62828), fontSize = 12.sp)
     }
     if (measured.isEmpty()) Text("Aktuell sind keine echten Leistungswerte verfügbar.", color = Muted)
     items.filter { it.powerId != null }.forEach { item ->
         CardBlock(panel, text, item.name, item.room, Icons.Default.Power) {
             Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Leistungswert nicht verfügbar", color = text, fontSize = 15.sp)
             val energy = item.energyValue
-            val unit = item.energyUnit?.ifBlank { "Wh" } ?: "Wh"
             if (energy != null) {
+                val unit = item.energyUnit?.ifBlank { "Wh" } ?: "Wh"
+                val kwh = when (unit.lowercase()) { "kwh" -> energy; "wh" -> energy / 1000.0; else -> null }
                 val energyText = if (unit.equals("kWh", true)) String.format(java.util.Locale.GERMANY, "%.2f kWh", energy) else String.format(java.util.Locale.GERMANY, "%.0f %s", energy, unit)
                 Text("Gesamtverbrauch: " + energyText, color = Muted, fontSize = 12.sp)
-                if (pricePerKwh != null && (unit.equals("kWh", true) || unit.equals("Wh", true))) {
-                    val kwh = if (unit.equals("kWh", true)) energy else energy / 1000.0
-                    Text("Geschätzte Verbrauchskosten: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * pricePerKwh), color = Muted, fontSize = 12.sp)
-                }
+                if (kwh != null && pricePerKwh != null) Text("Geschätzte Gesamtkosten: " + String.format(java.util.Locale.GERMANY, "%.2f €", kwh * pricePerKwh), color = Muted, fontSize = 12.sp)
             } else Text("Gesamtverbrauch: kein Energiedatenpunkt verfügbar", color = Muted, fontSize = 11.sp)
         }
     }
-    Text("Kosten sind Schätzungen aus aktuellem Leistungswert und deinem Tarif. Es wird keine Verbrauchshistorie erfunden.", color = Muted, fontSize = 11.sp)
 }
+
 @Composable
 private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: ImageVector, panel: Color, text: Color, accent: Color) {
     Column(modifier.clip(RoundedCornerShape(20.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.22f else 0.30f)).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -1397,7 +1392,6 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
     Text("Räume", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     RoomMenu(rooms, activeRoom, panel, text, { onSelectRoom(it) }, listOf(
         "Ohne Raum" to { onSelectRoom("Nicht zugeordnet") },
-        "Ausgeblendet" to onShowHidden,
         "+ Raum" to onAddRoom
     ))
     if (activeRoom != null) {
@@ -1494,12 +1488,6 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 }
             }
         }
-    }
-    CardBlock(panel, text, "Ausgeblendete Geräte", "${hiddenItems.size} ausgeblendet · bei Bedarf wieder hinzufügen", Icons.Default.VisibilityOff, action = onShowHidden) {
-        TextButton(onClick = onShowHidden) { Text("Ausgeblendete Geräte verwalten") }
-    }
-    CardBlock(panel, text, "Geräte verwalten", "Umbenennen und Räume zuweisen", Icons.Default.Devices) {
-        (devices + lights).distinctBy { it.stateId }.forEach { item -> Row(Modifier.fillMaxWidth().clickable { onEditDevice(item) }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(item.name, color = text, fontWeight = FontWeight.SemiBold); Text(item.room, color = Muted, fontSize = 12.sp) }; Icon(Icons.Default.Edit, null, tint = Blue) } }
     }
     if (renameRoom != null) AlertDialog(onDismissRequest = { renameRoom = null }, title = { Text("Raum umbenennen") }, text = { OutlinedTextField(value = renameValue, onValueChange = { renameValue = it }, singleLine = true, label = { Text("Name") }) }, confirmButton = { TextButton(onClick = { onRenameRoom(renameRoom!!, renameValue); renameRoom = null }) { Text("Speichern") } }, dismissButton = { TextButton(onClick = { renameRoom = null }) { Text("Abbrechen") } })
 }
@@ -1634,7 +1622,7 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 @Composable
 private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color,
     serverUrl: String, onServerUrl: (String) -> Unit, status: String, connected: Boolean, onConnect: () -> Unit,
-    onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit) {
+    onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit) {
     Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     CardBlock(panel, text, "Darstellung", "Helles Design standardmäßig", Icons.Default.Palette) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -1658,6 +1646,9 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Button(onClick = onOpenLights, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb, null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
         Button(onClick = onOpenDevices, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices, null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
         Button(onClick = onOpenRooms, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork, null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
+    }
+    CardBlock(panel, text, "Ausgeblendete Geräte", "Ausgeblendete Geräte wieder einblenden", Icons.Default.VisibilityOff, action = onShowHidden) {
+        Button(onClick = onShowHidden, modifier = Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
     }
     CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
         Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
