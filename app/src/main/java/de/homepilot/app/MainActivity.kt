@@ -1030,7 +1030,7 @@ private fun HomeScreen(
         placeholder = { Text("Räume und Geräte suchen") })
     val allDevices = devices + lights
     if (searchQuery.isNotBlank()) {
-        allDevices.filter { it.name.contains(searchQuery, true) || it.room.contains(searchQuery, true) }.forEach { item ->
+        allDevices.filter { it.name.contains(searchQuery.trim(), true) }.forEach { item ->
             CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Devices, action = { onOpenRoom(item.room) }) {}
         }
     }
