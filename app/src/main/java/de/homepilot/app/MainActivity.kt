@@ -337,7 +337,6 @@ private data class DeviceItem(
     val energyValue: Double? = null
 )
 
-@Composable
 private fun postWaterAlarmNotification(context: Context) {
     if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
     val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -359,6 +358,7 @@ private fun postWaterAlarmNotification(context: Context) {
     manager.notify(7302, notification)
 }
 
+@Composable
 private fun HomePilotApp() {
     var dark by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(Tab.HOME) }
