@@ -435,6 +435,7 @@ private fun HomePilotApp() {
         }
     }
     var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "http://192.168.178.54:8087").let { saved -> if (saved.trimEnd('/').endsWith(":8082")) saved.trimEnd('/').removeSuffix(":8082") + ":8087" else saved }) }
+    var weatherCity by remember { mutableStateOf(prefs.getString("weatherCity", "56751 Kaan") ?: "56751 Kaan") }
         var connectionStatus by remember { mutableStateOf("Nicht verbunden") }
     var connected by remember { mutableStateOf(false) }
     var showConnectionAlert by remember { mutableStateOf(false) }
@@ -580,7 +581,7 @@ private fun HomePilotApp() {
                         }
                     }
                     when (selectedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -707,6 +708,7 @@ private fun HomePilotApp() {
                             onRequestDeleteRoom = { room -> confirmDeleteRoom = room })
                         Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text,
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
+                            weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() },
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
@@ -951,10 +953,79 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
     }
 }
 
+private data class ForecastDay(val date: String, val code: Int, val high: Double, val low: Double, val rain: Int?)
+private fun weatherDescription(code: Int): String = when (code) {
+    0 -> "Sonnig"; 1 -> "Überwiegend sonnig"; 2 -> "Heiter bis wolkig"; 3 -> "Bewölkt"
+    45, 48 -> "Nebel"; 51, 53, 55 -> "Nieselregen"; 56, 57 -> "Gefrierender Nieselregen"
+    61, 63, 65 -> "Regen"; 66, 67 -> "Gefrierender Regen"; 71, 73, 75, 77 -> "Schnee"
+    80, 81, 82 -> "Regenschauer"; 85, 86 -> "Schneeschauer"; 95, 96, 99 -> "Gewitter"
+    else -> "Wetterlage"
+}
+private fun fetchWeather(city: String): Pair<String, List<ForecastDay>> {
+    fun getJson(url: String): JSONObject {
+        val c = (URL(url).openConnection() as HttpURLConnection).apply { connectTimeout = 8000; readTimeout = 8000; requestMethod = "GET"; setRequestProperty("Accept", "application/json") }
+        try { if (c.responseCode !in 200..299) throw IllegalStateException("Wetterdienst nicht erreichbar"); return JSONObject(c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }) } finally { c.disconnect() }
+    }
+    val encoded = java.net.URLEncoder.encode(city.trim(), "UTF-8")
+    val geo = getJson("https://geocoding-api.open-meteo.com/v1/search?name=$encoded&count=1&language=de&format=json")
+    val place = geo.optJSONArray("results")?.optJSONObject(0) ?: throw IllegalStateException("Ort nicht gefunden")
+    val lat = place.optDouble("latitude"); val lon = place.optDouble("longitude")
+    val display = place.optString("name", city) + (place.optString("admin1").takeIf { it.isNotBlank() }?.let { ", $it" } ?: "")
+    val data = getJson("https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=5&timezone=Europe%2FBerlin")
+    val current = data.optJSONObject("current") ?: throw IllegalStateException("Keine aktuellen Wetterdaten")
+    val daily = data.optJSONObject("daily") ?: throw IllegalStateException("Keine Vorhersage verfügbar")
+    val dates = daily.optJSONArray("time") ?: JSONArray(); val codes = daily.optJSONArray("weather_code") ?: JSONArray()
+    val highs = daily.optJSONArray("temperature_2m_max") ?: JSONArray(); val lows = daily.optJSONArray("temperature_2m_min") ?: JSONArray()
+    val rains = daily.optJSONArray("precipitation_probability_max") ?: JSONArray()
+    val days = (0 until minOf(5, dates.length())).map { i -> ForecastDay(dates.optString(i), codes.optInt(i), highs.optDouble(i), lows.optDouble(i), if (rains.isNull(i)) null else rains.optInt(i)) }
+    return "$display|${current.optDouble("temperature_2m")}|${current.optInt("weather_code")}" to days
+}
+@Composable
+private fun WeatherForecastCard(city: String, panel: Color, text: Color) {
+    var currentLabel by remember { mutableStateOf<String?>(null) }
+    var days by remember { mutableStateOf<List<ForecastDay>>(emptyList()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    LaunchedEffect(city) {
+        if (city.isBlank()) { error = "Bitte in den Einstellungen einen Ort eintragen."; days = emptyList(); return@LaunchedEffect }
+        loading = true; error = null
+        try {
+            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { fetchWeather(city) }
+            val parts = result.first.split("|")
+            currentLabel = "${parts[0]} · ${parts[1].toDoubleOrNull()?.let { String.format(java.util.Locale.GERMANY, "%.0f °C", it) } ?: "–"} · ${weatherDescription(parts.getOrNull(2)?.toIntOrNull() ?: -1)}"
+            days = result.second
+            if (days.isEmpty()) error = "Keine Vorhersage verfügbar."
+        } catch (e: Exception) { error = e.message?.takeIf { it.isNotBlank() } ?: "Wetterdaten konnten nicht geladen werden."; days = emptyList() }
+        finally { loading = false }
+    }
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = panel)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Default.WbSunny, null, tint = Blue)
+                Text("Wetter · 5 Tage", color = text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Spacer(Modifier.weight(1f))
+                if (loading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            }
+            currentLabel?.let { Text(it, color = text, fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
+            if (error != null) Text(error!!, color = Muted, fontSize = 12.sp)
+            days.forEachIndexed { index, day ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val label = try { val d = java.time.LocalDate.parse(day.date); when (index) { 0 -> "Heute"; 1 -> "Morgen"; else -> d.format(java.time.format.DateTimeFormatter.ofPattern("EEE", java.util.Locale.GERMAN)) } } catch (_: Exception) { day.date }
+                    Text(label, color = text, modifier = Modifier.width(62.dp), fontSize = 12.sp)
+                    Text(weatherDescription(day.code), color = Muted, modifier = Modifier.weight(1f), fontSize = 12.sp, maxLines = 1)
+                    Text("${day.high.toInt()}° / ${day.low.toInt()}°", color = text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    day.rain?.let { Text("$it%", color = Blue, fontSize = 11.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.End) }
+                }
+            }
+            if (days.isNotEmpty()) Text("Regenwahrscheinlichkeit rechts · Quelle: Open-Meteo", color = Muted, fontSize = 10.sp)
+        }
+    }
+}
+
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
 ) {
     if (selectedRoom != null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1035,50 +1106,7 @@ private fun HomeScreen(
         }
     }
     RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
-    val visibleRooms = rooms.filter { it != "Nicht zugeordnet" && (searchQuery.isBlank() || it.contains(searchQuery, true) || allDevices.any { d -> d.room == it && d.name.contains(searchQuery, true) }) }
-    visibleRooms.chunked(2).forEach { rowRooms ->
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            rowRooms.forEach { room ->
-                val count = (devices + lights).count { it.room == room }
-                val roomIcon = when (room.lowercase()) {
-                    "wohnzimmer" -> Icons.Default.Weekend
-                    "küche" -> Icons.Default.Kitchen
-                    "schlafzimmer" -> Icons.Default.Bed
-                    "bad", "badezimmer" -> Icons.Default.Bathtub
-                    "hauswirtschaft" -> Icons.Default.LocalLaundryService
-                    else -> Icons.Default.HomeWork
-                }
-                val roomAccent = when (room.lowercase()) {
-                    "wohnzimmer" -> Color(0xFF6C63C7)
-                    "küche" -> Color(0xFFE09A22)
-                    "schlafzimmer" -> Color(0xFF4787C7)
-                    "bad", "badezimmer" -> Color(0xFF159A9C)
-                    "hauswirtschaft" -> Color(0xFF2E9B70)
-                    else -> Blue
-                }
-                Column(
-                    Modifier.weight(1f).heightIn(min = 150.dp, max = 162.dp)
-                        .clip(RoundedCornerShape(17.dp))
-                        .background(roomAccent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f))
-                         .clickable { onOpenRoom(room) }.padding(horizontal = 14.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(roomAccent), contentAlignment = Alignment.Center) {
-                        Icon(roomIcon, null, tint = Color.White, modifier = Modifier.size(21.dp))
-                    }
-                    Text(room, color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1)
-                    val roomItems = (devices + lights).filter { it.room == room }
-                    Text("${count} Geräte · ${roomItems.count { it.initialOn }} ein", color = Muted, fontSize = 11.sp, maxLines = 1)
-                    Spacer(Modifier.weight(1f))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Öffnen", color = Blue, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                        Icon(Icons.Default.ChevronRight, null, tint = Blue, modifier = Modifier.size(16.dp))
-                    }
-                }
-            }
-            if (rowRooms.size == 1) Spacer(Modifier.weight(1f))
-        }
-    }
+    WeatherForecastCard(city = weatherCity, panel = panel, text = text)
     CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
         if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
         else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
@@ -1698,7 +1726,8 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 
 @Composable
 private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color,
-    serverUrl: String, onServerUrl: (String) -> Unit, status: String, connected: Boolean, onConnect: () -> Unit,
+    serverUrl: String, onServerUrl: (String) -> Unit, weatherCity: String, onWeatherCity: (String) -> Unit,
+    status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit) {
     Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     CardBlock(panel, text, "Darstellung", "Helles Design standardmäßig", Icons.Default.Palette) {
@@ -1706,6 +1735,11 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
             Column(Modifier.weight(1f)) { Text("Dunkles Design", color = text, fontWeight = FontWeight.SemiBold); Text("Kann jederzeit umgeschaltet werden", color = Muted, fontSize = 12.sp) }
             Switch(checked = dark, onCheckedChange = onDark)
         }
+    }
+    CardBlock(panel, text, "Wetter", "5-Tage-Prognose auf der Startseite", Icons.Default.WbSunny) {
+        OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Text("Voreingestellt: 56751 Kaan. Änderungen werden automatisch gespeichert.", color = Muted, fontSize = 12.sp)
+        Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.", color = Muted, fontSize = 11.sp)
     }
     CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
         OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth())
