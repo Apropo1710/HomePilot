@@ -18,13 +18,10 @@ import java.net.URL
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -373,9 +370,16 @@ private fun postWaterAlarmNotification(context: Context) {
 private fun HomePilotApp() {
     var dark by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(Tab.HOME) }
+    var tabSwipeDirection by remember { mutableIntStateOf(1) }
     var tabHistory by remember { mutableStateOf(listOf<Tab>()) }
     fun navigateTo(tab: Tab) {
         if (tab != selectedTab) {
+            val mainTabs = listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY)
+            val oldIndex = mainTabs.indexOf(selectedTab)
+            val newIndex = mainTabs.indexOf(tab)
+            tabSwipeDirection = if (oldIndex >= 0 && newIndex >= 0) {
+                if (newIndex >= oldIndex) 1 else -1
+            } else 1
             tabHistory = tabHistory + selectedTab
             selectedTab = tab
         }
@@ -609,29 +613,22 @@ private fun HomePilotApp() {
                             Icon(Icons.Default.Close, null, tint = Color(0xFFB7791F), modifier = Modifier.size(18.dp))
                         }
                     }
-                    AnimatedContent(
-                        targetState = selectedTab,
-                        transitionSpec = {
-                            val mainTabs = listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY)
-                            val initialIndex = mainTabs.indexOf(initialState)
-                            val targetIndex = mainTabs.indexOf(targetState)
-                            if (initialIndex >= 0 && targetIndex >= 0 && initialIndex != targetIndex) {
-                                val forward = targetIndex > initialIndex
-                                (slideInHorizontally(
-                                    animationSpec = tween(280),
-                                    initialOffsetX = { width -> if (forward) width / 3 else -width / 3 }
-                                ) + fadeIn(animationSpec = tween(220))) togetherWith
-                                    (slideOutHorizontally(
-                                        animationSpec = tween(220),
-                                        targetOffsetX = { width -> if (forward) -width / 4 else width / 4 }
-                                    ) + fadeOut(animationSpec = tween(180)))
-                            } else {
-                                fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(140))
-                            }
-                        },
-                        label = "HomePilotTabTransition"
-                    ) { tab ->
-                    when (tab) {
+                    val pageOffset = remember(selectedTab) {
+                        Animatable(if (tabSwipeDirection >= 0) 34f else -34f)
+                    }
+                    LaunchedEffect(selectedTab) {
+                        pageOffset.animateTo(
+                            targetValue = 0f,
+                            animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
+                        )
+                    }
+                    Box(
+                        Modifier.fillMaxWidth().graphicsLayer {
+                            translationX = pageOffset.value
+                            alpha = 1f - (kotlin.math.abs(pageOffset.value) / 34f) * 0.12f
+                        }
+                    ) {
+                    when (selectedTab) {
                         Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
