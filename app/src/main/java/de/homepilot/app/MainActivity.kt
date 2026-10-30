@@ -2000,7 +2000,4 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Button(onClick = onShowHidden, modifier = Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
     }
     GithubUpdateCard(appVersion = BuildConfig.VERSION_NAME)
-    CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
-        Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
-    }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
@@ -93,7 +95,11 @@ internal fun GithubUpdateCard(appVersion: String) {
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!connected) {
-                    Button(enabled = !busy, onClick = {
+                    Button(
+                        enabled = !busy,
+                        modifier = Modifier.widthIn(min = 116.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                        onClick = {
                         scope.launch {
                             busy = true
                             try {
@@ -157,7 +163,7 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 busy = false
                             }
                         }
-                    }) { Text("Update herunterladen") }
+                    }) { Text("Update laden", maxLines = 1, softWrap = false, overflow = TextOverflow.Clip) }
                 }
             }
             if (busy) {
