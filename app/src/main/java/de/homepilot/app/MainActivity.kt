@@ -42,6 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -50,7 +52,7 @@ import androidx.compose.ui.unit.sp
 
 private val Blue = Color(0xFF1769AA)
 private val Green = Color(0xFF16845B)
-private val Muted = Color(0xFF4D5F73)
+private val Muted = Color(0xFF263746)
 private val LightBg = Color(0xFFF3F6FA)
 private val DarkBg = Color(0xFF101923)
 private val LightText = Color(0xFF172334)
@@ -1100,13 +1102,12 @@ private fun WeatherForecastCard(city: String, panel: Color, text: Color) {
 
 @Composable
 private fun MovaIllustration(size: androidx.compose.ui.unit.Dp) {
-    Box(Modifier.size(size)) {
-        Box(Modifier.align(Alignment.BottomStart).padding(start = size * 0.08f, bottom = size * 0.12f).size(width = size * 0.22f, height = size * 0.42f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF34495E)))
-        Box(Modifier.align(Alignment.BottomEnd).padding(end = size * 0.08f, bottom = size * 0.12f).size(width = size * 0.22f, height = size * 0.42f).clip(RoundedCornerShape(8.dp)).background(Color(0xFF34495E)))
-        Box(Modifier.align(Alignment.Center).padding(top = size * 0.08f).fillMaxWidth(0.88f).height(size * 0.52f).clip(RoundedCornerShape(size * 0.22f)).background(Color(0xFF2F9B62)))
-        Box(Modifier.align(Alignment.TopCenter).padding(top = size * 0.12f).size(size * 0.30f).clip(CircleShape).background(Color(0xFF1E6F49)))
-        Box(Modifier.align(Alignment.BottomCenter).padding(bottom = size * 0.30f).fillMaxWidth(0.54f).height(size * 0.07f).clip(RoundedCornerShape(50)).background(Color(0xFFDAF2E3)))
-    }
+    AsyncImage(
+        model = "https://dreame.de/cdn/shop/files/Mova_1000_WB_01.jpg?v=1745999938&width=1000",
+        contentDescription = "Originalproduktbild MOVA 1000",
+        contentScale = ContentScale.Fit,
+        modifier = Modifier.size(size).clip(RoundedCornerShape(14.dp)).background(Color.White)
+    )
 }
 
 @Composable
@@ -1134,7 +1135,7 @@ private fun MovaHomeTile(serverUrl: String, connected: Boolean, client: IoBroker
     }
     CardBlock(panel, text, "MOVA 1000", "Mähroboter · Steuerung und Status öffnen", Icons.Default.Park, action = onOpen) {
         Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(92.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFFDAEBD9)), contentAlignment = Alignment.Center) { MovaIllustration(70.dp) }
+            MovaIllustration(104.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Text(status, color = if (mowerStatus?.toInt() in listOf(1,3,12)) Green else text, fontWeight = FontWeight.SemiBold)
@@ -1204,7 +1205,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
         }
         CardBlock(panel, text, "MOVA 1000", "Gerätestatus", Icons.Default.Park) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(112.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFFDAEBD9)), contentAlignment = Alignment.Center) { MovaIllustration(86.dp) }
+                MovaIllustration(124.dp)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(statusLabel, color = if (mowing) Green else text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
@@ -1239,10 +1240,10 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             commandMessage?.let { Text(it, color = Muted, fontSize = 14.sp) }
         }
         CardBlock(panel, text, "Steuerung", "Mähvorgang und Ladestation", Icons.Default.Gamepad) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.pause-mow", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Pausebefehl gesendet" else msg } }, enabled = connected && mowing && !commandBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Icon(Icons.Default.Pause, null); Spacer(Modifier.width(10.dp)); Text("Pause") }
-                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.stop-mow", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Stoppbefehl gesendet" else msg } }, enabled = connected && (mowing || statusCode == 4) && !commandBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Icon(Icons.Default.Stop, null); Spacer(Modifier.width(10.dp)); Text("Stop") }
-                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.start-charge", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Rückkehrbefehl gesendet" else msg } }, enabled = canDock && !commandBusy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) { Icon(Icons.Default.Home, null); Spacer(Modifier.width(10.dp)); Text("Zur Ladestation") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.pause-mow", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Pausebefehl gesendet" else msg } }, enabled = connected && mowing && !commandBusy, modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) { Icon(Icons.Default.Pause, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Pause", fontSize = 12.sp, maxLines = 1) }
+                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.stop-mow", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Stoppbefehl gesendet" else msg } }, enabled = connected && (mowing || statusCode == 4) && !commandBusy, modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) { Icon(Icons.Default.Stop, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Stop", fontSize = 12.sp, maxLines = 1) }
+                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.start-charge", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Rückkehrbefehl gesendet" else msg } }, enabled = canDock && !commandBusy, modifier = Modifier.weight(1f).height(48.dp), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp)) { Icon(Icons.Default.Home, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Laden", fontSize = 12.sp, maxLines = 1) }
             }
         }
         CardBlock(panel, text, "Wartung", "Zustand der Verschleißteile", Icons.Default.Build) {
