@@ -1176,7 +1176,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
                         if (remaining == 0) {
                             zones = loaded.sortedBy { it.first }
                             val valid = loaded.map { it.first }.toSet()
-                            selectedZones = selectedZones.intersect(valid).ifEmpty { valid.take(1).toSet() }
+                            selectedZones = selectedZones.intersect(valid)
                         }
                     }
                 }
@@ -1996,6 +1996,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     CardBlock(panel, text, "Ausgeblendete Geräte", "Ausgeblendete Geräte wieder einblenden", Icons.Default.VisibilityOff, action = onShowHidden) {
         Button(onClick = onShowHidden, modifier = Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
     }
+    GithubUpdateCard(appVersion = BuildConfig.VERSION_NAME)
     CardBlock(panel, text, "App-Informationen", "Versionsnummer", Icons.Default.Info) {
         Text("HomePilot ${BuildConfig.VERSION_NAME}", color = text, fontWeight = FontWeight.SemiBold)
     }
