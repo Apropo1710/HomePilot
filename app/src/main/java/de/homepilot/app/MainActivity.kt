@@ -627,7 +627,7 @@ private fun HomePilotApp() {
                     ) {
                     key(displayedTab) {
                     when (displayedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -1088,9 +1088,126 @@ private fun WeatherForecastCard(city: String, panel: Color, text: Color) {
 }
 
 @Composable
+private fun MovaMowerCard(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color) {
+    var battery by remember { mutableStateOf<Double?>(null) }
+    var mowerStatus by remember { mutableStateOf<Double?>(null) }
+    var bladeHealth by remember { mutableStateOf<Double?>(null) }
+    var maintenanceHealth by remember { mutableStateOf<Double?>(null) }
+    var commandMessage by remember { mutableStateOf<String?>(null) }
+    var commandBusy by remember { mutableStateOf(false) }
+
+    LaunchedEffect(serverUrl, connected) {
+        if (!connected) {
+            battery = null
+            mowerStatus = null
+            bladeHealth = null
+            maintenanceHealth = null
+        } else {
+            while (true) {
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.battery-level") { battery = it }
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.status") { mowerStatus = it }
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.blade-health") { bladeHealth = it }
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.robot-maintenance-health") { maintenanceHealth = it }
+                delay(30_000)
+            }
+        }
+    }
+
+    val statusCode = mowerStatus?.toInt()
+    val statusLabel = when (statusCode) {
+        1, 3 -> "Mäht gerade"
+        2 -> "Bereit"
+        4 -> "Pausiert"
+        5 -> "Fährt zur Ladestation"
+        6 -> "Lädt"
+        7 -> "Störung"
+        8 -> "Regenpause"
+        9 -> "Initialisiert"
+        10 -> "Verlässt Ladestation"
+        11 -> "Kartierung"
+        12 -> "Kantenmähen"
+        13 -> "Akku vollständig geladen"
+        14 -> "Aktualisierung"
+        15 -> "Positionswechsel"
+        16 -> "Navigation"
+        else -> "Status nicht verfügbar"
+    }
+    val mowing = statusCode == 1 || statusCode == 3 || statusCode == 12
+    val paused = statusCode == 4
+    val canStart = connected && (statusCode == 2 || statusCode == 13)
+    val canPause = connected && mowing
+    val canStop = connected && (mowing || paused)
+    val canDock = connected && statusCode != null && statusCode != 5 && statusCode != 6 && statusCode != 13
+
+    CardBlock(panel, text, "MOVA 1000", "Mähroboter · Dreame-Adapter", Icons.Default.Park) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text(statusLabel, color = if (statusCode == 7) Color(0xFFD62828) else if (mowing) Green else text, fontWeight = FontWeight.SemiBold)
+                Text(if (connected) "ioBroker verbunden" else "Keine Verbindung zu ioBroker", color = Muted, fontSize = 11.sp)
+            }
+            Column(horizontalAlignment = Alignment.End) {
+                Text(battery?.let { "${it.toInt()} %" } ?: "—", color = text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Akku", color = Muted, fontSize = 10.sp)
+            }
+        }
+        battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth()) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = {
+                commandBusy = true
+                commandMessage = null
+                client.setState(serverUrl, "dreame.0.-112285430.remote.start-mow", true) { ok, message ->
+                    commandBusy = false
+                    commandMessage = if (ok) "Startbefehl gesendet" else message
+                }
+            }, enabled = canStart && !commandBusy, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(4.dp)); Text("Start")
+            }
+            OutlinedButton(onClick = {
+                commandBusy = true
+                commandMessage = null
+                client.setState(serverUrl, "dreame.0.-112285430.remote.pause-mow", true) { ok, message ->
+                    commandBusy = false
+                    commandMessage = if (ok) "Pausebefehl gesendet" else message
+                }
+            }, enabled = canPause && !commandBusy, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.Pause, null); Spacer(Modifier.width(4.dp)); Text("Pause")
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = {
+                commandBusy = true
+                commandMessage = null
+                client.setState(serverUrl, "dreame.0.-112285430.remote.stop-mow", true) { ok, message ->
+                    commandBusy = false
+                    commandMessage = if (ok) "Stoppbefehl gesendet" else message
+                }
+            }, enabled = canStop && !commandBusy, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.Stop, null); Spacer(Modifier.width(4.dp)); Text("Stop")
+            }
+            OutlinedButton(onClick = {
+                commandBusy = true
+                commandMessage = null
+                client.setState(serverUrl, "dreame.0.-112285430.remote.start-charge", true) { ok, message ->
+                    commandBusy = false
+                    commandMessage = if (ok) "Rückkehrbefehl gesendet" else message
+                }
+            }, enabled = canDock && !commandBusy, modifier = Modifier.weight(1f)) {
+                Icon(Icons.Default.Home, null); Spacer(Modifier.width(4.dp)); Text("Ladestation")
+            }
+        }
+        if (bladeHealth != null || maintenanceHealth != null) {
+            Text(listOfNotNull(bladeHealth?.let { "Klingen: ${it.toInt()} %" }, maintenanceHealth?.let { "Wartung: ${it.toInt()} %" }).joinToString("  ·  "), color = Muted, fontSize = 11.sp)
+        }
+        commandMessage?.let { Text(it, color = Muted, fontSize = 11.sp) }
+        if (paused) Text("Der Adapter stellt keinen eindeutig bezeichneten Fortsetzen-Befehl bereit. Start wird im Pausenzustand deshalb nicht angeboten.", color = Muted, fontSize = 10.sp)
+    }
+}
+
+@Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient,
+    onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
 ) {
     if (selectedRoom != null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1175,6 +1292,7 @@ private fun HomeScreen(
     }
     RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
     WeatherForecastCard(city = weatherCity, panel = panel, text = text)
+    MovaMowerCard(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text)
     CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
         if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
         else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
