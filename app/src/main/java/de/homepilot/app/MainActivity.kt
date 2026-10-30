@@ -621,7 +621,10 @@ private fun HomePilotApp() {
                             Icon(Icons.Default.Close, null, tint = Color(0xFFB7791F), modifier = Modifier.size(18.dp))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().graphicsLayer { alpha = pageAlpha.value }) {
+                    Column(
+                        Modifier.fillMaxWidth().graphicsLayer { alpha = pageAlpha.value },
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                     key(displayedTab) {
                     when (displayedTab) {
                         Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
