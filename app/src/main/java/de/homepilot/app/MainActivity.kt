@@ -18,10 +18,6 @@ import java.net.URL
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -613,21 +609,7 @@ private fun HomePilotApp() {
                             Icon(Icons.Default.Close, null, tint = Color(0xFFB7791F), modifier = Modifier.size(18.dp))
                         }
                     }
-                    val pageOffset = remember(selectedTab) {
-                        Animatable(if (tabSwipeDirection >= 0) 34f else -34f)
-                    }
-                    LaunchedEffect(selectedTab) {
-                        pageOffset.animateTo(
-                            targetValue = 0f,
-                            animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing)
-                        )
-                    }
-                    Box(
-                        Modifier.fillMaxWidth().graphicsLayer {
-                            translationX = pageOffset.value
-                            alpha = 1f - (kotlin.math.abs(pageOffset.value) / 34f) * 0.12f
-                        }
-                    ) {
+                    key(selectedTab) {
                     when (selectedTab) {
                         Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
