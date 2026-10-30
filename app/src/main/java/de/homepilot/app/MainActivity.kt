@@ -26,6 +26,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -560,6 +562,25 @@ private fun HomePilotApp() {
             Column(Modifier.fillMaxSize()) {
                 Column(
                     Modifier.weight(1f).fillMaxWidth().statusBarsPadding()
+                        .pointerInput(selectedTab, selectedRoom) {
+                            var horizontalDrag = 0f
+                            detectHorizontalDragGestures(
+                                onHorizontalDrag = { change, dragAmount ->
+                                    horizontalDrag += dragAmount
+                                    change.consume()
+                                },
+                                onDragEnd = {
+                                    val mainTabs = listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY)
+                                    val currentIndex = mainTabs.indexOf(selectedTab)
+                                    if (selectedRoom == null && currentIndex >= 0 && kotlin.math.abs(horizontalDrag) > 80f) {
+                                        val targetIndex = (currentIndex + if (horizontalDrag < 0) 1 else -1)
+                                            .coerceIn(0, mainTabs.lastIndex)
+                                        if (targetIndex != currentIndex) navigateTo(mainTabs[targetIndex])
+                                    }
+                                },
+                                onDragCancel = { horizontalDrag = 0f }
+                            )
+                        }
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
