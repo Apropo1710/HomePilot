@@ -1192,7 +1192,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
         6 -> "Lädt"
         7 -> "Störung"
         8 -> "Regenpause"
-        13 -> "Akku vollständig geladen"
+        13 -> "Bereit"
         else -> "Status nicht verfügbar"
     }
     val mowing = statusCode in listOf(1, 3, 12)
