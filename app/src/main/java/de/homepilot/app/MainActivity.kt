@@ -436,7 +436,7 @@ private fun HomePilotApp() {
         }
     }
     var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "http://192.168.178.54:8087").let { saved -> if (saved.trimEnd('/').endsWith(":8082")) saved.trimEnd('/').removeSuffix(":8082") + ":8087" else saved }) }
-    var weatherCity by remember { mutableStateOf(prefs.getString("weatherCity", "56751 Kaan") ?: "56751 Kaan") }
+    var weatherCity by remember { mutableStateOf((prefs.getString("weatherCity", "Kaan") ?: "Kaan").let { if (it.equals("56751 Kaan", ignoreCase = true)) "Kaan" else it }) }
         var connectionStatus by remember { mutableStateOf("Nicht verbunden") }
     var connected by remember { mutableStateOf(false) }
     var showConnectionAlert by remember { mutableStateOf(false) }
@@ -893,13 +893,17 @@ private fun HomePilotApp() {
                     )
                     Spacer(Modifier.height(10.dp))
                 }
-                NavigationBar(containerColor = panel) {
+                NavigationBar(
+                    modifier = Modifier.height(64.dp),
+                    containerColor = panel,
+                    windowInsets = WindowInsets(0.dp)
+                ) {
                     listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { navigateTo(tab) },
-                            icon = { Icon(tab.icon, contentDescription = tab.label) },
-                            label = { Text(tab.label, fontSize = 10.sp, maxLines = 1) },
+                            icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
+                            label = { Text(tab.label, fontSize = 9.sp, maxLines = 1) },
                             alwaysShowLabel = true
                         )
                     }
@@ -1755,7 +1759,6 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     }
     CardBlock(panel, text, "Wetter", "5-Tage-Prognose auf der Startseite", Icons.Default.WbSunny) {
         OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
-        Text("Voreingestellt: 56751 Kaan. Änderungen werden automatisch gespeichert.", color = Muted, fontSize = 12.sp)
         Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.", color = Muted, fontSize = 11.sp)
     }
     CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
