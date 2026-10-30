@@ -1021,7 +1021,11 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
 @Composable
 private fun InputConfirmIcon() {
     val keyboardController = LocalSoftwareKeyboardController.current
-    IconButton(onClick = { keyboardController?.hide() }) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    IconButton(onClick = {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+    }) {
         Icon(Icons.Default.Check, contentDescription = "Eingabe bestätigen", tint = Green)
     }
 }
@@ -1975,18 +1979,6 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
             Switch(checked = dark, onCheckedChange = onDark)
         }
     }
-    CardBlock(panel, text, "Wetter", "5-Tage-Prognose auf der Startseite", Icons.Default.WbSunny) {
-        OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
-        Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.", color = Muted, fontSize = 11.sp)
-    }
-    CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
-        OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
-        Text(status, color = if (connected) Green else Muted, fontSize = 12.sp)
-        if (!connected) {
-            Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
-        }
-        Text("Verbindung über Simple API auf Port 8087. In der aktuellen ioBroker-Konfiguration erfolgt der Zugriff ohne Anmeldung.", color = Muted, fontSize = 11.sp)
-    }
     CardBlock(panel, text, "Geräteprobleme", "Fehlende Messwerte und bekannte Warnungen prüfen", Icons.Default.HealthAndSafety, action = onOpenHealth) {
         Button(onClick = onOpenHealth, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety, null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
     }
@@ -1998,6 +1990,18 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     }
     CardBlock(panel, text, "Ausgeblendete Geräte", "Ausgeblendete Geräte wieder einblenden", Icons.Default.VisibilityOff, action = onShowHidden) {
         Button(onClick = onShowHidden, modifier = Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
+    }
+    CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
+        OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
+        Text(status, color = if (connected) Green else Muted, fontSize = 12.sp)
+        if (!connected) {
+            Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
+        }
+        Text("Verbindung über Simple API auf Port 8087. In der aktuellen ioBroker-Konfiguration erfolgt der Zugriff ohne Anmeldung.", color = Muted, fontSize = 11.sp)
+    }
+    CardBlock(panel, text, "Wetter", "5-Tage-Prognose auf der Startseite", Icons.Default.WbSunny) {
+        OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
+        Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.", color = Muted, fontSize = 11.sp)
     }
     GithubUpdateCard(appVersion = BuildConfig.VERSION_NAME)
 }
