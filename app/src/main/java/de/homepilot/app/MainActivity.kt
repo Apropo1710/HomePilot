@@ -1160,11 +1160,8 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
     LaunchedEffect(serverUrl, connected) {
         if (!connected) {
             battery = null; mowerStatus = null; bladeHealth = null; maintenanceHealth = null; zones = emptyList()
-        } else while (true) {
-            client.getNumericState(serverUrl, "dreame.0.-112285430.status.battery-level") { battery = it }
-            client.getNumericState(serverUrl, "dreame.0.-112285430.status.status") { mowerStatus = it }
-            client.getNumericState(serverUrl, "dreame.0.-112285430.status.blade-health") { bladeHealth = it }
-            client.getNumericState(serverUrl, "dreame.0.-112285430.status.robot-maintenance-health") { maintenanceHealth = it }
+        } else {
+            // Mähzonen-Namen und -Flächen einmal beim Öffnen der Ansicht laden.
             val loaded = java.util.Collections.synchronizedList(mutableListOf<Pair<Int, Pair<String, Double>>>())
             var remaining = 4
             for (zoneId in 1..4) {
@@ -1181,7 +1178,13 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
                     }
                 }
             }
-            delay(30_000)
+            while (true) {
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.battery-level") { battery = it }
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.status") { mowerStatus = it }
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.blade-health") { bladeHealth = it }
+                client.getNumericState(serverUrl, "dreame.0.-112285430.status.robot-maintenance-health") { maintenanceHealth = it }
+                delay(30_000)
+            }
         }
     }
     val statusCode = mowerStatus?.toInt()
