@@ -276,6 +276,15 @@ private class IoBrokerClient {
         }
     }
 
+    fun setTextState(baseUrl: String, id: String, value: String, callback: (Boolean, String) -> Unit) {
+        val encodedId = Uri.encode(id)
+        val encodedValue = Uri.encode(value)
+        request(baseUrl, "/set/$encodedId?value=$encodedValue") { ok, _, error ->
+            if (!ok) callback(false, "Befehl fehlgeschlagen: ${error ?: "unbekannter Fehler"}")
+            else callback(true, "Zonenstart gesendet")
+        }
+    }
+
     fun setNumericState(baseUrl: String, id: String, value: Double, callback: (Boolean, String) -> Unit) {
         val encodedId = Uri.encode(id)
         val encodedValue = Uri.encode(value.toString())
@@ -317,7 +326,8 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     LIGHTS("Licht", Icons.Default.Lightbulb),
     DEVICES("Geräte", Icons.Default.Devices),
     SAFETY("Sicherheit", Icons.Default.Shield),
-    SETTINGS("Einstellungen", Icons.Default.Settings)
+    SETTINGS("Einstellungen", Icons.Default.Settings),
+    MOVA("MOVA 1000", Icons.Default.Park)
 }
 
 private data class DeviceItem(
@@ -627,7 +637,7 @@ private fun HomePilotApp() {
                     ) {
                     key(displayedTab) {
                     when (displayedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -637,7 +647,7 @@ private fun HomePilotApp() {
                                 }
                             }
                         })
-                        Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
+                        Tab.MOVA -> MovaDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }\n                        Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
                             onSetDefaultBrightness = { item, percent -> prefs.edit().putInt("lightOnBrightness:" + (item.stateId ?: item.name), percent).apply() },
@@ -1088,125 +1098,156 @@ private fun WeatherForecastCard(city: String, panel: Color, text: Color) {
 }
 
 @Composable
-private fun MovaMowerCard(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color) {
+private fun MovaHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
     var battery by remember { mutableStateOf<Double?>(null) }
     var mowerStatus by remember { mutableStateOf<Double?>(null) }
-    var bladeHealth by remember { mutableStateOf<Double?>(null) }
-    var maintenanceHealth by remember { mutableStateOf<Double?>(null) }
-    var commandMessage by remember { mutableStateOf<String?>(null) }
-    var commandBusy by remember { mutableStateOf(false) }
-
     LaunchedEffect(serverUrl, connected) {
-        if (!connected) {
-            battery = null
-            mowerStatus = null
-            bladeHealth = null
-            maintenanceHealth = null
-        } else {
-            while (true) {
-                client.getNumericState(serverUrl, "dreame.0.-112285430.status.battery-level") { battery = it }
-                client.getNumericState(serverUrl, "dreame.0.-112285430.status.status") { mowerStatus = it }
-                client.getNumericState(serverUrl, "dreame.0.-112285430.status.blade-health") { bladeHealth = it }
-                client.getNumericState(serverUrl, "dreame.0.-112285430.status.robot-maintenance-health") { maintenanceHealth = it }
-                delay(30_000)
-            }
+        if (!connected) { battery = null; mowerStatus = null }
+        else while (true) {
+            client.getNumericState(serverUrl, "dreame.0.-112285430.status.battery-level") { battery = it }
+            client.getNumericState(serverUrl, "dreame.0.-112285430.status.status") { mowerStatus = it }
+            delay(30_000)
         }
     }
-
-    val statusCode = mowerStatus?.toInt()
-    val statusLabel = when (statusCode) {
-        1, 3 -> "Mäht gerade"
+    val status = when (mowerStatus?.toInt()) {
+        1, 3, 12 -> "Mäht gerade"
         2 -> "Bereit"
         4 -> "Pausiert"
         5 -> "Fährt zur Ladestation"
         6 -> "Lädt"
         7 -> "Störung"
         8 -> "Regenpause"
-        9 -> "Initialisiert"
-        10 -> "Verlässt Ladestation"
-        11 -> "Kartierung"
-        12 -> "Kantenmähen"
         13 -> "Akku vollständig geladen"
-        14 -> "Aktualisierung"
-        15 -> "Positionswechsel"
-        16 -> "Navigation"
+        else -> "Status wird geladen"
+    }
+    CardBlock(panel, text, "MOVA 1000", "Mähroboter · Steuerung und Status öffnen", Icons.Default.Park, action = onOpen) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(92.dp).clip(RoundedCornerShape(20.dp)).background(Color(0xFFDAEBD9)), contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Park, contentDescription = "MOVA 1000 Mähroboter", tint = Color(0xFF287A42), modifier = Modifier.size(58.dp))
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(status, color = if (mowerStatus?.toInt() in listOf(1,3,12)) Green else text, fontWeight = FontWeight.SemiBold)
+                Text(if (connected) "ioBroker verbunden" else "Nicht verbunden", color = Muted, fontSize = 12.sp)
+                Text("Akku: ${battery?.let { "${it.toInt()} %" } ?: "—"}", color = text, fontSize = 13.sp)
+                Text("Zur Mähersteuerung  ›", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
+    var battery by remember { mutableStateOf<Double?>(null) }
+    var mowerStatus by remember { mutableStateOf<Double?>(null) }
+    var bladeHealth by remember { mutableStateOf<Double?>(null) }
+    var maintenanceHealth by remember { mutableStateOf<Double?>(null) }
+    var commandMessage by remember { mutableStateOf<String?>(null) }
+    var commandBusy by remember { mutableStateOf(false) }
+    var zones by remember { mutableStateOf(listOf<Pair<Int, Pair<String, Double>>>()) }
+    var selectedZones by remember { mutableStateOf(setOf<Int>()) }
+    LaunchedEffect(serverUrl, connected) {
+        if (!connected) {
+            battery = null; mowerStatus = null; bladeHealth = null; maintenanceHealth = null; zones = emptyList()
+        } else while (true) {
+            client.getNumericState(serverUrl, "dreame.0.-112285430.status.battery-level") { battery = it }
+            client.getNumericState(serverUrl, "dreame.0.-112285430.status.status") { mowerStatus = it }
+            client.getNumericState(serverUrl, "dreame.0.-112285430.status.blade-health") { bladeHealth = it }
+            client.getNumericState(serverUrl, "dreame.0.-112285430.status.robot-maintenance-health") { maintenanceHealth = it }
+            val loaded = java.util.Collections.synchronizedList(mutableListOf<Pair<Int, Pair<String, Double>>>())
+            var remaining = 4
+            for (zoneId in 1..4) {
+                val prefix = "dreame.0.-112285430.map.slot0.zone${zoneId}"
+                client.getTextState(serverUrl, "$prefix.name") { name ->
+                    client.getNumericState(serverUrl, "$prefix.area") { area ->
+                        if (area != null && area > 0.0) loaded.add(zoneId to ((name ?: "Zone $zoneId") to area))
+                        remaining--
+                        if (remaining == 0) {
+                            zones = loaded.sortedBy { it.first }
+                            val valid = loaded.map { it.first }.toSet()
+                            selectedZones = selectedZones.intersect(valid).ifEmpty { valid.take(1).toSet() }
+                        }
+                    }
+                }
+            }
+            delay(30_000)
+        }
+    }
+    val statusCode = mowerStatus?.toInt()
+    val statusLabel = when (statusCode) {
+        1, 3, 12 -> "Mäht gerade"
+        2 -> "Bereit"
+        4 -> "Pausiert"
+        5 -> "Fährt zur Ladestation"
+        6 -> "Lädt"
+        7 -> "Störung"
+        8 -> "Regenpause"
+        13 -> "Akku vollständig geladen"
         else -> "Status nicht verfügbar"
     }
-    val mowing = statusCode == 1 || statusCode == 3 || statusCode == 12
-    val paused = statusCode == 4
-    val canStart = connected && (statusCode == 2 || statusCode == 13)
-    val canPause = connected && mowing
-    val canStop = connected && (mowing || paused)
-    val canDock = connected && statusCode != null && statusCode != 5 && statusCode != 6 && statusCode != 13
-
-    CardBlock(panel, text, "MOVA 1000", "Mähroboter · Dreame-Adapter", Icons.Default.Park) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(statusLabel, color = if (statusCode == 7) Color(0xFFD62828) else if (mowing) Green else text, fontWeight = FontWeight.SemiBold)
-                Text(if (connected) "ioBroker verbunden" else "Keine Verbindung zu ioBroker", color = Muted, fontSize = 11.sp)
+    val mowing = statusCode in listOf(1, 3, 12)
+    val canDock = connected && statusCode != null && statusCode !in listOf(5, 6, 13)
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }
+            Text("MOVA 1000", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+        }
+        CardBlock(panel, text, "MOVA 1000", "Gerätestatus", Icons.Default.Park) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(112.dp).clip(RoundedCornerShape(22.dp)).background(Color(0xFFDAEBD9)), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Default.Park, "MOVA 1000", tint = Color(0xFF287A42), modifier = Modifier.size(72.dp))
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(statusLabel, color = if (mowing) Green else text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text(if (connected) "ioBroker verbunden" else "Keine Verbindung", color = Muted, fontSize = 12.sp)
+                    Text("Akku: ${battery?.let { "${it.toInt()} %" } ?: "—"}", color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                }
             }
-            Column(horizontalAlignment = Alignment.End) {
-                Text(battery?.let { "${it.toInt()} %" } ?: "—", color = text, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("Akku", color = Muted, fontSize = 10.sp)
+            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }
+        }
+        CardBlock(panel, text, "Mähzonen", "Eine oder mehrere Zonen auswählen und gezielt starten", Icons.Default.Map) {
+            if (!connected) Text("Bitte zuerst die ioBroker-Verbindung herstellen.", color = Muted)
+            else if (zones.isEmpty()) Text("Zonen werden geladen. Bitte kurz warten.", color = Muted)
+            zones.forEach { (id, info) ->
+                Row(Modifier.fillMaxWidth().clickable {
+                    selectedZones = if (id in selectedZones) selectedZones - id else selectedZones + id
+                }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = id in selectedZones, onCheckedChange = { checked -> selectedZones = if (checked) selectedZones + id else selectedZones - id })
+                    Column(Modifier.weight(1f)) {
+                        Text(info.first, color = text, fontWeight = FontWeight.SemiBold)
+                        Text("Zone $id · ${String.format(java.util.Locale.GERMANY, "%.1f", info.second)} m²", color = Muted, fontSize = 12.sp)
+                    }
+                }
+            }
+            Button(onClick = {
+                commandBusy = true; commandMessage = null
+                client.setTextState(serverUrl, "dreame.0.-112285430.remote.mow-zone", selectedZones.sorted().joinToString(",")) { ok, msg ->
+                    commandBusy = false; commandMessage = if (ok) "Mähbefehl für Zone(n) ${selectedZones.sorted().joinToString(", ")} gesendet" else msg
+                }
+            }, enabled = connected && selectedZones.isNotEmpty() && !commandBusy && !mowing, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Zone(n) starten")
+            }
+            commandMessage?.let { Text(it, color = Muted, fontSize = 12.sp) }
+        }
+        CardBlock(panel, text, "Steuerung", "Mähvorgang und Ladestation", Icons.Default.Gamepad) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.pause-mow", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Pausebefehl gesendet" else msg } }, enabled = connected && mowing && !commandBusy, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Pause, null); Text("Pause") }
+                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.stop-mow", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Stoppbefehl gesendet" else msg } }, enabled = connected && (mowing || statusCode == 4) && !commandBusy, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Stop, null); Text("Stop") }
+                OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.start-charge", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Rückkehrbefehl gesendet" else msg } }, enabled = canDock && !commandBusy, modifier = Modifier.weight(1f)) { Icon(Icons.Default.Home, null); Text("Laden") }
             }
         }
-        battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth()) }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = {
-                commandBusy = true
-                commandMessage = null
-                client.setState(serverUrl, "dreame.0.-112285430.remote.start-mow", true) { ok, message ->
-                    commandBusy = false
-                    commandMessage = if (ok) "Startbefehl gesendet" else message
-                }
-            }, enabled = canStart && !commandBusy, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(4.dp)); Text("Start")
-            }
-            OutlinedButton(onClick = {
-                commandBusy = true
-                commandMessage = null
-                client.setState(serverUrl, "dreame.0.-112285430.remote.pause-mow", true) { ok, message ->
-                    commandBusy = false
-                    commandMessage = if (ok) "Pausebefehl gesendet" else message
-                }
-            }, enabled = canPause && !commandBusy, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.Pause, null); Spacer(Modifier.width(4.dp)); Text("Pause")
-            }
+        CardBlock(panel, text, "Wartung", "Zustand der Verschleißteile", Icons.Default.Build) {
+            Text("Messerzustand: ${bladeHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
+            Text("Gerätewartung: ${maintenanceHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = {
-                commandBusy = true
-                commandMessage = null
-                client.setState(serverUrl, "dreame.0.-112285430.remote.stop-mow", true) { ok, message ->
-                    commandBusy = false
-                    commandMessage = if (ok) "Stoppbefehl gesendet" else message
-                }
-            }, enabled = canStop && !commandBusy, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.Stop, null); Spacer(Modifier.width(4.dp)); Text("Stop")
-            }
-            OutlinedButton(onClick = {
-                commandBusy = true
-                commandMessage = null
-                client.setState(serverUrl, "dreame.0.-112285430.remote.start-charge", true) { ok, message ->
-                    commandBusy = false
-                    commandMessage = if (ok) "Rückkehrbefehl gesendet" else message
-                }
-            }, enabled = canDock && !commandBusy, modifier = Modifier.weight(1f)) {
-                Icon(Icons.Default.Home, null); Spacer(Modifier.width(4.dp)); Text("Ladestation")
-            }
-        }
-        if (bladeHealth != null || maintenanceHealth != null) {
-            Text(listOfNotNull(bladeHealth?.let { "Klingen: ${it.toInt()} %" }, maintenanceHealth?.let { "Wartung: ${it.toInt()} %" }).joinToString("  ·  "), color = Muted, fontSize = 11.sp)
-        }
-        commandMessage?.let { Text(it, color = Muted, fontSize = 11.sp) }
-        if (paused) Text("Der Adapter stellt keinen eindeutig bezeichneten Fortsetzen-Befehl bereit. Start wird im Pausenzustand deshalb nicht angeboten.", color = Muted, fontSize = 10.sp)
     }
 }
 
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient,
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit,
     onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
 ) {
     if (selectedRoom != null) {
@@ -1292,7 +1333,7 @@ private fun HomeScreen(
     }
     RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
     WeatherForecastCard(city = weatherCity, panel = panel, text = text)
-    MovaMowerCard(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text)
+    MovaHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenMova)
     CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
         if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
         else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
