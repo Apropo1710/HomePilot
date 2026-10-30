@@ -765,7 +765,7 @@ private fun HomePilotApp() {
                             hiddenItems = hiddenItems,
                             onShowHidden = { showHiddenDevices = true },
                             onRequestDeleteRoom = { room -> confirmDeleteRoom = room })
-                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text,
+                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) },
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() },
                             status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
@@ -1968,11 +1968,16 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 }
 
 @Composable
-private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color,
+private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color, onBack: () -> Unit,
     serverUrl: String, onServerUrl: (String) -> Unit, weatherCity: String, onWeatherCity: (String) -> Unit,
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit) {
-    Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        IconButton(onClick = onBack) {
+            Icon(Icons.Default.ArrowBack, contentDescription = "Zurück", tint = Blue)
+        }
+        Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+    }
     CardBlock(panel, text, "Darstellung", "Helles Design standardmäßig", Icons.Default.Palette) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Dunkles Design", color = text, fontWeight = FontWeight.SemiBold); Text("Kann jederzeit umgeschaltet werden", color = Muted, fontSize = 12.sp) }
