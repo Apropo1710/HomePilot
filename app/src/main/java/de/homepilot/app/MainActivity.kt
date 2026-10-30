@@ -18,6 +18,9 @@ import java.net.URL
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -366,6 +369,15 @@ private fun postWaterAlarmNotification(context: Context) {
 private fun HomePilotApp() {
     var dark by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(Tab.HOME) }
+    var displayedTab by remember { mutableStateOf(Tab.HOME) }
+    val pageAlpha = remember { Animatable(1f) }
+    LaunchedEffect(selectedTab) {
+        if (displayedTab != selectedTab) {
+            pageAlpha.animateTo(0f, animationSpec = tween(durationMillis = 90))
+            displayedTab = selectedTab
+            pageAlpha.animateTo(1f, animationSpec = tween(durationMillis = 190))
+        }
+    }
     var tabSwipeDirection by remember { mutableIntStateOf(1) }
     var tabHistory by remember { mutableStateOf(listOf<Tab>()) }
     fun navigateTo(tab: Tab) {
@@ -609,8 +621,9 @@ private fun HomePilotApp() {
                             Icon(Icons.Default.Close, null, tint = Color(0xFFB7791F), modifier = Modifier.size(18.dp))
                         }
                     }
-                    key(selectedTab) {
-                    when (selectedTab) {
+                    Box(Modifier.fillMaxWidth().graphicsLayer { alpha = pageAlpha.value }) {
+                    key(displayedTab) {
+                    when (displayedTab) {
                         Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
@@ -743,6 +756,7 @@ private fun HomePilotApp() {
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
                             onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
+                    }
                     }
                     }
                     if (showConnectionAlert) AlertDialog(
