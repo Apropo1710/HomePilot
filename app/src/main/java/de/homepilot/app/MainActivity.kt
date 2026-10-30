@@ -1973,24 +1973,6 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit) {
     Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    CardBlock(panel, text, "Ausgeblendete Geräte", "Ausgeblendete Geräte wieder einblenden", Icons.Default.VisibilityOff, action = onShowHidden) {
-        Button(onClick = onShowHidden, modifier = Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
-    }
-    CardBlock(panel, text, "Geräteprobleme", "Fehlende Messwerte und bekannte Warnungen prüfen", Icons.Default.HealthAndSafety, action = onOpenHealth) {
-        Button(onClick = onOpenHealth, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety, null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
-    }
-    CardBlock(panel, text, "Darstellung", "Helles Design standardmäßig", Icons.Default.Palette) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text("Dunkles Design", color = text, fontWeight = FontWeight.SemiBold); Text("Kann jederzeit umgeschaltet werden", color = Muted, fontSize = 12.sp) }
-            Switch(checked = dark, onCheckedChange = onDark)
-        }
-    }
-    CardBlock(panel, text, "Ausgeblendete Geräte", "Ausgeblendete Geräte wieder einblenden", Icons.Default.VisibilityOff, action = onShowHidden) {
-        Button(onClick = onShowHidden, modifier = Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
-    }
-    CardBlock(panel, text, "Geräteprobleme", "Fehlende Messwerte und bekannte Warnungen prüfen", Icons.Default.HealthAndSafety, action = onOpenHealth) {
-        Button(onClick = onOpenHealth, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety, null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
-    }
     CardBlock(panel, text, "Darstellung", "Helles Design standardmäßig", Icons.Default.Palette) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Dunkles Design", color = text, fontWeight = FontWeight.SemiBold); Text("Kann jederzeit umgeschaltet werden", color = Muted, fontSize = 12.sp) }
@@ -2002,6 +1984,12 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Button(onClick = onOpenLights, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb, null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
         Button(onClick = onOpenDevices, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices, null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
         Button(onClick = onOpenRooms, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork, null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
+    }
+    CardBlock(panel, text, "Ausgeblendete Geräte", "Ausgeblendete Geräte wieder einblenden", Icons.Default.VisibilityOff, action = onShowHidden) {
+        Button(onClick = onShowHidden, modifier = Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
+    }
+    CardBlock(panel, text, "Geräteprobleme", "Fehlende Messwerte und bekannte Warnungen prüfen", Icons.Default.HealthAndSafety, action = onOpenHealth) {
+        Button(onClick = onOpenHealth, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety, null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
     }
     CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
         OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
