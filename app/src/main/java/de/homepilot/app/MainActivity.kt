@@ -452,7 +452,7 @@ private fun HomePilotApp() {
         connectionStatus = "Verbindung wird aufgebaut …"
         ioClient.connect(serverUrl) { ok, msg ->
             connected = ok
-            connectionStatus = if (ok) msg else "Bitte Verbindung prüfen. $msg"
+            connectionStatus = if (ok) msg else "Verbindung fehlgeschlagen. Bitte VPN prüfen."
             showConnectionAlert = !ok
             if (ok) {
                 ioClient.discoverSwitches(serverUrl, "shelly.0") { found, err ->
@@ -938,13 +938,13 @@ private fun HomePilotApp() {
 @Composable
 private fun Header(dark: Boolean, text: Color, connected: Boolean, status: String, onSettings: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-        Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("HOMEPILOT", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 Icon(if (connected) Icons.Default.CheckCircle else Icons.Default.Cancel, contentDescription = if (connected) "ioBroker verbunden" else "ioBroker nicht verbunden", tint = if (connected) Green else Color(0xFFD62828), modifier = Modifier.size(14.dp))
             }
             Text("Smart Home auf einen Blick", color = if (dark) Color(0xFFB2C1D0) else Muted, fontSize = 13.sp)
-            if (!connected && status.startsWith("Bitte Verbindung prüfen")) Text(status, color = Color(0xFFD62828), fontSize = 11.sp, maxLines = 2)
+            if (!connected && status.startsWith("Verbindung fehlgeschlagen")) Text("Verbindung fehlgeschlagen. Bitte VPN prüfen.", color = Color(0xFFD62828), fontSize = 11.sp, maxLines = 2)
         }
         IconButton(onClick = onSettings, modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(if (dark) Color(0xFF1B2734) else Color.White)) {
             Icon(Icons.Default.Settings, contentDescription = "Einstellungen", tint = text)
