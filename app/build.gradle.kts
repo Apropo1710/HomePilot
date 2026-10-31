@@ -12,8 +12,8 @@ android {
         applicationId = "de.homepilot.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 75
-        versionName = "1.29.17"
+        versionCode = 76
+        versionName = "1.29.18"
     }
 
     signingConfigs {

@@ -174,7 +174,7 @@ private class IoBrokerClient {
     fun discoverSwitches(baseUrl: String, adapter: String, callback: (List<DeviceItem>, String?) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(emptyList(), e.message); return }
         val pattern = if (adapter == "tuya") "tuya.*" else "$adapter.*"
-        client.emit("getForeignObjects", pattern, null, IoBrokerAck { args ->
+        client.emit("getForeignObjects", pattern, "state", IoBrokerAck { args ->
             val error = args.firstOrNull()
             val objects = args.getOrNull(1) as? JSONObject
             if (error != null || objects == null) {
@@ -245,6 +245,35 @@ private class IoBrokerClient {
                     }
                 }
             }
+        })
+    }
+
+    fun inspectAdapterStates(baseUrl: String, adapter: String, callback: (Set<String>, String?) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) {
+            callback(emptySet(), e.message ?: "Keine WebSocket-Verbindung")
+            return
+        }
+        client.emit("getForeignObjects", "$adapter.*", "state", IoBrokerAck { args ->
+            val error = args.firstOrNull()
+            val raw = args.getOrNull(1)
+            val objects = when (raw) {
+                is JSONObject -> raw
+                is String -> try { JSONObject(raw) } catch (_: Exception) { null }
+                is Map<*, *> -> JSONObject().apply {
+                    raw.forEach { (key, value) -> if (key is String) put(key, value) }
+                }
+                else -> null
+            }
+            if (error != null || objects == null) {
+                val detail = error?.toString()
+                    ?: "Unerwartete Antwort auf $adapter-Objektabfrage (Argumente: ${args.size}, Typ: ${raw?.javaClass?.simpleName ?: "null"})"
+                post { callback(emptySet(), detail) }
+                return@IoBrokerAck
+            }
+            val ids = mutableSetOf<String>()
+            val iterator = objects.keys()
+            while (iterator.hasNext()) ids.add(iterator.next())
+            post { callback(ids, null) }
         })
     }
 
@@ -461,8 +490,25 @@ private fun HomePilotApp() {
             connectionStatus = if (ok) msg else "Verbindung fehlgeschlagen. Bitte VPN prüfen."
             showConnectionAlert = !ok
             if (ok) {
+                ioClient.inspectAdapterStates(serverUrl, "dreame.0") { movaIds, movaError ->
+                    val expectedMovaIds = listOf(
+                        "dreame.0.-112285430.status.battery-level",
+                        "dreame.0.-112285430.status.status",
+                        "dreame.0.-112285430.status.blade-health",
+                        "dreame.0.-112285430.status.robot-maintenance-health",
+                        "dreame.0.-112285430.remote.mow-zone",
+                        "dreame.0.-112285430.remote.pause-mow",
+                        "dreame.0.-112285430.remote.stop-mow",
+                        "dreame.0.-112285430.remote.start-charge"
+                    )
+                    val foundMova = expectedMovaIds.count { it in movaIds }
+                    val suffix = if (movaError == null) " · MOVA-Datenpunkte: $foundMova/${expectedMovaIds.size}"
+                        else " · MOVA-Prüfung: $movaError"
+                    connectionStatus = connectionStatus.substringBefore(" · MOVA-") + suffix
+                }
                 ioClient.discoverSwitches(serverUrl, "shelly.0") { found, err ->
                     if (err == null) {
+                        connectionStatus = "WebSocket verbunden · Shelly-Geräte: ${found.size}" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
                         devices.clear()
                         devices.addAll(found.filter { it.stateId !in hiddenIds })
                         val waterId = "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Switch"
@@ -479,7 +525,7 @@ private fun HomePilotApp() {
                         }
                         applyCustomConfig()
                         refreshStates(ioClient, serverUrl, devices, lights)
-                    } else connectionStatus = "Verbindung steht, Shelly-Geräte konnten aber nicht geladen werden. Bitte prüfen: $err"
+                    } else connectionStatus = "WebSocket verbunden, Shelly-Objektabfrage fehlgeschlagen: $err" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
                 }
                 ioClient.discoverSwitches(serverUrl, "tuya") { tuyaFound, tuyaErr ->
                     if (manualDeviceSearch) {
