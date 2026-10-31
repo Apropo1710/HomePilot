@@ -464,6 +464,7 @@ private fun HomePilotApp() {
     var rooms by remember { mutableStateOf(prefs.getString("rooms", "Wohnzimmer|Küche|Schlafzimmer|Bad|Hauswirtschaft|Nicht zugeordnet")!!.split("|").toMutableList()) }
     var customNames by remember { mutableStateOf(readStringMap(prefs.getString("deviceNames", "{}"))) }
     var deviceRooms by remember { mutableStateOf(readStringMap(prefs.getString("deviceRooms", "{}"))) }
+    var deviceKinds by remember { mutableStateOf(readStringMap(prefs.getString("deviceKinds", "{}"))) }
     var hiddenIds by remember { mutableStateOf(prefs.getStringSet("hiddenDevices", emptySet())?.toSet() ?: emptySet()) }
     var importedLightIds by remember { mutableStateOf(prefs.getStringSet("importedLights", emptySet())?.toSet() ?: emptySet()) }
     var hiddenItems by remember { mutableStateOf(readHiddenItems(prefs.getString("hiddenDeviceItems", "[]"))) }
@@ -486,20 +487,23 @@ private fun HomePilotApp() {
     var editDevice by remember { mutableStateOf<DeviceItem?>(null) }
     var editName by remember { mutableStateOf("") }
     var editRoom by remember { mutableStateOf("Nicht zugeordnet") }
+    var editKind by remember { mutableStateOf("plug") }
+    val editableDeviceKinds = listOf("Steckdose" to "plug", "Lichtschalter" to "relay", "Lampe" to "light", "Sonstiges" to "device")
     var scanStatus by remember { mutableStateOf("") }
     fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply() }
     fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply() }
     fun persistDeviceRooms() { prefs.edit().putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString()).apply() }
+    fun persistDeviceKinds() { prefs.edit().putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString()).apply() }
     fun persistHiddenItems() { prefs.edit().putString("hiddenDeviceItems", writeHiddenItems(hiddenItems)).apply() }
     fun applyCustomConfig() {
         for (i in devices.indices) {
             val item = devices[i]
             val id = item.stateId ?: continue
-            devices[i] = item.copy(name = customNames[id] ?: item.name, room = deviceRooms[id] ?: when { id.contains("6EDB6C") -> "Wohnzimmer"; id.contains("376CC3") -> "Hauswirtschaft"; else -> "Nicht zugeordnet" })
+            devices[i] = item.copy(name = customNames[id] ?: item.name, room = deviceRooms[id] ?: when { id.contains("6EDB6C") -> "Wohnzimmer"; id.contains("376CC3") -> "Hauswirtschaft"; else -> "Nicht zugeordnet" }, kind = deviceKinds[id] ?: item.kind)
         }
         for (i in lights.indices) {
             val item = lights[i]; val id = item.stateId ?: continue
-            lights[i] = item.copy(name = customNames[id] ?: item.name, room = deviceRooms[id] ?: "Nicht zugeordnet")
+            lights[i] = item.copy(name = customNames[id] ?: item.name, room = deviceRooms[id] ?: "Nicht zugeordnet", kind = deviceKinds[id] ?: item.kind)
         }
     }
     var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "ws://192.168.178.54:8084").trim().trimEnd('/').takeIf { it.startsWith("ws://") || it.startsWith("wss://") } ?: "ws://192.168.178.54:8084") }
@@ -700,7 +704,7 @@ private fun HomePilotApp() {
                         })
                         Tab.MOVA -> MovaDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
-                            onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
+                            onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
                             onSetDefaultBrightness = { item, percent -> prefs.edit().putInt("lightOnBrightness:" + (item.stateId ?: item.name), percent).apply() },
                             defaultBrightness = { item -> prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100) },
@@ -737,7 +741,7 @@ private fun HomePilotApp() {
                             }
                         })
                         Tab.DEVICES -> DevicesScreen(devices, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
-                            onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
+                            onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind },
                             onToggle = { item, value ->
                                 val id = item.stateId
                                 if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
@@ -778,7 +782,7 @@ private fun HomePilotApp() {
                                     }
                                 }
                             },
-                            onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
+                            onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
                         Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
@@ -810,7 +814,7 @@ private fun HomePilotApp() {
                             defaultBrightness = { item -> prefs.getInt("lightOnBrightness:" + (item.stateId ?: item.name), 100) },
                             onSelectRoom = { selectedRoom = it }, onAddRoom = { roomNameInput = ""; showRoomDialog = true },
                             onRenameRoom = { old, new -> if (new.isNotBlank() && new !in rooms) { rooms = rooms.map { if (it == old) new.trim() else it }.toMutableList(); persistRooms(); devices.indices.forEach { i -> if (devices[i].room == old) devices[i] = devices[i].copy(room = new.trim()) }; lights.indices.forEach { i -> if (lights[i].room == old) lights[i] = lights[i].copy(room = new.trim()) } } },
-                            selectedRoom = selectedRoom, onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room },
+                            selectedRoom = selectedRoom, onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind },
                             hiddenItems = hiddenItems,
                             onShowHidden = { showHiddenDevices = true },
                             onRequestDeleteRoom = { room -> confirmDeleteRoom = room })
@@ -837,7 +841,14 @@ private fun HomePilotApp() {
                         }
                     )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true, trailingIcon = { InputConfirmIcon() }) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
-                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() }); Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; persistNames(); persistDeviceRooms(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
+                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() }); Text("Gerätetyp")
+                editableDeviceKinds.forEach { (label, kind) ->
+                    Row(Modifier.fillMaxWidth().clickable { editKind = kind }, verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = editKind == kind, onClick = { editKind = kind })
+                        Text(label)
+                    }
+                }
+                Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; deviceKinds = deviceKinds.toMutableMap().apply { put(id, editKind) }; persistNames(); persistDeviceRooms(); persistDeviceKinds(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom, kind = editKind); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom, kind = editKind) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
                     if (confirmRemoveDevice != null) AlertDialog(
                         onDismissRequest = { confirmRemoveDevice = null },
                         title = { Text("Gerät entfernen?") },
