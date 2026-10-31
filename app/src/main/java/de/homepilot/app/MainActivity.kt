@@ -1042,7 +1042,14 @@ private fun HomePilotApp() {
                     listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY, Tab.SETTINGS).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
-                            onClick = { navigateTo(tab) },
+                            onClick = {
+                                if (tab == Tab.HOME) {
+                                    selectedRoom = null
+                                    tabHistory = emptyList()
+                                    tabSwipeDirection = -1
+                                    selectedTab = Tab.HOME
+                                } else navigateTo(tab)
+                            },
                             icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
                             label = { Text(tab.label, fontSize = 9.sp, maxLines = 1) },
                             alwaysShowLabel = true
