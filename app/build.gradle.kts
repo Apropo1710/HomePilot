@@ -12,7 +12,7 @@ android {
         applicationId = "de.homepilot.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 73
+        versionCode = 74
         versionName = "1.29.16"
     }
 
