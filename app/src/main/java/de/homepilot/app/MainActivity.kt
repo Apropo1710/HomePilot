@@ -488,7 +488,9 @@ private fun HomePilotApp() {
     var editName by remember { mutableStateOf("") }
     var editRoom by remember { mutableStateOf("Nicht zugeordnet") }
     var editKind by remember { mutableStateOf("plug") }
-    val editableDeviceKinds = listOf("Steckdose" to "plug", "Lichtschalter" to "relay", "Lampe" to "light", "Sonstiges" to "device")
+    var editKindExpanded by remember { mutableStateOf(false) }
+    var editRoomExpanded by remember { mutableStateOf(false) }
+    val editableDeviceKinds = listOf("Steckdose" to "plug", "Lampe" to "light", "Sonstiges" to "device")
     var scanStatus by remember { mutableStateOf("") }
     fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply() }
     fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply() }
@@ -841,14 +843,33 @@ private fun HomePilotApp() {
                         }
                     )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true, trailingIcon = { InputConfirmIcon() }) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
-                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() }); Text("Gerätetyp")
-                editableDeviceKinds.forEach { (label, kind) ->
-                    Row(Modifier.fillMaxWidth().clickable { editKind = kind }, verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(selected = editKind == kind, onClick = { editKind = kind })
-                        Text(label)
+                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() })
+                Text("Gerätetyp")
+                Box {
+                    OutlinedButton(onClick = { editKindExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(editableDeviceKinds.firstOrNull { it.second == editKind }?.first ?: "Sonstiges", modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(expanded = editKindExpanded, onDismissRequest = { editKindExpanded = false }, modifier = Modifier.heightIn(max = 260.dp)) {
+                        editableDeviceKinds.forEach { (label, kind) ->
+                            DropdownMenuItem(text = { Text(label) }, onClick = { editKind = kind; editKindExpanded = false })
+                        }
                     }
                 }
-                Text("Raum"); rooms.forEach { room -> Row(Modifier.fillMaxWidth().clickable { editRoom = room }, verticalAlignment = Alignment.CenterVertically) { RadioButton(selected = editRoom == room, onClick = { editRoom = room }); Text(room) } } } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; deviceKinds = deviceKinds.toMutableMap().apply { put(id, editKind) }; persistNames(); persistDeviceRooms(); persistDeviceKinds(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom, kind = editKind); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom, kind = editKind) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
+                Text("Raum")
+                Box {
+                    OutlinedButton(onClick = { editRoomExpanded = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text(editRoom, modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                    }
+                    DropdownMenu(expanded = editRoomExpanded, onDismissRequest = { editRoomExpanded = false }, modifier = Modifier.heightIn(max = 300.dp)) {
+                        rooms.forEach { room ->
+                            DropdownMenuItem(text = { Text(room) }, onClick = { editRoom = room; editRoomExpanded = false })
+                        }
+                    }
+                }
+            } }, confirmButton = { TextButton(onClick = { val item = editDevice!!; val id = item.stateId; if (id != null) { customNames = customNames.toMutableMap().apply { put(id, editName.trim().ifBlank { item.name }) }; deviceRooms = deviceRooms.toMutableMap().apply { put(id, editRoom) }; deviceKinds = deviceKinds.toMutableMap().apply { put(id, editKind) }; persistNames(); persistDeviceRooms(); persistDeviceKinds(); val di = devices.indexOfFirst { it.stateId == id }; if (di >= 0) devices[di] = devices[di].copy(name = customNames[id] ?: item.name, room = editRoom, kind = editKind); val li = lights.indexOfFirst { it.stateId == id }; if (li >= 0) lights[li] = lights[li].copy(name = customNames[id] ?: item.name, room = editRoom, kind = editKind) }; editDevice = null }) { Text("Speichern") } }, dismissButton = { Row { TextButton(onClick = { confirmRemoveDevice = editDevice; editDevice = null }) { Text("Aus HomePilot entfernen") }; TextButton(onClick = { editDevice = null }) { Text("Abbrechen") } } })
                     if (confirmRemoveDevice != null) AlertDialog(
                         onDismissRequest = { confirmRemoveDevice = null },
                         title = { Text("Gerät entfernen?") },
@@ -1779,7 +1800,7 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
                 }
             }
             roomItems.forEach { item ->
-                CardBlock(panel, text, item.name, item.subtitle, if (item.name == "Wasser") Icons.Default.WaterDrop else Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
+                CardBlock(panel, text, item.name, item.subtitle, when { item.name == "Wasser" -> Icons.Default.WaterDrop; item.kind == "light" -> Icons.Default.Lightbulb; item.kind == "device" -> Icons.Default.Devices; else -> Icons.Default.Power }, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text, fontWeight = FontWeight.SemiBold)
