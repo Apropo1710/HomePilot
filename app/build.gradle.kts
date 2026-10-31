@@ -12,8 +12,8 @@ android {
         applicationId = "de.homepilot.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 74
-        versionName = "1.29.16"
+        versionCode = 75
+        versionName = "1.29.17"
     }
 
     signingConfigs {
@@ -61,7 +61,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("io.coil-kt:coil-compose:2.7.0")
-    implementation("io.socket:socket.io-client:2.1.1")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
     implementation("androidx.core:core-ktx:1.13.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
