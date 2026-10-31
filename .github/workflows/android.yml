@@ -91,7 +91,7 @@ jobs:
           name: HomePilot – neueste Version
           body: |
             HomePilot.apk ist die normale HomePilot-Version.
-            HomePilot-Version: 1.29.14
+            HomePilot-Version: 1.29.15
           files: |
             HomePilot.apk
           overwrite_files: true

@@ -469,7 +469,7 @@ private fun HomePilotApp() {
             lights[i] = item.copy(name = customNames[id] ?: item.name, room = deviceRooms[id] ?: "Nicht zugeordnet")
         }
     }
-    var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "http://192.168.178.54:8087").let { saved -> if (saved.trimEnd('/').endsWith(":8082")) saved.trimEnd('/').removeSuffix(":8082") + ":8087" else saved }) }
+    var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "http://192.168.178.54:8087").let { saved -> if (saved.trimEnd('/').endsWith(":8082") || saved.trimEnd('/').endsWith(":8087")) saved.trimEnd('/').substringBeforeLast(":") + ":8085" else saved }) }
     var weatherCity by remember { mutableStateOf((prefs.getString("weatherCity", "Kaan") ?: "Kaan").let { if (it.equals("56751 Kaan", ignoreCase = true)) "Kaan" else it }) }
         var connectionStatus by remember { mutableStateOf("Nicht verbunden") }
     var connected by remember { mutableStateOf(false) }
