@@ -1356,8 +1356,8 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             }
         }
         CardBlock(panel, text, "Wartung", "Zustand der Verschleißteile und Wartungspunkt", Icons.Default.Build) {
-            Text("Messerzustand: \${bladeHealth?.let { "\${it.toInt()} %" } ?: "—"}", color = text)
-            Text("Gerätewartung: \${maintenanceHealth?.let { "\${it.toInt()} %" } ?: "—"}", color = text)
+            Text("Messerzustand: ${bladeHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
+            Text("Gerätewartung: ${maintenanceHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
             Spacer(Modifier.height(6.dp))
             Text("Fährt den in der MOVA-App gespeicherten Wartungspunkt an.", color = Muted, fontSize = 12.sp)
             OutlinedButton(
