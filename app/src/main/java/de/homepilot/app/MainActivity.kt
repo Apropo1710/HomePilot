@@ -1025,8 +1025,24 @@ private fun weatherDescription(code: Int): String = when (code) {
 }
 private fun fetchWeather(city: String): Pair<String, List<ForecastDay>> {
     fun getJson(url: String): JSONObject {
-        val c = (URL(url).openConnection() as HttpURLConnection).apply { connectTimeout = 8000; readTimeout = 8000; requestMethod = "GET"; setRequestProperty("Accept", "application/json") }
-        try { if (c.responseCode !in 200..299) throw IllegalStateException("Wetterdienst nicht erreichbar"); return JSONObject(c.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }) } finally { c.disconnect() }
+        val connection: java.net.HttpURLConnection =
+            (java.net.URL(url).openConnection() as java.net.HttpURLConnection).apply {
+                connectTimeout = 8000
+                readTimeout = 8000
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/json")
+            }
+        try {
+            if (connection.responseCode !in 200..299) {
+                throw IllegalStateException("Wetterdienst nicht erreichbar")
+            }
+            val responseText: String = connection.inputStream
+                .bufferedReader(Charsets.UTF_8)
+                .use { reader: java.io.BufferedReader -> reader.readText() }
+            return JSONObject(responseText)
+        } finally {
+            connection.disconnect()
+        }
     }
     // German postcodes and town names must be resolved in Germany, not globally.
     val entered = city.trim()
