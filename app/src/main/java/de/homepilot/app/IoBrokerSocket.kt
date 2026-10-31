@@ -27,6 +27,8 @@ internal class IoBrokerSocket(
         .build()
     private val ids = AtomicInteger(0)
     private val callbacks = ConcurrentHashMap<Int, (Array<Any?>) -> Unit>()
+    private val callbackTimeouts = ConcurrentHashMap<Int, Runnable>()
+    private val callbackTimeoutMs = 12_000L
     private val handlers = ConcurrentHashMap<String, MutableList<(Array<Any?>) -> Unit>>()
     @Volatile private var webSocket: WebSocket? = null
     @Volatile private var isConnected = false
@@ -102,6 +104,7 @@ internal class IoBrokerSocket(
                     3 -> {
                         val id = frame.optInt(1, -1)
                         val args = frame.optJSONArray(3).toAnyArray()
+                        callbackTimeouts.remove(id)?.let { main.removeCallbacks(it) }
                         callbacks.remove(id)?.invoke(args)
                     }
                 }
@@ -142,6 +145,8 @@ internal class IoBrokerSocket(
         isConnected = false
         readyReceived = false
         main.removeCallbacks(pingTask)
+        callbackTimeouts.values.toList().forEach { main.removeCallbacks(it) }
+        callbackTimeouts.clear()
         callbacks.values.toList().forEach { it(arrayOf("disconnected")) }
         callbacks.clear()
         if (wasReady) notifyHandlers("disconnect", emptyArray())
@@ -163,11 +168,21 @@ internal class IoBrokerSocket(
         if (ack != null) {
             frame.put(3).put(id).put(event).put(JSONArray(args))
             callbacks[id] = ack.callback
+            val timeout = Runnable {
+                val pending = callbacks.remove(id)
+                callbackTimeouts.remove(id)
+                pending?.invoke(arrayOf("timeout: ioBroker antwortet auf $event nicht innerhalb von 12 Sekunden"))
+            }
+            callbackTimeouts[id] = timeout
+            main.postDelayed(timeout, callbackTimeoutMs)
         } else {
             frame.put(0).put(id).put(event)
             if (args.isNotEmpty()) frame.put(JSONArray(args))
         }
-        if (webSocket?.send(frame.toString()) != true && ack != null) callbacks.remove(id)
+        if (webSocket?.send(frame.toString()) != true && ack != null) {
+            callbackTimeouts.remove(id)?.let { main.removeCallbacks(it) }
+            callbacks.remove(id)?.invoke(arrayOf("send failed: WebSocket konnte $event nicht senden"))
+        }
     }
 
     fun connected(): Boolean = isConnected
@@ -177,6 +192,8 @@ internal class IoBrokerSocket(
         isConnected = false
         readyReceived = false
         main.removeCallbacks(pingTask)
+        callbackTimeouts.values.toList().forEach { main.removeCallbacks(it) }
+        callbackTimeouts.clear()
         callbacks.clear()
         webSocket?.close(1000, "Client disconnect")
         webSocket = null

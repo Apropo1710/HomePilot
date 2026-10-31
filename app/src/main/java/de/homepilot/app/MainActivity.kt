@@ -506,7 +506,7 @@ private fun HomePilotApp() {
         connectionStatus = "Verbindung wird aufgebaut …"
         ioClient.connect(serverUrl) { ok, msg ->
             connected = ok
-            connectionStatus = if (ok) msg else "Verbindung fehlgeschlagen. Bitte VPN prüfen."
+            connectionStatus = if (ok) "WebSocket verbunden; prüfe jetzt Shelly- und MOVA-Objekte …" else "Verbindung fehlgeschlagen: $msg"
             showConnectionAlert = !ok
             if (ok) {
                 ioClient.inspectAdapterStates(serverUrl, "dreame.0") { movaIds, movaError ->
