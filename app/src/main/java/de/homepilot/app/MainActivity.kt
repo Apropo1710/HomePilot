@@ -517,7 +517,7 @@ private fun HomePilotApp() {
         connectionStatus = "Verbindung wird aufgebaut …"
         ioClient.connect(serverUrl) { ok, msg ->
             connected = ok
-            connectionStatus = if (ok) "WebSocket verbunden; prüfe jetzt Shelly- und MOVA-Objekte …" else "Verbindung fehlgeschlagen: $msg"
+            connectionStatus = if (ok) "WebSocket-Verbindung zu ioBroker hergestellt" else "Verbindung fehlgeschlagen: $msg"
             showConnectionAlert = !ok
             if (ok) {
                 ioClient.inspectAdapterStates(serverUrl, "dreame.0") { movaIds, movaError ->
@@ -531,14 +531,12 @@ private fun HomePilotApp() {
                         "dreame.0.-112285430.remote.stop-mow",
                         "dreame.0.-112285430.remote.start-charge"
                     )
-                    val foundMova = expectedMovaIds.count { it in movaIds }
-                    val suffix = if (movaError == null) " · MOVA-Datenpunkte: $foundMova/${expectedMovaIds.size}"
-                        else " · MOVA-Prüfung: $movaError"
-                    connectionStatus = connectionStatus.substringBefore(" · MOVA-") + suffix
+                    if (movaError != null) {
+                        connectionStatus = "$connectionStatus · MOVA-Prüfung fehlgeschlagen: $movaError"
+                    }
                 }
                 ioClient.discoverSwitches(serverUrl, "shelly.0") { found, err ->
                     if (err == null) {
-                        connectionStatus = "WebSocket verbunden · Shelly-Geräte: ${found.size} · ${ioClient.objectQueryDiagnostic("shelly.0")}" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
                         devices.clear()
                         devices.addAll(found.filter { it.stateId !in hiddenIds })
                         val waterId = "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Switch"
@@ -555,7 +553,7 @@ private fun HomePilotApp() {
                         }
                         applyCustomConfig()
                         refreshStates(ioClient, serverUrl, devices, lights)
-                    } else connectionStatus = "WebSocket verbunden · Shelly-Objektabfrage fehlgeschlagen: $err" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
+                    } else connectionStatus = "$connectionStatus · Shelly-Objektabfrage fehlgeschlagen: $err"
                 }
                 ioClient.discoverSwitches(serverUrl, "tuya") { tuyaFound, tuyaErr ->
                     if (manualDeviceSearch) {
