@@ -129,7 +129,7 @@ private class IoBrokerClient {
                 val candidates = mutableListOf<DeviceItem>()
                 val allIds = mutableListOf<String>()
                 val keyIterator = objects.keys()
-                while (keyIterator.hasNext()) allIds.add(keyIterator.next())
+                while (keyIterator.hasNext()) allIds.add(keyIterator.next().toString())
                 for (id in allIds) {
                     val obj = objects.optJSONObject(id) ?: continue
                     val common = obj.optJSONObject("common") ?: continue
@@ -1868,7 +1868,7 @@ private fun readHiddenItems(raw: String?): List<DeviceItem> = try {
 } catch (_: Exception) { emptyList() }
 
 private fun readStringMap(raw: String?): Map<String, String> = try {
-    val obj = JSONObject(raw ?: "{}"); val result = mutableMapOf<String, String>(); val keys = obj.keys(); while (keys.hasNext()) { val key = keys.next(); result[key] = obj.optString(key) }; result
+    val obj = JSONObject(raw ?: "{}"); val result = mutableMapOf<String, String>(); val keys = obj.keys(); while (keys.hasNext()) { val key = keys.next().toString(); result[key] = obj.optString(key) }; result
 } catch (_: Exception) { emptyMap() }
 
 private fun updateDeviceState(devices: MutableList<DeviceItem>, lights: MutableList<DeviceItem>, id: String, state: Boolean) {
