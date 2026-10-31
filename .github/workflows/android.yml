@@ -84,6 +84,14 @@ jobs:
       - name: APK für direkten Download vorbereiten
         run: cp app/build/outputs/apk/release/app-release.apk HomePilot.apk
 
+      - name: App-Version für Release auslesen
+        id: app_version
+        run: |
+          VERSION_NAME=$(sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\\1/p' app/build.gradle.kts | head -n 1)
+          test -n "$VERSION_NAME" || { echo "versionName konnte nicht aus app/build.gradle.kts gelesen werden"; exit 1; }
+          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
+          echo "Veröffentlichte HomePilot-Version: $VERSION_NAME"
+
       - name: Neueste APKs als GitHub-Release bereitstellen
         uses: softprops/action-gh-release@v2
         with:
@@ -91,7 +99,7 @@ jobs:
           name: HomePilot – neueste Version
           body: |
             HomePilot.apk ist die normale HomePilot-Version.
-            HomePilot-Version: 1.29.15
+            HomePilot-Version: ${{ steps.app_version.outputs.version }}
           files: |
             HomePilot.apk
           overwrite_files: true
