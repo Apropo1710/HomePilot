@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <!-- HTTP access to the local ioBroker Simple API. -->
+    <!-- Cleartext-Verbindungen werden für die lokale ioBroker-WebSocket-Adresse ws:// benötigt. -->
     <application
         android:usesCleartextTraffic="true"
         android:allowBackup="false"

@@ -502,7 +502,7 @@ private fun HomePilotApp() {
             lights[i] = item.copy(name = customNames[id] ?: item.name, room = deviceRooms[id] ?: "Nicht zugeordnet")
         }
     }
-    var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "ws://192.168.178.54:8084").let { saved -> val clean = saved.trimEnd('/'); when { clean.startsWith("http://") || clean.startsWith("https://") -> "ws://" + clean.substringAfter("://").substringBeforeLast(":") + ":8084"; clean.endsWith(":8085") || clean.endsWith(":8087") || clean.endsWith(":8082") -> "ws://" + clean.substringAfter("://").substringBeforeLast(":") + ":8084"; clean.startsWith("ws://") || clean.startsWith("wss://") -> clean; else -> "ws://192.168.178.54:8084" } }) }
+    var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "ws://192.168.178.54:8084").trim().trimEnd('/').takeIf { it.startsWith("ws://") || it.startsWith("wss://") } ?: "ws://192.168.178.54:8084") }
     var weatherCity by remember { mutableStateOf((prefs.getString("weatherCity", "Kaan") ?: "Kaan").let { if (it.equals("56751 Kaan", ignoreCase = true)) "Kaan" else it }) }
         var connectionStatus by remember { mutableStateOf("Nicht verbunden") }
     var connected by remember { mutableStateOf(false) }
@@ -600,7 +600,7 @@ private fun HomePilotApp() {
                         refreshStates(ioClient, serverUrl, devices, lights)
                     } else {
                         connectionStatus = "Hue-Suche fehlgeschlagen: $err"
-                        if (manualDeviceSearch) scanResultMessage = "Die Hue-Suche ist fehlgeschlagen. Prüfe die ioBroker Simple API und den Adapter hue.0. Details: $err"
+                        if (manualDeviceSearch) scanResultMessage = "Die Hue-Suche ist fehlgeschlagen. Prüfe die WebSocket-Verbindung und den Adapter hue.0. Details: $err"
                     }
                 }
             }
