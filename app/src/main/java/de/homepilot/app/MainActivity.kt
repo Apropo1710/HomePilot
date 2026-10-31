@@ -59,7 +59,7 @@ private val DarkText = Color(0xFFEAF1F8)
 
 private class IoBrokerClient {
     private val mainHandler = Handler(Looper.getMainLooper())
-    @Volatile private var socket: io.socket.client.Socket? = null
+    @Volatile private var socket: IoBrokerSocket? = null
     @Volatile private var connected = false
     private val stateCache = java.util.concurrent.ConcurrentHashMap<String, JSONObject>()
     private val pendingConnect = java.util.concurrent.CopyOnWriteArrayList<(Boolean, String) -> Unit>()
@@ -81,21 +81,11 @@ private class IoBrokerClient {
             require(address.startsWith("ws://") || address.startsWith("wss://")) {
                 "WebSocket-Adresse muss mit ws:// oder wss:// beginnen"
             }
-            val options = io.socket.client.IO.Options().apply {
-                transports = arrayOf("websocket")
-                reconnection = true
-                reconnectionAttempts = Int.MAX_VALUE
-                reconnectionDelay = 1000
-                reconnectionDelayMax = 10000
-                timeout = 8000
-                query = "key=nokey"
-            }
-            val client = io.socket.client.IO.socket(address, options)
+            val client = IoBrokerSocket(address, "key=nokey&name=homepilot.android")
             socket = client
             var reported = false
-            client.on(io.socket.client.Socket.EVENT_CONNECT) {
-                client.emit("name", "homepilot.android")
-                client.emit("authenticate", io.socket.client.Ack { args ->
+            client.on("connect") {
+                client.emit("authenticate", IoBrokerAck { args ->
                     val ok = args.firstOrNull() as? Boolean ?: false
                     if (!ok) {
                         post { if (!reported) { reported = true; onResult(false, "ioBroker hat die Verbindung nicht authentifiziert.") } }
@@ -103,7 +93,7 @@ private class IoBrokerClient {
                         connected = true
                         client.emit("subscribe", "*")
                         client.emit("subscribeObjects", "*")
-                        client.emit("getState", "shelly.0.SHPLG-S#376CC3#1.Relay0.Switch", io.socket.client.Ack { stateArgs ->
+                        client.emit("getState", "shelly.0.SHPLG-S#376CC3#1.Relay0.Switch", IoBrokerAck { stateArgs ->
                             val err = stateArgs.firstOrNull()
                             val state = stateArgs.getOrNull(1) as? JSONObject
                             if (state != null) stateCache["shelly.0.SHPLG-S#376CC3#1.Relay0.Switch"] = state
@@ -123,10 +113,10 @@ private class IoBrokerClient {
                 val state = args.getOrNull(1) as? JSONObject
                 if (state == null) stateCache.remove(id) else stateCache[id] = state
             }
-            client.on(io.socket.client.Socket.EVENT_DISCONNECT) {
+            client.on("disconnect") {
                 connected = false
             }
-            client.on(io.socket.client.Socket.EVENT_CONNECT_ERROR) { args ->
+            client.on("connect_error") { args ->
                 connected = false
                 val message = args.firstOrNull()?.toString() ?: "Verbindung fehlgeschlagen"
                 post { if (!reported) { reported = true; onResult(false, "WebSocket: $message") } }
@@ -138,12 +128,12 @@ private class IoBrokerClient {
         }
     }
 
-    private fun requireSocket(): io.socket.client.Socket =
+    private fun requireSocket(): IoBrokerSocket =
         socket?.takeIf { connected && it.connected() } ?: throw IllegalStateException("Keine WebSocket-Verbindung zu ioBroker")
 
     fun getState(baseUrl: String, id: String, callback: (Boolean?, String?) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(null, e.message); return }
-        client.emit("getState", id, io.socket.client.Ack { args ->
+        client.emit("getState", id, IoBrokerAck { args ->
             val error = args.firstOrNull()
             val state = args.getOrNull(1) as? JSONObject
             if (state != null) stateCache[id] = state
@@ -161,7 +151,7 @@ private class IoBrokerClient {
 
     fun getTextState(baseUrl: String, id: String, callback: (String?) -> Unit) {
         val client = try { requireSocket() } catch (_: Exception) { callback(null); return }
-        client.emit("getState", id, io.socket.client.Ack { args ->
+        client.emit("getState", id, IoBrokerAck { args ->
             val state = args.getOrNull(1) as? JSONObject
             if (state != null) stateCache[id] = state
             val value = state?.opt("val")
@@ -172,7 +162,7 @@ private class IoBrokerClient {
 
     fun getNumericState(baseUrl: String, id: String, callback: (Double?) -> Unit) {
         val client = try { requireSocket() } catch (_: Exception) { callback(null); return }
-        client.emit("getState", id, io.socket.client.Ack { args ->
+        client.emit("getState", id, IoBrokerAck { args ->
             val state = args.getOrNull(1) as? JSONObject
             if (state != null) stateCache[id] = state
             val raw = state?.opt("val")
@@ -184,7 +174,7 @@ private class IoBrokerClient {
     fun discoverSwitches(baseUrl: String, adapter: String, callback: (List<DeviceItem>, String?) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(emptyList(), e.message); return }
         val pattern = if (adapter == "tuya") "tuya.*" else "$adapter.*"
-        client.emit("getForeignObjects", pattern, null, io.socket.client.Ack { args ->
+        client.emit("getForeignObjects", pattern, null, IoBrokerAck { args ->
             val error = args.firstOrNull()
             val objects = args.getOrNull(1) as? JSONObject
             if (error != null || objects == null) {
@@ -260,7 +250,7 @@ private class IoBrokerClient {
 
     fun setState(baseUrl: String, id: String, value: Boolean, callback: (Boolean, String) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(false, e.message ?: "Nicht verbunden"); return }
-        client.emit("setState", id, JSONObject().put("val", value).put("ack", false), io.socket.client.Ack { args ->
+        client.emit("setState", id, JSONObject().put("val", value).put("ack", false), IoBrokerAck { args ->
             val error = args.firstOrNull()
             post { callback(error == null, if (error == null) "Schaltbefehl gesendet" else "Schalten fehlgeschlagen: $error") }
         })
@@ -276,7 +266,7 @@ private class IoBrokerClient {
 
     private fun setAnyState(id: String, value: Any, success: String, failure: String, callback: (Boolean, String) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(false, e.message ?: "Nicht verbunden"); return }
-        client.emit("setState", id, JSONObject().put("val", value).put("ack", false), io.socket.client.Ack { args ->
+        client.emit("setState", id, JSONObject().put("val", value).put("ack", false), IoBrokerAck { args ->
             val error = args.firstOrNull()
             post { callback(error == null, if (error == null) success else "$failure: $error") }
         })
