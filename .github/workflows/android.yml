@@ -87,7 +87,7 @@ jobs:
       - name: App-Version für Release auslesen
         id: app_version
         run: |
-          VERSION_NAME=$(sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\\1/p' app/build.gradle.kts | head -n 1)
+          VERSION_NAME=$(grep -oE 'versionName[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d '"' -f2)
           test -n "$VERSION_NAME" || { echo "versionName konnte nicht aus app/build.gradle.kts gelesen werden"; exit 1; }
           echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
           echo "Veröffentlichte HomePilot-Version: $VERSION_NAME"
