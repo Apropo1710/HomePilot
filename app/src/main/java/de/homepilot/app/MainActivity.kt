@@ -13,8 +13,6 @@ import android.os.Looper
 import android.net.Uri
 import org.json.JSONObject
 import org.json.JSONArray
-import java.net.HttpURLConnection
-import java.net.URL
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
@@ -61,243 +59,229 @@ private val DarkText = Color(0xFFEAF1F8)
 
 private class IoBrokerClient {
     private val mainHandler = Handler(Looper.getMainLooper())
-    fun disconnect() { /* HTTP requests are short-lived; nothing persistent to close. */ }
+    @Volatile private var socket: io.socket.client.Socket? = null
+    @Volatile private var connected = false
+    private val stateCache = java.util.concurrent.ConcurrentHashMap<String, JSONObject>()
+    private val pendingConnect = java.util.concurrent.CopyOnWriteArrayList<(Boolean, String) -> Unit>()
 
-    private fun request(baseUrl: String, path: String, callback: (Boolean, String?, String?) -> Unit) {
-        Thread {
-            var connection: HttpURLConnection? = null
-            try {
-                val base = baseUrl.trim().trimEnd('/')
-                require(base.startsWith("http://") || base.startsWith("https://")) { "Serveradresse muss mit http:// oder https:// beginnen" }
-                connection = (URL(base + path).openConnection() as HttpURLConnection).apply {
-                    requestMethod = "GET"
-                    connectTimeout = 7000
-                    readTimeout = 7000
-                    setRequestProperty("Accept", "application/json")
-                }
-                val code = connection.responseCode
-                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-                val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-                if (code !in 200..299) throw IllegalStateException("HTTP $code${if (body.isNotBlank()) ": $body" else ""}")
-                mainHandler.post { callback(true, body, null) }
-            } catch (e: Exception) {
-                val message = e.message ?: e.javaClass.simpleName
-                mainHandler.post { callback(false, null, message) }
-            } finally {
-                connection?.disconnect()
-            }
-        }.start()
+    fun disconnect() {
+        connected = false
+        socket?.off()
+        socket?.disconnect()
+        socket?.close()
+        socket = null
     }
+
+    private fun post(block: () -> Unit) = mainHandler.post(block)
 
     fun connect(url: String, onResult: (Boolean, String) -> Unit) {
-        getState(url, "shelly.0.SHPLG-S#376CC3#1.Relay0.Switch") { state, error ->
-            if (state != null) onResult(true, "Verbindung erfolgreich hergestellt")
-            else onResult(false, "Verbindung fehlgeschlagen: ${error ?: "Keine gültige Statusantwort"}")
+        disconnect()
+        val address = url.trim().trimEnd('/')
+        try {
+            require(address.startsWith("ws://") || address.startsWith("wss://")) {
+                "WebSocket-Adresse muss mit ws:// oder wss:// beginnen"
+            }
+            val options = io.socket.client.IO.Options().apply {
+                transports = arrayOf("websocket")
+                reconnection = true
+                reconnectionAttempts = Int.MAX_VALUE
+                reconnectionDelay = 1000
+                reconnectionDelayMax = 10000
+                timeout = 8000
+                query = "key=nokey"
+            }
+            val client = io.socket.client.IO.socket(address, options)
+            socket = client
+            var reported = false
+            client.on(io.socket.client.Socket.EVENT_CONNECT) {
+                client.emit("name", "homepilot.android")
+                client.emit("authenticate", io.socket.client.Ack { args ->
+                    val ok = args.firstOrNull() as? Boolean ?: false
+                    if (!ok) {
+                        post { if (!reported) { reported = true; onResult(false, "ioBroker hat die Verbindung nicht authentifiziert.") } }
+                    } else {
+                        connected = true
+                        client.emit("subscribe", "*")
+                        client.emit("subscribeObjects", "*")
+                        client.emit("getState", "shelly.0.SHPLG-S#376CC3#1.Relay0.Switch", io.socket.client.Ack { stateArgs ->
+                            val err = stateArgs.firstOrNull()
+                            val state = stateArgs.getOrNull(1) as? JSONObject
+                            if (state != null) stateCache["shelly.0.SHPLG-S#376CC3#1.Relay0.Switch"] = state
+                            post {
+                                if (!reported) {
+                                    reported = true
+                                    if (err == null && state != null) onResult(true, "WebSocket-Verbindung zu ioBroker hergestellt")
+                                    else onResult(false, "WebSocket steht, aber der Test-Datenpunkt konnte nicht gelesen werden: ${err ?: "keine Statusantwort"}")
+                                }
+                            }
+                        })
+                    }
+                })
+            }
+            client.on("stateChange") { args ->
+                val id = args.getOrNull(0)?.toString() ?: return@on
+                val state = args.getOrNull(1) as? JSONObject
+                if (state == null) stateCache.remove(id) else stateCache[id] = state
+            }
+            client.on(io.socket.client.Socket.EVENT_DISCONNECT) {
+                connected = false
+            }
+            client.on(io.socket.client.Socket.EVENT_CONNECT_ERROR) { args ->
+                connected = false
+                val message = args.firstOrNull()?.toString() ?: "Verbindung fehlgeschlagen"
+                post { if (!reported) { reported = true; onResult(false, "WebSocket: $message") } }
+            }
+            client.connect()
+        } catch (e: Exception) {
+            connected = false
+            onResult(false, e.message ?: e.javaClass.simpleName)
         }
     }
+
+    private fun requireSocket(): io.socket.client.Socket =
+        socket?.takeIf { connected && it.connected() } ?: throw IllegalStateException("Keine WebSocket-Verbindung zu ioBroker")
 
     fun getState(baseUrl: String, id: String, callback: (Boolean?, String?) -> Unit) {
-        val encodedId = Uri.encode(id)
-        request(baseUrl, "/get/$encodedId") { ok, body, error ->
-            if (!ok || body == null) {
-                callback(null, error ?: "Keine Antwort für $id")
-            } else {
-                try {
-                    val json = JSONObject(body)
-                    val value = when {
-                        json.has("val") -> json.opt("val")
-                        json.optJSONObject("state")?.has("val") == true -> json.optJSONObject("state")?.opt("val")
-                        else -> null
-                    }
-                    when (value) {
-                        is Boolean -> callback(value, null)
-                        is String -> callback(value.toBooleanStrictOrNull(), null)
-                        else -> callback(null, "Unerwartete API-Antwort: $body")
-                    }
-                } catch (e: Exception) {
-                    callback(null, "Antwort konnte nicht gelesen werden: ${e.message ?: body}")
+        val client = try { requireSocket() } catch (e: Exception) { callback(null, e.message); return }
+        client.emit("getState", id, io.socket.client.Ack { args ->
+            val error = args.firstOrNull()
+            val state = args.getOrNull(1) as? JSONObject
+            if (state != null) stateCache[id] = state
+            val value = state?.opt("val")
+            post {
+                if (error != null) callback(null, error.toString())
+                else when (value) {
+                    is Boolean -> callback(value, null)
+                    is String -> callback(value.toBooleanStrictOrNull(), null)
+                    else -> callback(null, "Kein boolescher Wert für $id")
                 }
             }
-        }
-    }
-
-    fun discoverSwitches(baseUrl: String, adapter: String, callback: (List<DeviceItem>, String?) -> Unit) {
-        request(baseUrl, "/objects?pattern=${Uri.encode(adapter + ".*")}") { ok, body, error ->
-            if (!ok || body == null) { callback(emptyList(), error ?: "Geräteliste nicht verfügbar"); return@request }
-            try {
-                val objects = JSONObject(body)
-                val candidates = mutableListOf<DeviceItem>()
-                val allIds = mutableListOf<String>()
-                val keyIterator = objects.keys()
-                while (keyIterator.hasNext()) allIds.add(keyIterator.next().toString())
-                for (id in allIds) {
-                    val obj = objects.optJSONObject(id) ?: continue
-                    val common = obj.optJSONObject("common") ?: continue
-                    val role = common.optString("role", "").lowercase()
-                    val type = common.optString("type", "")
-                    val rawName = common.opt("name")
-                    // ioBroker names can be multilingual JSON objects. Never expose those raw strings.
-                    val name = when (rawName) {
-                        is JSONObject -> rawName.optString("de").ifBlank { rawName.optString("en") }
-                        else -> rawName?.toString().orEmpty()
-                    }
-                    val isBooleanSwitch = type == "boolean" && role.contains("switch")
-                    val isRealDeviceOutput = when (adapter) {
-                        "shelly.0" -> id.matches(Regex("shelly\\.0\\..*(?:Relay\\d*\\.Switch|Relay\\d*\\.Output|\\.Switch)$", RegexOption.IGNORE_CASE))
-                        "hue.0" -> {
-                            val leaf = id.substringAfterLast('.').lowercase()
-                            val outputState = leaf in setOf("on", "all_on", "state", "switch")
-                            type == "boolean" && (outputState || role.contains("switch") || role.contains("light"))
-                        }
-                        "tuya" -> {
-                            val leaf = id.substringAfterLast('.').lowercase()
-                            val outputState = leaf in setOf("on", "switch", "state", "power", "light", "relay")
-                            type == "boolean" && common.optBoolean("write", false) &&
-                                (outputState || role.contains("switch") || role.contains("light") || role.contains("button"))
-                        }
-                        else -> false
-                    }
-                    if (!isRealDeviceOutput) continue
-                    if ((adapter == "tuya" && id.startsWith("tuya.")) || id.startsWith("$adapter.")) {
-                        val parent = id.substringBeforeLast('.')
-                        val siblingPower = allIds.firstOrNull { candidateId ->
-                            candidateId.substringBeforeLast('.') == parent &&
-                                (candidateId.substringAfterLast('.').contains("power", ignoreCase = true) ||
-                                 (objects.optJSONObject(candidateId)?.optJSONObject("common")?.optString("unit", "") == "W"))
-                        }
-                        val siblingEnergy = allIds.firstOrNull { candidateId ->
-                            val unit = objects.optJSONObject(candidateId)?.optJSONObject("common")?.optString("unit", "").orEmpty()
-                            candidateId.substringBeforeLast('.') == parent &&
-                                (candidateId.substringAfterLast('.').contains("energy", ignoreCase = true) || unit.equals("Wh", true) || unit.equals("kWh", true))
-                        }
-                        val siblingEnergyUnit = siblingEnergy?.let { objects.optJSONObject(it)?.optJSONObject("common")?.optString("unit", "").orEmpty() }
-                        // Prefer the human-readable device/channel name from ioBroker's
-                        // object hierarchy over generic state labels such as "Switch".
-                        fun objectName(objectId: String): String {
-                            val objectCommon = objects.optJSONObject(objectId)?.optJSONObject("common") ?: return ""
-                            val value = objectCommon.opt("name")
-                            val resolved = when (value) {
-                                is JSONObject -> value.optString("de").ifBlank { value.optString("en") }
-                                else -> value?.toString().orEmpty()
-                            }.trim()
-                            val generic = resolved.isBlank() || resolved.startsWith("{") ||
-                                resolved.equals("Switch", true) || resolved.equals("on", true) ||
-                                resolved.equals("Output", true) || resolved.equals("State", true) ||
-                                resolved.matches(Regex("(?i)(relay|channel|device)\\s*#?\\d*"))
-                            return if (generic) "" else resolved
-                        }
-                        var ancestor = parent
-                        var friendlyName = ""
-                        while (ancestor.startsWith("$adapter.") && ancestor.isNotBlank()) {
-                            friendlyName = objectName(ancestor)
-                            if (friendlyName.isNotBlank()) break
-                            val next = ancestor.substringBeforeLast('.', "")
-                            if (next.isBlank() || next == ancestor || next == adapter) break
-                            ancestor = next
-                        }
-                        fun isGenericDeviceName(value: String): Boolean {
-                            val normalized = value.trim()
-                            return normalized.isBlank() || normalized.startsWith("{") ||
-                                normalized.equals("Switch", true) || normalized.equals("on", true) ||
-                                normalized.equals("Output", true) || normalized.equals("State", true) ||
-                                normalized.matches(Regex("(?i)(relay|channel|device)\\s*#?\\d*")) ||
-                                normalized.matches(Regex("(?i)(relay|channel)\\d+"))
-                        }
-                        val fallbackName = when {
-                            friendlyName.isNotBlank() -> friendlyName
-                            !isGenericDeviceName(name) -> name.trim()
-                            else -> when (adapter) { "hue.0" -> "Hue-Licht"; "tuya" -> "Tuya-Gerät"; else -> "Shelly-Gerät" }
-                        }
-                        fun relatedState(vararg endings: String): String? = allIds.firstOrNull { candidateId ->
-                        candidateId.startsWith("$parent.", ignoreCase = true) &&
-                            candidateId.substringAfterLast('.').lowercase() in endings.map { it.lowercase() } &&
-                            objects.optJSONObject(candidateId)?.optJSONObject("common")?.optBoolean("write", false) == true
-                    }
-                    val brightnessId = if (adapter == "hue.0") relatedState("bri", "brightness", "level", "dim") else null
-                    val colorTempId = if (adapter == "hue.0") relatedState("ct", "colortemperature", "color_temperature", "temperature") else null
-                    val hueId = if (adapter == "hue.0") relatedState("hue", "colorhue") else null
-                    val saturationId = if (adapter == "hue.0") relatedState("sat", "saturation") else null
-                    val isHue = adapter == "hue.0"
-                    val isTuya = adapter == "tuya"
-                    candidates.add(DeviceItem(fallbackName, when { isHue -> "Hue · ioBroker"; isTuya -> "Tuya · ioBroker"; else -> "Shelly · ioBroker" }, if (isHue) "light" else "plug", false, "", id, siblingPower, true, room = "Nicht zugeordnet", brightnessId = brightnessId, colorTempId = colorTempId, hueId = hueId, saturationId = saturationId, energyId = siblingEnergy, energyUnit = siblingEnergyUnit))
-                    }
-                }
-                if (adapter != "shelly.0" || candidates.isEmpty()) {
-                    callback(candidates.sortedBy { it.name.lowercase() }, null)
-                } else {
-                    // Use the live value of each device's ioBroker ".name" datapoint,
-                    // e.g. shelly.0.SHPLG-1#25E141#1.name -> "Warmes Wasser".
-                    val resolved = java.util.Collections.synchronizedList(candidates.toMutableList())
-                    var remaining = candidates.size
-                    candidates.forEachIndexed { index, item ->
-                        val stateId = item.stateId.orEmpty()
-                        val deviceRoot = stateId.replace(Regex("\\.Relay\\d*\\.(Switch|Output)$", RegexOption.IGNORE_CASE), "")
-                        val nameId = "$deviceRoot.name"
-                        getTextState(baseUrl, nameId) { liveName ->
-                            if (!liveName.isNullOrBlank()) {
-                                val safeName = liveName.trim()
-                                resolved[index] = item.copy(name = safeName)
-                            }
-                            remaining -= 1
-                            if (remaining == 0) {
-                                callback(resolved.sortedBy { it.name.lowercase() }, null)
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) { callback(emptyList(), "Geräteliste konnte nicht gelesen werden: ${e.message}") }
-        }
+        })
     }
 
     fun getTextState(baseUrl: String, id: String, callback: (String?) -> Unit) {
-        request(baseUrl, "/get/${Uri.encode(id)}") { ok, body, _ ->
-            val value = if (ok && body != null) runCatching {
-                val json = JSONObject(body)
-                when (val raw = json.opt("val")) {
-                    is String -> raw.trim()
-                    is Number, is Boolean -> raw.toString()
-                    else -> ""
-                }
-            }.getOrNull() else null
-            callback(value?.takeIf { it.isNotBlank() })
-        }
+        val client = try { requireSocket() } catch (_: Exception) { callback(null); return }
+        client.emit("getState", id, io.socket.client.Ack { args ->
+            val state = args.getOrNull(1) as? JSONObject
+            if (state != null) stateCache[id] = state
+            val value = state?.opt("val")
+            val text = when (value) { is String -> value.trim(); is Number, is Boolean -> value.toString(); else -> "" }
+            post { callback(text.takeIf { it.isNotBlank() }) }
+        })
     }
 
     fun getNumericState(baseUrl: String, id: String, callback: (Double?) -> Unit) {
-        request(baseUrl, "/get/${Uri.encode(id)}") { ok, body, _ ->
-            val value = if (ok && body != null) runCatching { JSONObject(body).optDouble("val", Double.NaN) }.getOrNull() else null
-            callback(value?.takeIf { it.isFinite() })
-        }
+        val client = try { requireSocket() } catch (_: Exception) { callback(null); return }
+        client.emit("getState", id, io.socket.client.Ack { args ->
+            val state = args.getOrNull(1) as? JSONObject
+            if (state != null) stateCache[id] = state
+            val raw = state?.opt("val")
+            val value = when (raw) { is Number -> raw.toDouble(); is String -> raw.toDoubleOrNull(); else -> null }
+            post { callback(value?.takeIf { it.isFinite() }) }
+        })
+    }
+
+    fun discoverSwitches(baseUrl: String, adapter: String, callback: (List<DeviceItem>, String?) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) { callback(emptyList(), e.message); return }
+        val pattern = if (adapter == "tuya") "tuya.*" else "$adapter.*"
+        client.emit("getForeignObjects", pattern, null, io.socket.client.Ack { args ->
+            val error = args.firstOrNull()
+            val objects = args.getOrNull(1) as? JSONObject
+            if (error != null || objects == null) {
+                post { callback(emptyList(), error?.toString() ?: "Objektliste nicht verfügbar") }
+                return@Ack
+            }
+            val allIds = mutableListOf<String>()
+            val iterator = objects.keys()
+            while (iterator.hasNext()) allIds.add(iterator.next())
+            val candidates = mutableListOf<DeviceItem>()
+            for (id in allIds) {
+                val obj = objects.optJSONObject(id) ?: continue
+                val common = obj.optJSONObject("common") ?: continue
+                val role = common.optString("role", "").lowercase()
+                val type = common.optString("type", "")
+                val rawName = common.opt("name")
+                val name = when (rawName) { is JSONObject -> rawName.optString("de").ifBlank { rawName.optString("en") }; else -> rawName?.toString().orEmpty() }
+                val isOutput = when (adapter) {
+                    "shelly.0" -> id.matches(Regex("shelly\\.0\\..*(?:Relay\\d*\\.(?:Switch|Output)|\\.Switch)$", RegexOption.IGNORE_CASE))
+                    "hue.0" -> type == "boolean" && (id.substringAfterLast('.').lowercase() in setOf("on", "all_on", "state", "switch") || role.contains("switch") || role.contains("light"))
+                    else -> type == "boolean" && common.optBoolean("write", false) && (id.substringAfterLast('.').lowercase() in setOf("on", "switch", "state", "power", "light", "relay") || role.contains("switch") || role.contains("light") || role.contains("button"))
+                }
+                if (!isOutput) continue
+                val parent = id.substringBeforeLast('.')
+                fun objectName(objectId: String): String {
+                    val c = objects.optJSONObject(objectId)?.optJSONObject("common") ?: return ""
+                    val raw = c.opt("name")
+                    val v = when (raw) { is JSONObject -> raw.optString("de").ifBlank { raw.optString("en") }; else -> raw?.toString().orEmpty() }.trim()
+                    return if (v.isBlank() || v.startsWith("{") || v.equals("switch", true) || v.equals("state", true) || v.equals("output", true) || v.matches(Regex("(?i)(relay|channel|device)\\s*#?\\d*"))) "" else v
+                }
+                var ancestor = parent
+                var friendly = ""
+                while (ancestor.startsWith("$adapter.") && ancestor.isNotBlank()) {
+                    friendly = objectName(ancestor)
+                    if (friendly.isNotBlank()) break
+                    val next = ancestor.substringBeforeLast('.', "")
+                    if (next.isBlank() || next == ancestor || next == adapter) break
+                    ancestor = next
+                }
+                val fallback = friendly.ifBlank { name.trim().takeIf { it.isNotBlank() && !it.startsWith("{") && !it.equals("switch", true) } ?: when(adapter) { "hue.0" -> "Hue-Licht"; "tuya" -> "Tuya-Gerät"; else -> "Shelly-Gerät" } }
+                fun related(vararg endings: String): String? = allIds.firstOrNull { candidate ->
+                    candidate.startsWith("$parent.", true) && candidate.substringAfterLast('.').lowercase() in endings.map { it.lowercase() } &&
+                        objects.optJSONObject(candidate)?.optJSONObject("common")?.optBoolean("write", false) == true
+                }
+                val power = allIds.firstOrNull { candidate -> candidate.substringBeforeLast('.') == parent &&
+                    (candidate.substringAfterLast('.').contains("power", true) || objects.optJSONObject(candidate)?.optJSONObject("common")?.optString("unit") == "W") }
+                val energy = allIds.firstOrNull { candidate -> candidate.substringBeforeLast('.') == parent &&
+                    (candidate.substringAfterLast('.').contains("energy", true) || objects.optJSONObject(candidate)?.optJSONObject("common")?.optString("unit").orEmpty().let { it.equals("Wh", true) || it.equals("kWh", true) }) }
+                val unit = energy?.let { objects.optJSONObject(it)?.optJSONObject("common")?.optString("unit", "").orEmpty() }.orEmpty()
+                val hue = adapter == "hue.0"
+                candidates.add(DeviceItem(fallback, when { hue -> "Hue · ioBroker"; adapter == "tuya" -> "Tuya · ioBroker"; else -> "Shelly · ioBroker" },
+                    if (hue) "light" else "plug", false, "", id, power, true, room = "Nicht zugeordnet",
+                    brightnessId = if (hue) related("bri", "brightness", "level", "dim") else null,
+                    colorTempId = if (hue) related("ct", "colortemperature", "color_temperature", "temperature") else null,
+                    hueId = if (hue) related("hue", "colorhue") else null, saturationId = if (hue) related("sat", "saturation") else null,
+                    energyId = energy, energyUnit = unit))
+            }
+            if (adapter != "shelly.0" || candidates.isEmpty()) {
+                post { callback(candidates.sortedBy { it.name.lowercase() }, null) }
+            } else {
+                val resolved = java.util.Collections.synchronizedList(candidates.toMutableList())
+                val remaining = java.util.concurrent.atomic.AtomicInteger(candidates.size)
+                candidates.forEachIndexed { index, item ->
+                    val root = item.stateId.orEmpty().replace(Regex("\\.Relay\\d*\\.(Switch|Output)$", RegexOption.IGNORE_CASE), "")
+                    getTextState(baseUrl, "$root.name") { liveName ->
+                        if (!liveName.isNullOrBlank()) resolved[index] = item.copy(name = liveName.trim())
+                        if (remaining.decrementAndGet() == 0) post { callback(resolved.sortedBy { it.name.lowercase() }, null) }
+                    }
+                }
+            }
+        })
     }
 
     fun setState(baseUrl: String, id: String, value: Boolean, callback: (Boolean, String) -> Unit) {
-        val encodedId = Uri.encode(id)
-        val encodedValue = if (value) "true" else "false"
-        request(baseUrl, "/set/$encodedId?value=$encodedValue") { ok, body, error ->
-            if (!ok) callback(false, "Schalten fehlgeschlagen: ${error ?: "unbekannter Fehler"}")
-            else callback(true, "Schaltbefehl gesendet")
-        }
+        val client = try { requireSocket() } catch (e: Exception) { callback(false, e.message ?: "Nicht verbunden"); return }
+        client.emit("setState", id, JSONObject().put("val", value).put("ack", false), io.socket.client.Ack { args ->
+            val error = args.firstOrNull()
+            post { callback(error == null, if (error == null) "Schaltbefehl gesendet" else "Schalten fehlgeschlagen: $error") }
+        })
     }
 
     fun setTextState(baseUrl: String, id: String, value: String, callback: (Boolean, String) -> Unit) {
-        val encodedId = Uri.encode(id)
-        val encodedValue = Uri.encode(value)
-        request(baseUrl, "/set/$encodedId?value=$encodedValue") { ok, _, error ->
-            if (!ok) callback(false, "Befehl fehlgeschlagen: ${error ?: "unbekannter Fehler"}")
-            else callback(true, "Zonenstart gesendet")
-        }
+        setAnyState(id, value, "Zonenstart gesendet", "Befehl fehlgeschlagen", callback)
     }
 
     fun setNumericState(baseUrl: String, id: String, value: Double, callback: (Boolean, String) -> Unit) {
-        val encodedId = Uri.encode(id)
-        val encodedValue = Uri.encode(value.toString())
-        request(baseUrl, "/set/$encodedId?value=$encodedValue") { ok, _, error ->
-            if (!ok) callback(false, "Lichtwert konnte nicht gesetzt werden: ${error ?: "unbekannter Fehler"}")
-            else callback(true, "Lichteinstellung gespeichert")
-        }
+        setAnyState(id, value, "Lichteinstellung gespeichert", "Lichtwert konnte nicht gesetzt werden", callback)
+    }
+
+    private fun setAnyState(id: String, value: Any, success: String, failure: String, callback: (Boolean, String) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) { callback(false, e.message ?: "Nicht verbunden"); return }
+        client.emit("setState", id, JSONObject().put("val", value).put("ack", false), io.socket.client.Ack { args ->
+            val error = args.firstOrNull()
+            post { callback(error == null, if (error == null) success else "$failure: $error") }
+        })
     }
 }
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -469,7 +453,7 @@ private fun HomePilotApp() {
             lights[i] = item.copy(name = customNames[id] ?: item.name, room = deviceRooms[id] ?: "Nicht zugeordnet")
         }
     }
-    var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "http://192.168.178.54:8087").let { saved -> if (saved.trimEnd('/').endsWith(":8082") || saved.trimEnd('/').endsWith(":8087")) saved.trimEnd('/').substringBeforeLast(":") + ":8085" else saved }) }
+    var serverUrl by remember { mutableStateOf((prefs.getString("server", null) ?: "ws://192.168.178.54:8084").let { saved -> val clean = saved.trimEnd('/'); when { clean.startsWith("http://") || clean.startsWith("https://") -> "ws://" + clean.substringAfter("://").substringBeforeLast(":") + ":8084"; clean.endsWith(":8085") || clean.endsWith(":8087") || clean.endsWith(":8082") -> "ws://" + clean.substringAfter("://").substringBeforeLast(":") + ":8084"; clean.startsWith("ws://") || clean.startsWith("wss://") -> clean; else -> "ws://192.168.178.54:8084" } }) }
     var weatherCity by remember { mutableStateOf((prefs.getString("weatherCity", "Kaan") ?: "Kaan").let { if (it.equals("56751 Kaan", ignoreCase = true)) "Kaan" else it }) }
         var connectionStatus by remember { mutableStateOf("Nicht verbunden") }
     var connected by remember { mutableStateOf(false) }
@@ -2003,7 +1987,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         if (!connected) {
             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
         }
-        Text("Verbindung über Simple API auf Port 8087. In der aktuellen ioBroker-Konfiguration erfolgt der Zugriff ohne Anmeldung.", color = Muted, fontSize = 11.sp)
+        Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).", color = Muted, fontSize = 11.sp)
     }
     CardBlock(panel, text, "Wetter", "5-Tage-Prognose auf der Startseite", Icons.Default.WbSunny) {
         OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
