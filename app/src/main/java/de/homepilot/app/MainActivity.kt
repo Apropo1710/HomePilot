@@ -316,7 +316,7 @@ private class IoBrokerClient {
     }
 
     fun setTextState(baseUrl: String, id: String, value: String, callback: (Boolean, String) -> Unit) {
-        setAnyState(id, value, "Zonenstart gesendet", "Befehl fehlgeschlagen", callback)
+        setAnyState(id, value, "Befehl gesendet", "Befehl fehlgeschlagen", callback)
     }
 
     fun setNumericState(baseUrl: String, id: String, value: Double, callback: (Boolean, String) -> Unit) {
@@ -1260,6 +1260,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
     var maintenanceHealth by remember { mutableStateOf<Double?>(null) }
     var commandMessage by remember { mutableStateOf<String?>(null) }
     var commandBusy by remember { mutableStateOf(false) }
+    var showMaintenanceConfirm by remember { mutableStateOf(false) }
     var zones by remember { mutableStateOf(listOf<Pair<Int, Pair<String, Double>>>()) }
     var selectedZones by remember { mutableStateOf(setOf<Int>()) }
     LaunchedEffect(serverUrl, connected) {
@@ -1354,10 +1355,50 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
                 OutlinedButton(onClick = { commandBusy = true; client.setState(serverUrl, "dreame.0.-112285430.remote.start-charge", true) { ok, msg -> commandBusy = false; commandMessage = if(ok) "Rückkehrbefehl gesendet" else msg } }, enabled = canDock && !commandBusy, modifier = Modifier.weight(1f).height(52.dp), contentPadding = PaddingValues(horizontal = 4.dp, vertical = 4.dp), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFDCEAF5), contentColor = Color(0xFF155B8D), disabledContainerColor = Color(0xFFDCEAF5), disabledContentColor = Color(0xFF536B7D)), border = BorderStroke(1.5.dp, Color(0xFF4B86AE))) { Icon(Icons.Default.Home, null, modifier = Modifier.size(19.dp)); Spacer(Modifier.width(4.dp)); Text("Laden", fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1) }
             }
         }
-        CardBlock(panel, text, "Wartung", "Zustand der Verschleißteile", Icons.Default.Build) {
-            Text("Messerzustand: ${bladeHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
-            Text("Gerätewartung: ${maintenanceHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
+        CardBlock(panel, text, "Wartung", "Zustand der Verschleißteile und Wartungspunkt", Icons.Default.Build) {
+            Text("Messerzustand: \${bladeHealth?.let { "\${it.toInt()} %" } ?: "—"}", color = text)
+            Text("Gerätewartung: \${maintenanceHealth?.let { "\${it.toInt()} %" } ?: "—"}", color = text)
+            Spacer(Modifier.height(6.dp))
+            Text("Fährt den in der MOVA-App gespeicherten Wartungspunkt an.", color = Muted, fontSize = 12.sp)
+            OutlinedButton(
+                onClick = { showMaintenanceConfirm = true },
+                enabled = connected && !commandBusy,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFFDCEAF5), contentColor = Color(0xFF155B8D)),
+                border = BorderStroke(1.5.dp, Color(0xFF4B86AE))
+            ) {
+                Icon(Icons.Default.Build, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Wartungspunkt anfahren", fontWeight = FontWeight.Bold)
+            }
+            commandMessage?.let { Text(it, color = Muted, fontSize = 13.sp) }
         }
+    }
+    if (showMaintenanceConfirm) {
+        AlertDialog(
+            onDismissRequest = { if (!commandBusy) showMaintenanceConfirm = false },
+            title = { Text("Wartungspunkt anfahren?") },
+            text = { Text("Der MOVA 1000 erhält den Befehl, zum in der MOVA-App gespeicherten Wartungspunkt zu fahren. Stelle sicher, dass der Weg frei ist.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showMaintenanceConfirm = false
+                        commandBusy = true
+                        commandMessage = null
+                        val command = """{"siid":2,"aiid":50,"in":[{"m":"a","p":0,"o":109,"d":{"point":[1]}}]}"""
+                        client.setTextState(serverUrl, "dreame.0.-112285430.remote.customCommand", command) { ok, msg ->
+                            commandBusy = false
+                            commandMessage = if (ok) "Anfahrt zum Wartungspunkt beauftragt." else msg
+                        }
+                    },
+                    enabled = !commandBusy
+                ) { Text("Anfahren") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMaintenanceConfirm = false }, enabled = !commandBusy) { Text("Abbrechen") }
+            }
+        )
     }
 }
 
