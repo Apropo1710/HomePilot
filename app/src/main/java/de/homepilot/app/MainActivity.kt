@@ -665,7 +665,7 @@ private fun HomePilotApp() {
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Header(dark = dark, text = text, connected = connected, status = connectionStatus, onSettings = { navigateTo(Tab.SETTINGS) })
+                    Header(dark = dark, text = text, connected = connected, status = connectionStatus)
                     if (showDemoNotice) {
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -1007,7 +1007,7 @@ private fun HomePilotApp() {
                     containerColor = panel,
                     windowInsets = WindowInsets(0.dp)
                 ) {
-                    listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY).forEach { tab ->
+                    listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY, Tab.SETTINGS).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { navigateTo(tab) },
@@ -1024,7 +1024,7 @@ private fun HomePilotApp() {
 }
 
 @Composable
-private fun Header(dark: Boolean, text: Color, connected: Boolean, status: String, onSettings: () -> Unit) {
+private fun Header(dark: Boolean, text: Color, connected: Boolean, status: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1033,9 +1033,6 @@ private fun Header(dark: Boolean, text: Color, connected: Boolean, status: Strin
             }
             Text("Smart Home auf einen Blick", color = if (dark) Color(0xFFB2C1D0) else Muted, fontSize = 13.sp)
             if (!connected && status.startsWith("Verbindung fehlgeschlagen")) Text("Verbindung fehlgeschlagen. Bitte VPN prüfen.", color = Color(0xFFD62828), fontSize = 11.sp, maxLines = 2)
-        }
-        IconButton(onClick = onSettings, modifier = Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(if (dark) Color(0xFF1B2734) else Color.White)) {
-            Icon(Icons.Default.Settings, contentDescription = "Einstellungen", tint = text)
         }
     }
 }
