@@ -101,7 +101,7 @@ internal class IoBrokerSocket(
                     2 -> lastPong = System.currentTimeMillis()
                     3 -> {
                         val id = frame.optInt(1, -1)
-                        val args = frame.optJSONArray(2).toAnyArray()
+                        val args = frame.optJSONArray(3).toAnyArray()
                         callbacks.remove(id)?.invoke(args)
                     }
                 }
