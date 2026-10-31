@@ -193,7 +193,7 @@ private class IoBrokerClient {
             }
             val allIds = mutableListOf<String>()
             val iterator = objects.keys()
-            while (iterator.hasNext()) allIds.add(iterator.next())
+            while (iterator.hasNext()) allIds.add(iterator.next().toString())
             val candidates = mutableListOf<DeviceItem>()
             for (id in allIds) {
                 val obj = objects.optJSONObject(id) ?: continue
