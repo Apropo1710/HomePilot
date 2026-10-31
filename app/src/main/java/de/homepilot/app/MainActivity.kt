@@ -171,14 +171,41 @@ private class IoBrokerClient {
         })
     }
 
+    private fun decodeObjectsReply(args: Array<Any?>): Pair<JSONObject?, String?> {
+        fun asObjects(value: Any?): JSONObject? = when (value) {
+            is JSONObject -> value
+            is String -> try { JSONObject(value) } catch (_: Exception) { null }
+            is Map<*, *> -> JSONObject().apply {
+                value.forEach { (key, item) -> if (key is String) put(key, item) }
+            }
+            else -> null
+        }
+        val first = args.getOrNull(0)
+        val second = args.getOrNull(1)
+        val firstObjects = asObjects(first)
+        if (firstObjects != null) return firstObjects to null
+        val secondObjects = asObjects(second)
+        if (secondObjects != null) {
+            val error = first?.takeUnless { it == JSONObject.NULL }?.toString()
+            return secondObjects to error
+        }
+        val types = args.joinToString { it?.javaClass?.simpleName ?: "null" }
+        val detail = "Antwortformat unerwartet (Argumente=${args.size}, Typen=[$types], erstes Argument=${first?.toString()?.take(160) ?: "null"})"
+        return null to (first?.takeUnless { it == JSONObject.NULL }?.toString() ?: detail)
+    }
+
+    private val objectQueryDiagnostics = java.util.concurrent.ConcurrentHashMap<String, String>()
+    fun objectQueryDiagnostic(adapter: String): String = objectQueryDiagnostics[adapter] ?: "$adapter: noch keine Antwort"
+
     fun discoverSwitches(baseUrl: String, adapter: String, callback: (List<DeviceItem>, String?) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(emptyList(), e.message); return }
         val pattern = if (adapter == "tuya") "tuya.*" else "$adapter.*"
         client.emit("getForeignObjects", pattern, "state", IoBrokerAck { args ->
-            val error = args.firstOrNull()
-            val objects = args.getOrNull(1) as? JSONObject
-            if (error != null || objects == null) {
-                post { callback(emptyList(), error?.toString() ?: "Objektliste nicht verfügbar") }
+            val (objects, replyError) = decodeObjectsReply(args)
+            if (replyError != null || objects == null) {
+                val detail = "$adapter getForeignObjects: $replyError"
+                objectQueryDiagnostics[adapter] = detail
+                post { callback(emptyList(), detail) }
                 return@IoBrokerAck
             }
             val allIds = mutableListOf<String>()
@@ -232,6 +259,8 @@ private class IoBrokerClient {
                     hueId = if (hue) related("hue", "colorhue") else null, saturationId = if (hue) related("sat", "saturation") else null,
                     energyId = energy, energyUnit = unit))
             }
+            val sampleIds = allIds.take(5).joinToString()
+            objectQueryDiagnostics[adapter] = "$adapter getForeignObjects: ${allIds.size} Objekte empfangen, ${candidates.size} passende Schalter/Lichter. Beispiele: ${sampleIds.ifBlank { "keine" }}"
             if (adapter != "shelly.0" || candidates.isEmpty()) {
                 post { callback(candidates.sortedBy { it.name.lowercase() }, null) }
             } else {
@@ -254,19 +283,9 @@ private class IoBrokerClient {
             return
         }
         client.emit("getForeignObjects", "$adapter.*", "state", IoBrokerAck { args ->
-            val error = args.firstOrNull()
-            val raw = args.getOrNull(1)
-            val objects = when (raw) {
-                is JSONObject -> raw
-                is String -> try { JSONObject(raw) } catch (_: Exception) { null }
-                is Map<*, *> -> JSONObject().apply {
-                    raw.forEach { (key, value) -> if (key is String) put(key, value) }
-                }
-                else -> null
-            }
-            if (error != null || objects == null) {
-                val detail = error?.toString()
-                    ?: "Unerwartete Antwort auf $adapter-Objektabfrage (Argumente: ${args.size}, Typ: ${raw?.javaClass?.simpleName ?: "null"})"
+            val (objects, replyError) = decodeObjectsReply(args)
+            if (replyError != null || objects == null) {
+                val detail = "$adapter getForeignObjects: $replyError"
                 post { callback(emptySet(), detail) }
                 return@IoBrokerAck
             }
@@ -508,7 +527,7 @@ private fun HomePilotApp() {
                 }
                 ioClient.discoverSwitches(serverUrl, "shelly.0") { found, err ->
                     if (err == null) {
-                        connectionStatus = "WebSocket verbunden · Shelly-Geräte: ${found.size}" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
+                        connectionStatus = "WebSocket verbunden · Shelly-Geräte: ${found.size} · ${ioClient.objectQueryDiagnostic("shelly.0")}" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
                         devices.clear()
                         devices.addAll(found.filter { it.stateId !in hiddenIds })
                         val waterId = "shelly.0.SHPLG-S#6EDB6C#1.Relay0.Switch"
@@ -525,7 +544,7 @@ private fun HomePilotApp() {
                         }
                         applyCustomConfig()
                         refreshStates(ioClient, serverUrl, devices, lights)
-                    } else connectionStatus = "WebSocket verbunden, Shelly-Objektabfrage fehlgeschlagen: $err" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
+                    } else connectionStatus = "WebSocket verbunden · Shelly-Objektabfrage fehlgeschlagen: $err" + connectionStatus.substringAfter(" · MOVA", "").let { tail -> if (tail.isBlank()) "" else " · MOVA" + tail }
                 }
                 ioClient.discoverSwitches(serverUrl, "tuya") { tuyaFound, tuyaErr ->
                     if (manualDeviceSearch) {
@@ -753,7 +772,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -789,7 +808,7 @@ private fun HomePilotApp() {
                         Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) },
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() },
-                            status = if (connected) "Verbindung erfolgreich hergestellt" else connectionStatus, connected = connected,
+                            status = connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
                             onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
