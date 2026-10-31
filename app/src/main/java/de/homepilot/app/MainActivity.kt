@@ -182,6 +182,18 @@ private class IoBrokerClient {
         }
         val first = args.getOrNull(0)
         val second = args.getOrNull(1)
+        val viewResult = (second as? JSONObject) ?: (first as? JSONObject)
+        val rows = viewResult?.optJSONArray("rows")
+        if (rows != null) {
+            val mapped = JSONObject()
+            for (index in 0 until rows.length()) {
+                val row = rows.optJSONObject(index) ?: continue
+                val id = row.optString("id")
+                val value = row.optJSONObject("value")
+                if (id.isNotBlank() && value != null) mapped.put(id, value)
+            }
+            return mapped to null
+        }
         val firstObjects = asObjects(first)
         if (firstObjects != null) return firstObjects to null
         val secondObjects = asObjects(second)
@@ -199,11 +211,10 @@ private class IoBrokerClient {
 
     fun discoverSwitches(baseUrl: String, adapter: String, callback: (List<DeviceItem>, String?) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(emptyList(), e.message); return }
-        val pattern = if (adapter == "tuya") "tuya.*" else "$adapter.*"
-        client.emit("getForeignObjects", pattern, "state", IoBrokerAck { args ->
+        client.emit("getObjectView", "system", "state", JSONObject().put("startkey", "$adapter.").put("endkey", "$adapter.\u9999"), IoBrokerAck { args ->
             val (objects, replyError) = decodeObjectsReply(args)
             if (replyError != null || objects == null) {
-                val detail = "$adapter getForeignObjects: $replyError"
+                val detail = "$adapter getObjectView: $replyError"
                 objectQueryDiagnostics[adapter] = detail
                 post { callback(emptyList(), detail) }
                 return@IoBrokerAck
@@ -260,7 +271,7 @@ private class IoBrokerClient {
                     energyId = energy, energyUnit = unit))
             }
             val sampleIds = allIds.take(5).joinToString()
-            objectQueryDiagnostics[adapter] = "$adapter getForeignObjects: ${allIds.size} Objekte empfangen, ${candidates.size} passende Schalter/Lichter. Beispiele: ${sampleIds.ifBlank { "keine" }}"
+            objectQueryDiagnostics[adapter] = "$adapter getObjectView: ${allIds.size} Objekte empfangen, ${candidates.size} passende Schalter/Lichter. Beispiele: ${sampleIds.ifBlank { "keine" }}"
             if (adapter != "shelly.0" || candidates.isEmpty()) {
                 post { callback(candidates.sortedBy { it.name.lowercase() }, null) }
             } else {
@@ -282,10 +293,10 @@ private class IoBrokerClient {
             callback(emptySet(), e.message ?: "Keine WebSocket-Verbindung")
             return
         }
-        client.emit("getForeignObjects", "$adapter.*", "state", IoBrokerAck { args ->
+        client.emit("getObjectView", "system", "state", JSONObject().put("startkey", "$adapter.").put("endkey", "$adapter.\u9999"), IoBrokerAck { args ->
             val (objects, replyError) = decodeObjectsReply(args)
             if (replyError != null || objects == null) {
-                val detail = "$adapter getForeignObjects: $replyError"
+                val detail = "$adapter getObjectView: $replyError"
                 post { callback(emptySet(), detail) }
                 return@IoBrokerAck
             }
