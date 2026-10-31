@@ -179,7 +179,7 @@ private class IoBrokerClient {
             val objects = args.getOrNull(1) as? JSONObject
             if (error != null || objects == null) {
                 post { callback(emptyList(), error?.toString() ?: "Objektliste nicht verfügbar") }
-                return@Ack
+                return@IoBrokerAck
             }
             val allIds = mutableListOf<String>()
             val iterator = objects.keys()
