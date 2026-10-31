@@ -1402,10 +1402,10 @@ private fun HomeScreen(
             InputConfirmIcon()
             }
         },
-        placeholder = { Text("Räume und Geräte suchen") })
+        placeholder = { Text("Gerätenamen suchen") })
     val allDevices = devices + lights
     if (searchQuery.isNotBlank()) {
-        allDevices.filter { it.name.contains(searchQuery.trim(), true) }.forEach { item ->
+        allDevices.filter { item -> item.name.split(Regex("[^\\p{L}\\p{N}]+")).any { word -> word.startsWith(searchQuery.trim(), ignoreCase = true) } }.forEach { item ->
             CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Devices, action = { onOpenRoom(item.room) }) {}
         }
     }
