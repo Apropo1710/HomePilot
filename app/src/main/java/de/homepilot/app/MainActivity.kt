@@ -2054,7 +2054,13 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     }
     CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
         OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
-        Text(status, color = if (connected) Green else Muted, fontSize = 12.sp)
+        val statusHasError = listOf("fehlgeschlagen", "timeout", "nicht geantwortet", "send failed", "Fehler", "disconnected").any { status.contains(it, ignoreCase = true) }
+        val statusColor = when {
+            statusHasError -> Color(0xFFD32F2F)
+            connected && !status.contains("prüfe", ignoreCase = true) -> Green
+            else -> Muted
+        }
+        Text(status, color = statusColor, fontSize = 12.sp)
         if (!connected) {
             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
         }
