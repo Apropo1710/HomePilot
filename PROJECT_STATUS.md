@@ -2,16 +2,27 @@
 
 Stand: 31.10.2026  
 Repository: [Apropo1710/HomePilot](https://github.com/Apropo1710/HomePilot)  
-Produktionsbranch: `main`
+Produktions- und Entwicklungsbranch: `main`
 
 ## Quelle der Wahrheit
 
 Der jeweils aktuelle Code auf GitHub ist maßgeblich. Vor jeder Änderung muss der aktuelle Stand des vorgesehenen Branches gelesen werden. Diese Datei dokumentiert Entscheidungen und Arbeitsstand, ersetzt aber niemals die Prüfung des aktuellen Quellcodes.
 
+## Verbindliche Entwicklungsstrategie
+
+**Die weitere HomePilot-Entwicklung erfolgt direkt auf `main` und ist immer für die Hauptversion bestimmt.**
+
+- Keine separaten Testversionen und keine neuen Test-Branches für die normale Weiterentwicklung.
+- Änderungen werden nach Prüfung direkt auf `main` umgesetzt.
+- Die bisherigen Test-Branches stammen ausschließlich aus den abgeschlossenen GitHub-Zugriffstests und sind historische Teststände. Sie sind keine Grundlage für die weitere Entwicklung und werden nicht in die Hauptversion übernommen.
+- Vor jeder Änderung den aktuellen Stand von `main` lesen.
+- Änderungen gezielt umsetzen, den Diff prüfen und anschließend den durch den Push ausgelösten Produktionsbuild kontrollieren.
+- Eine neue APK wird erst nach erfolgreichem Build und verifizierter Verfügbarkeit als Download angeboten.
+
 ## Aktueller Produktionsstand
 
 - Branch: `main`
-- Letzter bekannter Commit: `c392f470c671c40bf4ef882e94e3f903ed79ea7a`
+- Zuletzt vor dieser Dokumentationspflege bekannter App-Code-Commit: `c392f470c671c40bf4ef882e94e3f903ed79ea7a`
 - Commit-Nachricht: `Fix MOVA maintenance status labels`
 - App-Version: `1.29.31`
 - versionCode: `89`
@@ -19,7 +30,7 @@ Der jeweils aktuelle Code auf GitHub ist maßgeblich. Vor jeder Änderung muss d
 - Java/Kotlin-Ziel: Java 17
 - GitHub Actions Workflow: `.github/workflows/android.yml`
 
-Der letzte bekannte Commit korrigiert die Anzeige der MOVA-Wartungswerte (Messerzustand und Gerätewartung), sodass Kotlin-String-Interpolation korrekt ausgewertet wird.
+Der genannte App-Code-Commit korrigiert die Anzeige der MOVA-Wartungswerte (Messerzustand und Gerätewartung), sodass Kotlin-String-Interpolation korrekt ausgewertet wird. Spätere Commits können ausschließlich die Projektdokumentation betreffen; vor jeder Entwicklungsarbeit ist der tatsächliche aktuelle Stand von `main` erneut zu lesen.
 
 ## Build und Veröffentlichung
 
@@ -33,21 +44,20 @@ Der Workflow:
 5. lädt das APK-Artefakt hoch,
 6. veröffentlicht beziehungsweise aktualisiert den GitHub-Release-Tag `latest` mit `HomePilot.apk`.
 
-Downloadlinks erst nennen, wenn der konkrete Build beziehungsweise Release erfolgreich geprüft wurde. Test-Workflow-Ergebnisse sind kein Nachweis für einen erfolgreichen Produktionsbuild.
+Downloadlinks erst nennen, wenn der konkrete Build beziehungsweise Release erfolgreich geprüft wurde. Ein erfolgreicher Build ohne App-Code-Änderung bedeutet nicht automatisch eine neue App-Version.
 
-## Branch-Sicherheit
+## Historische Branches aus den Zugriffstests
 
-Bekannte Branches aus den GitHub-Zugriffstests:
 - `test-project-github-check`
 - `test-project-github-write-2026-10-31`
 
-Diese Branches enthalten Teständerungen und dürfen nicht ungeprüft in `main` übernommen werden. `main` bleibt der Produktionsbranch. Vor jedem Merge ist der vollständige Unterschied zu `main` zu prüfen.
+Diese Branches dienten ausschließlich den abgeschlossenen GitHub-Zugriffstests. Sie enthalten Teststände und sind nicht Teil der zukünftigen HomePilot-Entwicklung. Keine Übernahme in `main`.
 
 ## Umgesetzte beziehungsweise zuletzt bearbeitete Funktionen
 
 - MOVA-Wartungsbereich mit Anzeige des Messerzustands und des Gerätewartungszustands.
 - Im MOVA-Wartungsbereich ist eine Funktion vorgesehen, die den in der originalen MOVA-App gespeicherten Wartungspunkt anfährt.
-- Die Beschriftungen der MOVA-Wartungswerte wurden im letzten bekannten Commit korrigiert.
+- Die Beschriftungen der MOVA-Wartungswerte wurden im letzten bekannten App-Code-Commit korrigiert.
 
 Hinweis: Die praktische Funktion des Anfahrens des Wartungspunkts war zum Stand dieser Dokumentation noch nicht als erfolgreich getestet bestätigt.
 
@@ -55,7 +65,7 @@ Hinweis: Die praktische Funktion des Anfahrens des Wartungspunkts war zum Stand 
 
 ## Geplante Weiterentwicklung
 
-Die folgenden Funktionen sollen sinnvoll gemeinsam in einer passenden Version umgesetzt werden, nicht als einzelne Zwischenveröffentlichungen:
+Die folgenden Funktionen sollen sinnvoll gemeinsam in einer passenden Version umgesetzt werden:
 
 - Raumbasierte Navigation: Räume antippen und die zugehörigen Geräte und Sensoren anzeigen.
 - Räume in der App erstellen, umbenennen und löschen.
@@ -76,14 +86,16 @@ Weitere Entscheidung:
 
 ## Arbeitsregeln
 
-- Vor Änderungen aktuellen Code und Branch-Stand lesen.
+- Vor Änderungen aktuellen Code und Branch-Stand auf `main` lesen.
 - Änderungen klein, gezielt und nachvollziehbar halten.
-- Vor dem Commit Diff prüfen.
-- Testbranches und Testdateien nicht ungeprüft in Produktion übernehmen.
-- Nach einer Produktionsänderung genau den vorgesehenen GitHub-Actions-Build kontrollieren.
+- Vor dem Commit beziehungsweise Push den Diff prüfen.
+- Keine Test-Branches oder Testveröffentlichungen für die normale Weiterentwicklung anlegen.
+- Nach einer Änderung den zugehörigen GitHub-Actions-Produktionsbuild kontrollieren.
 - Keine Änderungen, Builds oder Tests als erledigt darstellen, solange sie nicht tatsächlich durchgeführt und verifiziert wurden.
 - Wichtige neue Entscheidungen, bestätigte Tests, Versionen und bekannte Probleme zeitnah in dieser Datei aktualisieren.
+- HomePilot und KlimaPilot strikt getrennt behandeln.
 
 ## Änderungsverlauf dieser Dokumentation
 
 - 31.10.2026: Erste zentrale Projektdokumentation auf Basis des geprüften Stands von `main` und der bisher festgehaltenen Projektentscheidungen angelegt.
+- 31.10.2026: Verbindlich festgelegt, dass die weitere Entwicklung direkt auf `main` für die Hauptversion erfolgt; keine neuen Test-Branches oder separaten Testversionen.
