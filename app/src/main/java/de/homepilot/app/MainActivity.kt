@@ -81,7 +81,7 @@ private class IoBrokerClient {
             require(address.startsWith("ws://") || address.startsWith("wss://")) {
                 "WebSocket-Adresse muss mit ws:// oder wss:// beginnen"
             }
-            val client = IoBrokerSocket(address, "key=nokey&name=homepilot.android")
+            val client = IoBrokerSocket(address, "name=homepilot.android")
             socket = client
             var reported = false
             client.on("connect") {
