@@ -83,7 +83,7 @@ internal fun GithubUpdateCard(appVersion: String) {
                 status,
                 color = if (isCurrentVersion || isUpdateAvailable) androidx.compose.ui.graphics.Color(0xFF218838) else MaterialTheme.colorScheme.onSurfaceVariant,
                 style = if (isCurrentVersion || isUpdateAvailable) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodySmall,
-                fontWeight = if (isCurrentVersion || isUpdateAvailable) FontWeight.Bold else FontWeight.Normal
+                fontWeight = FontWeight.Normal
             )
             Text("Installierte Version: $appVersion", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
             if (latestVersion != null) {
@@ -156,7 +156,7 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 }
                                 status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
                                 context.startActivity(intent)
-                                status = "Installationsdialog angefordert. Falls er nicht erscheint, prüfe die Installationsfreigabe für HomePilot in den Android-Einstellungen."
+                                status = "Installationsdialog angefordert."
                             } catch (error: Exception) {
                                 status = "Update fehlgeschlagen: " + (error.message ?: error.javaClass.simpleName)
                             } finally {
