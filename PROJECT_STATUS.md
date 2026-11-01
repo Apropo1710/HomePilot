@@ -99,10 +99,9 @@ Weitere Entscheidung:
 
 ## Neue geplante Geräteintegration: Roidmi EVE Plus
 
-Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten größeren HomePilot-Version. Die Integration erfolgt über das eigenständige ioBroker-Adapterprojekt **RoidmiPilot** und nicht über eine direkte Xiaomi-Cloud- oder miIO-Implementierung in HomePilot.
+Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten größeren HomePilot-Version. Die Integration erfolgt über das eigenständige Projekt **Roidmi Iobroker Adapter** und nicht über eine direkte Xiaomi-Cloud- oder miIO-Implementierung in HomePilot.
 
-- Projektname: `RoidmiPilot`
-- GitHub-Projekt: [Apropo1710/RoidmiPilot](https://github.com/Apropo1710/RoidmiPilot)
+- Projektname: `Roidmi Iobroker Adapter`
 - ioBroker-Adapter-Repository: [Apropo1710/ioBroker.roidmi](https://github.com/Apropo1710/ioBroker.roidmi)
 - Zielgerät: Roidmi EVE Plus
 - HomePilot-Geräteklasse: `robot_vacuum`
@@ -120,6 +119,8 @@ Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten gr�
 - HomePilot bleibt ausschließlich Client des ioBroker-WebSocket-Adapters `ws.0`; keine direkte Xiaomi-Cloud-Anmeldung und keine direkte Roboterkommunikation in HomePilot.
 - RoidmiPilot und HomePilot bleiben getrennte Projekte mit getrennten Repositories und Builds.
 - HomePilot wird zunächst auf eine klar abgegrenzte Geräteklasse und eine robuste, datenpunktbasierte Integration vorbereitet.
+- Erste HomePilot-Integration auf `main`: eigene Roidmi-Kachel auf der Startseite und Detailansicht mit Akku, Ladezustand, Betriebsstatus, Fehlercode und Adapter-Verbindungsstatus. Die numerischen Statuswerte werden bewusst zunächst als Rohwerte angezeigt, bis ihre Bedeutung am realen Gerät bestätigt ist.
+- In der Detailansicht sind Start, Pause, Fortsetzen und Rückkehr zur Ladestation an die Adapter-Steuerdatenpunkte angebunden. Die Oberfläche bestätigt nur die Übergabe an den Adapter, nicht die erfolgreiche Ausführung am Roboter.
 - Nicht vorhandene, unfertige oder nicht praktisch getestete Adapterfunktionen dürfen in HomePilot weder als verfügbar angezeigt noch als funktionierend ausgegeben werden.
 - Die Integration wird mit den tatsächlich vom Adapter bereitgestellten Datenpunkten umgesetzt; keine vorzeitige Festlegung auf unbestätigte IDs oder Befehlsnamen.
 - Die Roidmi-Integration wird mit der geplanten Raumverwaltung, Geräteklassifizierung und Dashboard-Überarbeitung in einer gemeinsamen größeren HomePilot-Version gebündelt. Keine separate Zwischenveröffentlichung nur für den Roboter.
