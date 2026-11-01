@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Quellcode auschecken
@@ -63,9 +64,12 @@ jobs:
       - name: Installierbare Release APK bauen
         run: gradle --no-daemon assembleRelease
 
+      - name: APK für Nutzer benennen
+        run: cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/HomePilot.apk
+
       - name: APK-Paket, Version und Signatur prüfen
         run: |
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="app/build/outputs/apk/release/HomePilot.apk"
           echo 'Release APK manifest:'
           $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest application-id "$APK"
           $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-code "$APK"
@@ -78,46 +82,45 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HomePilot-release-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/release/HomePilot.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: Projektstatus automatisch aktualisieren
+      - name: Projektstatus mit verifizierten Build-Daten aktualisieren
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VERSION_NAME=$(grep -oE 'versionName[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d '"' -f2)
           VERSION_CODE=$(grep -oE 'versionCode[[:space:]]*=[[:space:]]*[0-9]+' app/build.gradle.kts | head -n 1 | grep -oE '[0-9]+')
-          APK="app/build/outputs/apk/release/app-release.apk"
+          APK="app/build/outputs/apk/release/HomePilot.apk"
           APK_SHA=$(sha256sum "$APK" | awk '{print $1}')
           ARTIFACT_JSON=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts")
           ARTIFACT_ID=$(echo "$ARTIFACT_JSON" | jq -r '.artifacts[] | select(.name=="HomePilot-release-apk") | .id' | head -n 1)
           ARTIFACT_SIZE=$(echo "$ARTIFACT_JSON" | jq -r '.artifacts[] | select(.name=="HomePilot-release-apk") | .size_in_bytes' | head -n 1)
           test -n "$ARTIFACT_ID" && test "$ARTIFACT_ID" != "null"
-          mkdir -p .github/status
-          cat > .github/status/generated.md <<EOF
-          <!-- AUTO-PRODUCTION-STATUS:START -->
-          ## Automatisch gepflegter Produktionsstatus
-
-          - Zuletzt erfolgreicher Workflow: [Run #${GITHUB_RUN_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) – success
-          - Gebauter Quellcommit: `${GITHUB_SHA}`
-          - App-Version / versionCode: **${VERSION_NAME} / ${VERSION_CODE}**
-          - Build-Zeit: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
-          - APK-Signaturprüfung: erfolgreich (CI-Schritt apksigner verify --print-certs)
-          - Build-Artefakt: `HomePilot-release-apk`, ID ${ARTIFACT_ID}, ${ARTIFACT_SIZE} Bytes
-          - APK-SHA-256: ${APK_SHA}
-          - Release: wird nach diesem Dokumentationscommit mit Git-Tag latest synchronisiert.
-          - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
-          - ChatGPT-Bibliotheksakte: wird durch diesen Workflow nicht verändert; sie bleibt eine separate Langzeit-/Historienakte.
-
-          <!-- AUTO-PRODUCTION-STATUS:END -->
-          EOF
+          export VERSION_NAME VERSION_CODE APK_SHA ARTIFACT_ID ARTIFACT_SIZE
           python3 - <<'PY'
+          import os
           from pathlib import Path
           p = Path("PROJECT_STATUS.md")
           old = p.read_text()
-          block = Path(".github/status/generated.md").read_text().strip()
-          start, end = "<!-- AUTO-PRODUCTION-STATUS:START -->", "<!-- AUTO-PRODUCTION-STATUS:END -->"
+          start = "<!-- AUTO-PRODUCTION-STATUS:START -->"
+          end = "<!-- AUTO-PRODUCTION-STATUS:END -->"
+          block = f"""<!-- AUTO-PRODUCTION-STATUS:START -->
+          ## Automatisch gepflegter Produktionsstatus
+
+          - Quellcommit des APK-Builds: {os.environ['GITHUB_SHA']}
+          - App-Version / versionCode: **{os.environ['VERSION_NAME']} / {os.environ['VERSION_CODE']}**
+          - Build-Zeit: {os.popen("date -u +'%Y-%m-%d %H:%M:%S UTC'").read().strip()}
+          - APK-Dateiname: **HomePilot.apk**
+          - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
+          - Build-Artefakt: **HomePilot-release-apk**, ID {os.environ['ARTIFACT_ID']}, {os.environ['ARTIFACT_SIZE']} Bytes
+          - APK-SHA-256: {os.environ['APK_SHA']}
+          - GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
+          - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
+          - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
+
+          <!-- AUTO-PRODUCTION-STATUS:END -->"""
           if start in old and end in old:
               a = old.index(start)
               b = old.index(end, a) + len(end)
@@ -126,6 +129,8 @@ jobs:
               old = block + "\n\n" + old
           p.write_text(old.rstrip() + "\n")
           PY
+          git fetch origin main
+          git rebase origin/main
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add PROJECT_STATUS.md
@@ -151,4 +156,34 @@ jobs:
           else
             gh release create latest --title "HomePilot – neueste Version" --notes "HomePilot-Version: $VERSION_NAME"
           fi
-          gh release upload latest app/build/outputs/apk/release/app-release.apk --clobber
+          gh release delete-asset latest app-release.apk --yes 2>/dev/null || true
+          gh release upload latest app/build/outputs/apk/release/HomePilot.apk --clobber
+
+      - name: Veröffentlichung im Produktionsstatus bestätigen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("PROJECT_STATUS.md")
+          text = p.read_text()
+          text = text.replace(
+              "- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.",
+              "- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert."
+          )
+          p.write_text(text)
+          PY
+          git fetch origin main
+          git rebase origin/main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PROJECT_STATUS.md
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: confirm production release status [skip ci]"
+            git push origin HEAD:main
+          fi
+          git fetch origin main
+          git tag -f latest origin/main
+          git push origin refs/tags/latest --force
+          gh release edit latest --notes "HomePilot-Version: 1.29.32
+          Automatisch gebaut, signiert und veröffentlicht. Produktionsstatus und Quellstand siehe PROJECT_STATUS.md."
