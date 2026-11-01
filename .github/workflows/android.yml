@@ -4,13 +4,12 @@ on:
   push:
     branches:
       - main
-      - master
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: read
 
-# Prevent two builds from publishing over the same 'latest' APKs at once.
 concurrency:
   group: homepilot-apk-release
   cancel-in-progress: false
@@ -21,6 +20,8 @@ jobs:
     steps:
       - name: Quellcode auschecken
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Java 17 einrichten
         uses: actions/setup-java@v4
@@ -36,8 +37,6 @@ jobs:
       - name: Android SDK einrichten
         uses: android-actions/setup-android@v4
 
-      # Cache SDK platforms/build-tools so sdkmanager does not have to
-      # download the same Android packages on every clean GitHub runner.
       - name: Android SDK Pakete cachen
         uses: actions/cache@v4
         with:
@@ -66,14 +65,16 @@ jobs:
 
       - name: APK-Paket, Version und Signatur prüfen
         run: |
+          APK="app/build/outputs/apk/release/app-release.apk"
           echo 'Release APK manifest:'
-          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest application-id app/build/outputs/apk/release/app-release.apk
-          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-code app/build/outputs/apk/release/app-release.apk
-          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-name app/build/outputs/apk/release/app-release.apk
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest application-id "$APK"
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-code "$APK"
+          $ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer manifest version-name "$APK"
           echo 'Release APK certificate:'
-          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --print-certs "$APK"
 
       - name: APKs als Download bereitstellen
+        id: artifact
         uses: actions/upload-artifact@v4
         with:
           name: HomePilot-release-apk
@@ -81,26 +82,73 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: APK für direkten Download vorbereiten
-        run: cp app/build/outputs/apk/release/app-release.apk HomePilot.apk
-
-      - name: App-Version für Release auslesen
-        id: app_version
+      - name: Projektstatus automatisch aktualisieren
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           VERSION_NAME=$(grep -oE 'versionName[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d '"' -f2)
-          test -n "$VERSION_NAME" || { echo "versionName konnte nicht aus app/build.gradle.kts gelesen werden"; exit 1; }
-          echo "version=$VERSION_NAME" >> "$GITHUB_OUTPUT"
-          echo "Veröffentlichte HomePilot-Version: $VERSION_NAME"
+          VERSION_CODE=$(grep -oE 'versionCode[[:space:]]*=[[:space:]]*[0-9]+' app/build.gradle.kts | head -n 1 | grep -oE '[0-9]+')
+          APK="app/build/outputs/apk/release/app-release.apk"
+          APK_SHA=$(sha256sum "$APK" | awk '{print $1}')
+          ARTIFACT_JSON=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts")
+          ARTIFACT_ID=$(echo "$ARTIFACT_JSON" | jq -r '.artifacts[] | select(.name=="HomePilot-release-apk") | .id' | head -n 1)
+          ARTIFACT_SIZE=$(echo "$ARTIFACT_JSON" | jq -r '.artifacts[] | select(.name=="HomePilot-release-apk") | .size_in_bytes' | head -n 1)
+          test -n "$ARTIFACT_ID" && test "$ARTIFACT_ID" != "null"
+          mkdir -p .github/status
+          cat > .github/status/generated.md <<EOF
+          <!-- AUTO-PRODUCTION-STATUS:START -->
+          ## Automatisch gepflegter Produktionsstatus
 
-      - name: Neueste APKs als GitHub-Release bereitstellen
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: HomePilot – neueste Version
-          body: |
-            HomePilot.apk ist die normale HomePilot-Version.
-            HomePilot-Version: ${{ steps.app_version.outputs.version }}
-          files: |
-            HomePilot.apk
-          overwrite_files: true
-          make_latest: true
+          - Zuletzt erfolgreicher Workflow: [Run #${GITHUB_RUN_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}) – `success`
+          - Gebauter Quellcommit: `${GITHUB_SHA}`
+          - App-Version / versionCode: **${VERSION_NAME} / ${VERSION_CODE}**
+          - Build-Zeit: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          - APK-Signaturprüfung: erfolgreich (CI-Schritt `apksigner verify --print-certs`)
+          - Build-Artefakt: `HomePilot-release-apk`, ID `${ARTIFACT_ID}`, ${ARTIFACT_SIZE} Bytes
+          - APK-SHA-256: `${APK_SHA}`
+          - Release: wird nach diesem Dokumentationscommit mit Git-Tag `latest` synchronisiert.
+          - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
+          - ChatGPT-Bibliotheksakte: wird durch diesen Workflow nicht verändert; sie bleibt eine separate Langzeit-/Historienakte.
+
+          <!-- AUTO-PRODUCTION-STATUS:END -->
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("PROJECT_STATUS.md")
+          old = p.read_text()
+          block = Path(".github/status/generated.md").read_text().strip()
+          start, end = "<!-- AUTO-PRODUCTION-STATUS:START -->", "<!-- AUTO-PRODUCTION-STATUS:END -->"
+          if start in old and end in old:
+              a = old.index(start)
+              b = old.index(end, a) + len(end)
+              old = old[:a] + block + old[b:]
+          else:
+              old = block + "\n\n" + old
+          p.write_text(old.rstrip() + "\n")
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add PROJECT_STATUS.md
+          if ! git diff --cached --quiet; then
+            git commit -m "docs: refresh generated production status [skip ci]"
+            git push origin HEAD:main
+          fi
+
+      - name: Git-Tag latest auf dokumentierten Produktionsstand setzen
+        run: |
+          git fetch origin main
+          git tag -f latest origin/main
+          git push origin refs/tags/latest --force
+
+      - name: Neueste APK im GitHub-Release bereitstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION_NAME=$(grep -oE 'versionName[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d '"' -f2)
+          if gh release view latest >/dev/null 2>&1; then
+            gh release edit latest --title "HomePilot – neueste Version" --notes "HomePilot-Version: $VERSION_NAME
+          Automatisch gebaut und geprüft. Quellstand: $(git rev-parse origin/main)."
+          else
+            gh release create latest --title "HomePilot – neueste Version" --notes "HomePilot-Version: $VERSION_NAME"
+          fi
+          gh release upload latest app/build/outputs/apk/release/app-release.apk --clobber
