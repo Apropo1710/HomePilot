@@ -117,7 +117,7 @@ Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten gr�
 ### Umsetzungsregeln
 
 - HomePilot bleibt ausschließlich Client des ioBroker-WebSocket-Adapters `ws.0`; keine direkte Xiaomi-Cloud-Anmeldung und keine direkte Roboterkommunikation in HomePilot.
-- RoidmiPilot und HomePilot bleiben getrennte Projekte mit getrennten Repositories und Builds.
+- Roidmi Iobroker Adapter und HomePilot bleiben getrennte Projekte mit getrennten Repositories und Builds.
 - HomePilot wird zunächst auf eine klar abgegrenzte Geräteklasse und eine robuste, datenpunktbasierte Integration vorbereitet.
 - Erste HomePilot-Integration auf `main`: eigene Roidmi-Kachel auf der Startseite und Detailansicht mit Akku, Ladezustand, Betriebsstatus, Fehlercode und Adapter-Verbindungsstatus. Die numerischen Statuswerte werden bewusst zunächst als Rohwerte angezeigt, bis ihre Bedeutung am realen Gerät bestätigt ist.
 - In der Detailansicht sind Start, Pause, Fortsetzen und Rückkehr zur Ladestation an die Adapter-Steuerdatenpunkte angebunden. Die Oberfläche bestätigt nur die Übergabe an den Adapter, nicht die erfolgreiche Ausführung am Roboter.
@@ -129,7 +129,7 @@ Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten gr�
 ### Vorgehensreihenfolge
 
 1. Vorhandene HomePilot-Geräte- und Raumarchitektur prüfen und eine möglichst kleine, erweiterbare Einbindung für `robot_vacuum` entwerfen.
-2. Parallel den tatsächlichen Datenpunkt- und Befehlsumfang von RoidmiPilot anhand des Adaptercodes und später anhand realer ioBroker-Objekte verifizieren.
+2. Parallel den tatsächlichen Datenpunkt- und Befehlsumfang von Roidmi Iobroker Adapter anhand des Adaptercodes und später anhand realer ioBroker-Objekte verifizieren.
 3. Roboter-Dashboard und Statusanzeige mit tatsächlich verfügbaren Datenpunkten integrieren.
 4. Steuerbefehle einzeln anbinden und am Roidmi EVE Plus praktisch testen.
 5. Erweiterte Funktionen wie Räume/Zonen, Karte, Verlauf und Wartung erst ergänzen, wenn Adapter und Gerät sie zuverlässig bereitstellen.\n
