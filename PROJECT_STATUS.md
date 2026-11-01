@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 01.11.2026: Roidmi-Raumliste kompakter gestaltet; Betriebsstatus, Fehler, Reinigungsart und Leistungsstufen anhand des V60-MIOT-Profils in Klartext übersetzt. Ladezustands- und einzelne Fehlercodes bleiben bei widersprüchlichen Referenzquellen ausdrücklich gekennzeichnet. WebSocket-Start wartet nicht mehr auf einen separaten Shelly-Testdatenpunkt; Wiederverbindungen melden den Status erneut und zuletzt bekannte Roidmi-Werte bleiben während kurzer Unterbrechungen sichtbar. Steuerbefehle sind bei unterbrochener ioBroker-Verbindung gesperrt.
+
+
 - 31.10.2026: Erste zentrale Projektdokumentation auf Basis des geprüften Stands von `main` und der bisher festgehaltenen Projektentscheidungen angelegt.
 - 31.10.2026: Verbindlich festgelegt, dass die weitere Entwicklung direkt auf `main` für die Hauptversion erfolgt; keine neuen Test-Branches oder separaten Testversionen.\n
 
