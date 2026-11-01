@@ -1404,7 +1404,6 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
     }
 }
 
-@Composable
 private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-two-leobotics/product/1-2.jpg"
 @Composable private fun RoidmiProductPhoto(size: androidx.compose.ui.unit.Dp) {
     AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
