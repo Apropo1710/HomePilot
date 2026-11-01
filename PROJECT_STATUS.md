@@ -1,16 +1,16 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Zuletzt erfolgreicher Workflow: [Run #183](https://github.com/Apropo1710/HomePilot/actions/runs/41278509623) – success
-- Gebauter Quellcommit: 
+- Quellcommit des APK-Builds: b59a9e567e7b60625377bc7b7ef8835099aec374
 - App-Version / versionCode: **1.29.32 / 90**
-- Build-Zeit: 2026-11-01 05:57:16 UTC
-- APK-Signaturprüfung: erfolgreich (CI-Schritt apksigner verify --print-certs)
-- Build-Artefakt: , ID 13072686907, 11077802 Bytes
-- APK-SHA-256: fff53735dc7edf30ed1d6deb4965dfca95bf9081a91ec2c8cfdbe86276aa6651
-- Release: wird nach diesem Dokumentationscommit mit Git-Tag latest synchronisiert.
+- Build-Zeit: 2026-11-01 06:13:19 UTC
+- APK-Dateiname: **HomePilot.apk**
+- APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
+- Build-Artefakt: **HomePilot-release-apk**, ID 13073130961, 11077807 Bytes
+- APK-SHA-256: 5ea26083141153931811caa982b0f72978db797fd75c484247735011eec3e740
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
-- ChatGPT-Bibliotheksakte: wird durch diesen Workflow nicht verändert; sie bleibt eine separate Langzeit-/Historienakte.
+- ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
 
@@ -37,30 +37,11 @@ Der jeweils aktuelle Code auf GitHub ist maßgeblich. Vor jeder Änderung muss d
 
 ## Aktueller Produktionsstand
 
-- Branch: `main`
-- Zuletzt vor dieser Dokumentationspflege bekannter App-Code-Commit: `c392f470c671c40bf4ef882e94e3f903ed79ea7a`
-- Commit-Nachricht: `Fix MOVA maintenance status labels`
-- App-Version: `1.29.31`
-- versionCode: `89`
-- Android: compileSdk 35, targetSdk 35, minSdk 26
-- Java/Kotlin-Ziel: Java 17
-- GitHub Actions Workflow: `.github/workflows/android.yml`
-
-Der genannte App-Code-Commit korrigiert die Anzeige der MOVA-Wartungswerte (Messerzustand und Gerätewartung), sodass Kotlin-String-Interpolation korrekt ausgewertet wird. Spätere Commits können ausschließlich die Projektdokumentation betreffen; vor jeder Entwicklungsarbeit ist der tatsächliche aktuelle Stand von `main` erneut zu lesen.
+Die verbindlichen aktuellen Build-, Signatur-, Artefakt- und Release-Daten stehen im automatisch gepflegten Produktionsstatus am Dokumentanfang. Ältere Einzelstände werden nicht als aktueller Produktionsstand fortgeführt.
 
 ## Build und Veröffentlichung
 
-Der Produktionsworkflow wird bei Pushes auf `main` beziehungsweise `master` und manuell gestartet.
-
-Der Workflow:
-1. richtet Java 17, Gradle 8.9 und Android SDK 35 ein,
-2. stellt den stabilen Signaturschlüssel aus dem GitHub Secret `DEBUG_KEYSTORE_BASE64` bereit,
-3. baut die Release-APK,
-4. prüft Paket-ID, Versionscode, Versionsname und Signatur,
-5. lädt das APK-Artefakt hoch,
-6. veröffentlicht beziehungsweise aktualisiert den GitHub-Release-Tag `latest` mit `HomePilot.apk`.
-
-Downloadlinks erst nennen, wenn der konkrete Build beziehungsweise Release erfolgreich geprüft wurde. Ein erfolgreicher Build ohne App-Code-Änderung bedeutet nicht automatisch eine neue App-Version.
+Die verbindlichen aktuellen Build-, Signatur-, Artefakt- und Release-Daten stehen im automatisch gepflegten Produktionsstatus am Dokumentanfang. Ältere Einzelstände werden nicht als aktueller Produktionsstand fortgeführt.
 
 ## Historische Branches aus den Zugriffstests
 
@@ -114,4 +95,4 @@ Weitere Entscheidung:
 ## Änderungsverlauf dieser Dokumentation
 
 - 31.10.2026: Erste zentrale Projektdokumentation auf Basis des geprüften Stands von `main` und der bisher festgehaltenen Projektentscheidungen angelegt.
-- 31.10.2026: Verbindlich festgelegt, dass die weitere Entwicklung direkt auf `main` für die Hauptversion erfolgt; keine neuen Test-Branches oder separaten Testversionen.
+- 31.10.2026: Verbindlich festgelegt, dass die weitere Entwicklung direkt auf `main` für die Hauptversion erfolgt; keine neuen Test-Branches oder separaten Testversionen.\n
