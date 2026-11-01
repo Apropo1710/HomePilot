@@ -1405,138 +1405,53 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
 }
 
 @Composable
-private fun RoidmiHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
-    var adapterConnected by remember { mutableStateOf(false) }
-    var battery by remember { mutableStateOf<Double?>(null) }
-    var robotState by remember { mutableStateOf<Double?>(null) }
-    LaunchedEffect(serverUrl, connected) {
-        if (!connected) {
-            adapterConnected = false
-            battery = null
-            robotState = null
-        } else while (true) {
-            client.getState(serverUrl, "roidmi.0.info.connection") { value, _ -> adapterConnected = value == true }
-            client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it }
-            client.getNumericState(serverUrl, "roidmi.0.state") { robotState = it }
-            delay(30_000)
-        }
-    }
+private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-two-leobotics/product/1-2.jpg"
+@Composable private fun RoidmiProductPhoto(size: androidx.compose.ui.unit.Dp) {
+    AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
+}
+@Composable private fun RoidmiHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
+    var adapter by remember { mutableStateOf(false) }; var battery by remember { mutableStateOf<Double?>(null) }; var state by remember { mutableStateOf<Double?>(null) }
+    LaunchedEffect(serverUrl, connected) { if (!connected) { adapter = false; battery = null; state = null } else while (true) {
+        client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> adapter = v == true }; client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it }; client.getNumericState(serverUrl, "roidmi.0.state") { state = it }; delay(30_000) } }
     CardBlock(panel, text, "Roidmi EVE Plus", "Saugroboter · Status und Steuerung öffnen", Icons.Default.CleaningServices, action = onOpen) {
-        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(104.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFFE8EDF2)), contentAlignment = Alignment.Center) {
-                Icon(Icons.Default.CleaningServices, null, tint = Color(0xFF52677A), modifier = Modifier.size(58.dp))
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(
-                    when {
-                        !connected -> "ioBroker nicht verbunden"
-                        !adapterConnected -> "Adapter nicht verbunden"
-                        robotState != null -> "Betriebsstatus: " + robotState!!.toInt()
-                        else -> "Status wird geladen"
-                    },
-                    color = if (adapterConnected) Green else Muted,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp)
-                Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { RoidmiProductPhoto(104.dp); Spacer(Modifier.width(14.dp)); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Text(when { !connected -> "ioBroker nicht verbunden"; !adapter -> "Adapter nicht verbunden"; state != null -> "Statuscode: " + state!!.toInt(); else -> "Status wird geladen" }, color = if (adapter) Green else Muted, fontWeight = FontWeight.SemiBold)
+            Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp); Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        } }
     }
 }
-
-@Composable
-private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
-    var adapterConnected by remember { mutableStateOf(false) }
-    var connectionText by remember { mutableStateOf<String?>(null) }
-    var battery by remember { mutableStateOf<Double?>(null) }
-    var charging by remember { mutableStateOf<Double?>(null) }
-    var robotState by remember { mutableStateOf<Double?>(null) }
-    var errorCode by remember { mutableStateOf<Double?>(null) }
-    var fanSpeed by remember { mutableStateOf<Double?>(null) }
-    var sweepType by remember { mutableStateOf<Double?>(null) }
-    var waterLevel by remember { mutableStateOf<Double?>(null) }
-    var commandMessage by remember { mutableStateOf<String?>(null) }
-    var commandBusy by remember { mutableStateOf(false) }
-
-    LaunchedEffect(serverUrl, connected) {
-        if (!connected) {
-            adapterConnected = false
-            connectionText = null
-            battery = null; charging = null; robotState = null; errorCode = null
-            fanSpeed = null; sweepType = null; waterLevel = null
-        } else while (true) {
-            client.getState(serverUrl, "roidmi.0.info.connection") { value, _ -> adapterConnected = value == true }
-            client.getTextState(serverUrl, "roidmi.0.info.connectionText") { connectionText = it }
-            client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it }
-            client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it }
-            client.getNumericState(serverUrl, "roidmi.0.state") { robotState = it }
-            client.getNumericState(serverUrl, "roidmi.0.errorCode") { errorCode = it }
-            client.getNumericState(serverUrl, "roidmi.0.fanSpeed") { fanSpeed = it }
-            client.getNumericState(serverUrl, "roidmi.0.sweepType") { sweepType = it }
-            client.getNumericState(serverUrl, "roidmi.0.waterLevel") { waterLevel = it }
-            delay(30_000)
-        }
-    }
-
-    fun sendCommand(command: String, label: String) {
-        if (!connected || !adapterConnected || commandBusy) return
-        commandBusy = true
-        commandMessage = null
-        client.setState(serverUrl, "roidmi.0.control." + command, true) { ok, message ->
-            commandBusy = false
-            commandMessage = if (ok) label + " an den Adapter übergeben." else message
-        }
-    }
-
+@Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
+    var adapter by remember { mutableStateOf(false) }; var connectionText by remember { mutableStateOf<String?>(null) }; var battery by remember { mutableStateOf<Double?>(null) }; var charging by remember { mutableStateOf<Double?>(null) }; var state by remember { mutableStateOf<Double?>(null) }; var error by remember { mutableStateOf<Double?>(null) }; var fan by remember { mutableStateOf<Double?>(null) }; var sweep by remember { mutableStateOf<Double?>(null) }; var water by remember { mutableStateOf<Double?>(null) }; var roomsRaw by remember { mutableStateOf<String?>(null) }; var mapId by remember { mutableStateOf<Double?>(null) }
+    var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(serverUrl, connected) { if (!connected) { adapter = false; connectionText = null; battery = null; charging = null; state = null; error = null; fan = null; sweep = null; water = null; roomsRaw = null; mapId = null } else while (true) {
+        client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> adapter = v == true }; client.getTextState(serverUrl, "roidmi.0.info.connectionText") { connectionText = it }; client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it }; client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it }; client.getNumericState(serverUrl, "roidmi.0.state") { state = it }; client.getNumericState(serverUrl, "roidmi.0.errorCode") { error = it }; client.getNumericState(serverUrl, "roidmi.0.fanSpeed") { fan = it }; client.getNumericState(serverUrl, "roidmi.0.sweepType") { sweep = it }; client.getNumericState(serverUrl, "roidmi.0.waterLevel") { water = it }; client.getTextState(serverUrl, "roidmi.0.map.roomsJson") { roomsRaw = it }; client.getNumericState(serverUrl, "roidmi.0.map.mapId") { mapId = it }; delay(30_000) } }
+    val rooms = remember(roomsRaw) { runCatching { val j = org.json.JSONArray(roomsRaw ?: "[]"); (0 until j.length()).mapNotNull { i -> val o = j.optJSONObject(i) ?: return@mapNotNull null; val id = o.optInt("id", -1); val name = o.optString("name").trim(); if (id > 0 && name.isNotBlank()) id to name else null } }.getOrDefault(emptyList()) }
+    fun command(id: String, label: String) { if (!adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
+    fun setting(id: String, value: Int, label: String) { client.setNumericState(serverUrl, "roidmi.0." + id, value.toDouble()) { ok, msg -> message = if (ok) label + " gespeichert." else msg } }
+    val batteryText = battery?.let { it.toInt().toString() + " %" } ?: "—"
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }
-            Text("Roidmi EVE Plus", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-        }
+        Row(verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }; Text("Roidmi EVE Plus", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text) }
         CardBlock(panel, text, "Gerätestatus", "Daten aus dem ioBroker-Adapter Roidmi", Icons.Default.CleaningServices) {
-            Text(
-                when {
-                    !connected -> "HomePilot ist nicht mit ioBroker verbunden."
-                    adapterConnected -> "Adapter verbunden"
-                    else -> connectionText ?: "Adapter nicht verbunden oder noch nicht eingerichtet."
-                },
-                color = if (adapterConnected) Green else Muted,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth()) }
-            Text("Ladezustand (Rohwert): " + (charging?.toInt()?.toString() ?: "—"), color = text)
-            Text("Betriebsstatus (Rohwert): " + (robotState?.toInt()?.toString() ?: "—"), color = text)
-            Text("Fehlercode: " + (errorCode?.toInt()?.toString() ?: "—"), color = text)
-            Text("Saugstufe: " + (fanSpeed?.toInt()?.toString() ?: "—"), color = text)
-            Text("Reinigungsart: " + (sweepType?.toInt()?.toString() ?: "—"), color = text)
-            Text("Wasserstufe: " + (waterLevel?.toInt()?.toString() ?: "—"), color = text)
-            Text("Statuswerte werden zunächst unverändert angezeigt, bis ihre Bedeutung am realen Gerät bestätigt ist.", color = Muted, fontSize = 11.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) { RoidmiProductPhoto(124.dp); Spacer(Modifier.width(14.dp)); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(if (!connected) "ioBroker nicht verbunden" else if (adapter) "Adapter verbunden" else connectionText ?: "Adapter nicht verbunden", color = if (adapter) Green else Muted, fontWeight = FontWeight.Bold, fontSize = 17.sp); Text("Akku: " + batteryText, color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold) } }
+            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }; Text("Ladezustand (Rohwert): " + (charging?.toInt()?.toString() ?: "—"), color = text); Text("Betriebsstatus (Rohwert): " + (state?.toInt()?.toString() ?: "—"), color = text); Text("Fehlercode: " + (error?.toInt()?.toString() ?: "—"), color = text)
         }
-        CardBlock(panel, text, "Steuerung", "Befehle werden über Roidmi an ioBroker übergeben", Icons.Default.Gamepad) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { sendCommand("start", "Reinigungsstart") }, enabled = adapterConnected && !commandBusy, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(4.dp)); Text("Start")
-                }
-                OutlinedButton(onClick = { sendCommand("pause", "Pause") }, enabled = adapterConnected && !commandBusy, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Pause, null); Spacer(Modifier.width(4.dp)); Text("Pause")
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(onClick = { sendCommand("resume", "Fortsetzen") }, enabled = adapterConnected && !commandBusy, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(4.dp)); Text("Weiter")
-                }
-                OutlinedButton(onClick = { sendCommand("dock", "Rückkehrbefehl") }, enabled = adapterConnected && !commandBusy, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Home, null); Spacer(Modifier.width(4.dp)); Text("Laden")
-                }
-            }
-            if (commandBusy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            commandMessage?.let { Text(it, color = Muted, fontSize = 13.sp) }
+        CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
+            if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = Muted)
+            else { rooms.forEach { (id, name) -> Row(Modifier.fillMaxWidth().clickable { selected = if (id in selected) selected - id else selected + id }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = id in selected, onCheckedChange = { v -> selected = if (v) selected + id else selected - id }); Text(name, color = text, fontWeight = FontWeight.SemiBold) } }; Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") } }
+        }
+        CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("start", "Reinigungsstart") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Start") }; OutlinedButton(onClick = { command("pause", "Pause") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Pause, null); Text("Pause") } }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("resume", "Fortsetzen") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Weiter") }; OutlinedButton(onClick = { command("dock", "Rückkehrbefehl") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Home, null); Text("Laden") } }
+            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth()); message?.let { Text(it, color = Muted, fontSize = 13.sp) }
+        }
+        CardBlock(panel, text, "Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
+            Text("Reinigungsart · " + (sweep?.toInt()?.toString() ?: "—"), color = text, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { OutlinedButton(onClick = { setting("sweepType", 0, "Standard") }, enabled = adapter, modifier = Modifier.weight(1f)) { Text("Standard") }; OutlinedButton(onClick = { setting("sweepType", 1, "Nur saugen") }, enabled = adapter, modifier = Modifier.weight(1f)) { Text("Saugen") }; OutlinedButton(onClick = { setting("sweepType", 2, "Saugen/Wischen") }, enabled = adapter, modifier = Modifier.weight(1f)) { Text("Wischen") } }
+            Text("Saugstufe · " + (fan?.toInt()?.toString() ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("fanSpeed", ((fan?.toInt() ?: 0) + 1) % 5, "Saugstufe") }, enabled = adapter, modifier = Modifier.fillMaxWidth()) { Text("Saugstufe weiterschalten") }
+            Text("Wasserstufe · " + (water?.toInt()?.toString() ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("waterLevel", ((water?.toInt() ?: 0) + 1) % 5, "Wasserstufe") }, enabled = adapter, modifier = Modifier.fillMaxWidth()) { Text("Wasserstufe weiterschalten") }
         }
     }
 }
-
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
