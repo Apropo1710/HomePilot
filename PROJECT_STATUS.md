@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 830210c1839dc4c9fea460e5ad2eb5a03f24c253
-- App-Version / versionCode: **1.29.36 / 94**
-- Build-Zeit: 2026-11-01 21:40:14 UTC
+- Quellcommit des APK-Builds: 42844fa0a7c10c48602999fd2c9a10a0612fd937
+- App-Version / versionCode: **1.29.37 / 95**
+- Build-Zeit: 2026-11-01 21:53:03 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13102435576, 11101477 Bytes
-- APK-SHA-256: be3b4505b475a4258d02363226f13da005b75208d24ad3b7c8dc1416ebcbdd70
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13102277234, 11101560 Bytes
+- APK-SHA-256: fbf32d45c36b63ac95537b8cc0976c8d90aafe689885b0122215457bbc2ce636
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -142,4 +142,4 @@ Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten gr�
 2. Parallel den tatsächlichen Datenpunkt- und Befehlsumfang von Roidmi Iobroker Adapter anhand des Adaptercodes und später anhand realer ioBroker-Objekte verifizieren.
 3. Roboter-Dashboard und Statusanzeige mit tatsächlich verfügbaren Datenpunkten integrieren.
 4. Steuerbefehle einzeln anbinden und am Roidmi EVE Plus praktisch testen.
-5. Erweiterte Funktionen wie Räume/Zonen, Karte, Verlauf und Wartung erst ergänzen, wenn Adapter und Gerät sie zuverlässig bereitstellen.\n\n\n\n\n\n
+5. Erweiterte Funktionen wie Räume/Zonen, Karte, Verlauf und Wartung erst ergänzen, wenn Adapter und Gerät sie zuverlässig bereitstellen.\n\n\n\n\n\n\n
