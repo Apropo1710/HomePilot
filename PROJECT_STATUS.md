@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 01.11.2026: Roidmi-Kacheln optisch an MOVA angeglichen: bei fehlerfreiem Adapterstatus wird „Bereit“ angezeigt, redundante Statuszeile auf der Zuhause-Kachel entfällt. Roidmi-Detailkarte zeigt ebenfalls „Bereit“ statt „Adapter verbunden“ und eine kompakte Statusdarstellung; Reinigungszonen werden in drei Spalten angeordnet. Produktionsversion 1.29.36 (Code 94).
+
+
 - 01.11.2026: Roidmi-Raumliste kompakter gestaltet; Betriebsstatus, Fehler, Reinigungsart und Leistungsstufen anhand des V60-MIOT-Profils in Klartext übersetzt. Ladezustands- und einzelne Fehlercodes bleiben bei widersprüchlichen Referenzquellen ausdrücklich gekennzeichnet. WebSocket-Start wartet nicht mehr auf einen separaten Shelly-Testdatenpunkt; Wiederverbindungen melden den Status erneut und zuletzt bekannte Roidmi-Werte bleiben während kurzer Unterbrechungen sichtbar. Steuerbefehle sind bei unterbrochener ioBroker-Verbindung gesperrt.
 
 

@@ -1457,7 +1457,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
 }
 @Composable private fun RoidmiHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }
+    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
             client.cachedNumber("roidmi.0.battery")?.let { battery = it }
@@ -1466,28 +1466,38 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                 client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> if (v != null) adapter = v }
                 client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it ?: battery }
                 client.getNumericState(serverUrl, "roidmi.0.state") { state = it ?: state }
+                client.getNumericState(serverUrl, "roidmi.0.errorCode") { error = it ?: error }
                 delay(30_000)
             }
         }
     }
     CardBlock(panel, text, "Roidmi EVE Plus", "Saugroboter · Status und Steuerung öffnen", Icons.Default.CleaningServices, action = onOpen) {
         Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { RoidmiProductPhoto(104.dp); Spacer(Modifier.width(14.dp)); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(if (!connected) "ioBroker offline · letzter Stand" else if (adapter) "Adapter verbunden" else "Adapter nicht verbunden", color = if (connected && adapter) Green else Muted, fontWeight = FontWeight.SemiBold)
-            Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp); Text(state?.let { "Status: ${roidmiStateLabel(it.toInt())}" } ?: "Status wird geladen", color = text, fontSize = 13.sp); Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(
+                when {
+                    !connected -> "Offline · letzter Stand"
+                    adapter && error == 0.0 -> "Bereit"
+                    adapter && error != null && error != 0.0 -> roidmiErrorLabel(error!!.toInt())
+                    adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
+                    else -> "Nicht verbunden"
+                },
+                color = if (connected && adapter && error == 0.0) Green else Muted,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp)
+            Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         } }
     }
 }
 @Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var connectionText by remember { mutableStateOf(client.cachedText("roidmi.0.info.connectionText")) }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.waterLevel")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.map.mapId")) }
+    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.waterLevel")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.map.mapId")) }
     var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
-            client.cachedText("roidmi.0.info.connectionText")?.let { connectionText = it }
             client.cachedText("roidmi.0.map.roomsJson")?.let { roomsRaw = it }
             client.cachedNumber("roidmi.0.map.mapId")?.let { mapId = it }
             while (true) {
                 client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> if (v != null) adapter = v }
-                client.getTextState(serverUrl, "roidmi.0.info.connectionText") { connectionText = it ?: connectionText }
                 client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it ?: battery }
                 client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it ?: charging }
                 client.getNumericState(serverUrl, "roidmi.0.state") { state = it ?: state }
@@ -1508,15 +1518,48 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }; Text("Roidmi EVE Plus", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text) }
         CardBlock(panel, text, "Gerätestatus", "Daten aus dem ioBroker-Adapter Roidmi", Icons.Default.CleaningServices) {
-            Row(verticalAlignment = Alignment.CenterVertically) { RoidmiProductPhoto(124.dp); Spacer(Modifier.width(14.dp)); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(if (!connected) "ioBroker nicht verbunden" else if (adapter) "Adapter verbunden" else connectionText ?: "Adapter nicht verbunden", color = if (adapter) Green else Muted, fontWeight = FontWeight.Bold, fontSize = 17.sp); Text("Akku: " + batteryText, color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold) } }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                RoidmiProductPhoto(124.dp); Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        when {
+                            !connected -> "Offline · letzter Stand"
+                            adapter && error == 0.0 -> "Bereit"
+                            adapter && error != null && error != 0.0 -> roidmiErrorLabel(error!!.toInt())
+                            adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
+                            else -> "Nicht verbunden"
+                        },
+                        color = if (connected && adapter && error == 0.0) Green else Muted,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                    Text("Akku: " + batteryText, color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                }
+            }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }
-            Text("Ladezustand: " + (charging?.let { roidmiChargingLabel(it.toInt(), state?.toInt()) } ?: "—"), color = text)
-            Text("Betriebsstatus: " + (state?.let { roidmiStateLabel(it.toInt()) } ?: "—"), color = text)
-            Text("Fehler: " + (error?.let { roidmiErrorLabel(it.toInt()) } ?: "—"), color = text)
+            if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = Muted, fontSize = 12.sp)
         }
         CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
             if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = Muted)
-            else { rooms.forEach { (id, name) -> Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { selected = if (id in selected) selected - id else selected + id }, verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = id in selected, onCheckedChange = { v -> selected = if (v) selected + id else selected - id }, modifier = Modifier.size(40.dp)); Text(name, color = text, fontWeight = FontWeight.SemiBold) } }; Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") } }
+            else {
+                rooms.chunked(3).forEach { roomRow ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        roomRow.forEach { (id, name) ->
+                            Row(
+                                Modifier.weight(1f).heightIn(min = 40.dp).clip(RoundedCornerShape(10.dp))
+                                    .clickable { selected = if (id in selected) selected - id else selected + id }
+                                    .padding(horizontal = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(checked = id in selected, onCheckedChange = { v -> selected = if (v) selected + id else selected - id }, modifier = Modifier.size(30.dp))
+                                Text(name, color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 1)
+                            }
+                        }
+                        repeat(3 - roomRow.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                }
+                Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
+            }
         }
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("start", "Reinigungsstart") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Start") }; OutlinedButton(onClick = { command("pause", "Pause") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Pause, null); Text("Pause") } }
