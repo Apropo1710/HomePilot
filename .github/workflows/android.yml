@@ -195,5 +195,6 @@ jobs:
           git fetch origin main
           git tag -f latest origin/main
           git push origin refs/tags/latest --force
-          gh release edit latest --notes "HomePilot-Version: 1.29.32
+          VERSION_NAME=$(grep -oE 'versionName[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -n 1 | cut -d '"' -f2)
+          gh release edit latest --notes "HomePilot-Version: $VERSION_NAME
           Automatisch gebaut, signiert und veröffentlicht. Produktionsstatus und Quellstand siehe PROJECT_STATUS.md."
