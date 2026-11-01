@@ -1,3 +1,19 @@
+<!-- AUTO-PRODUCTION-STATUS:START -->
+## Automatisch gepflegter Produktionsstatus
+
+- Zuletzt erfolgreicher Workflow: [Run #183](https://github.com/Apropo1710/HomePilot/actions/runs/41278509623) – success
+- Gebauter Quellcommit: 
+- App-Version / versionCode: **1.29.32 / 90**
+- Build-Zeit: 2026-11-01 05:57:16 UTC
+- APK-Signaturprüfung: erfolgreich (CI-Schritt apksigner verify --print-certs)
+- Build-Artefakt: , ID 13072686907, 11077802 Bytes
+- APK-SHA-256: fff53735dc7edf30ed1d6deb4965dfca95bf9081a91ec2c8cfdbe86276aa6651
+- Release: wird nach diesem Dokumentationscommit mit Git-Tag latest synchronisiert.
+- Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
+- ChatGPT-Bibliotheksakte: wird durch diesen Workflow nicht verändert; sie bleibt eine separate Langzeit-/Historienakte.
+
+<!-- AUTO-PRODUCTION-STATUS:END -->
+
 # HomePilot – Projektstatus
 
 Stand: 31.10.2026  
