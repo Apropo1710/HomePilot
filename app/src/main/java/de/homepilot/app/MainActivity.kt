@@ -85,7 +85,6 @@ private class IoBrokerClient {
             socket = client
             var reported = false
             client.on("connect") {
-                reported = false
                 client.emit("authenticate", IoBrokerAck { args ->
                     val ok = args.firstOrNull() as? Boolean ?: false
                     if (!ok) {
@@ -94,13 +93,18 @@ private class IoBrokerClient {
                         connected = true
                         client.emit("subscribe", "*")
                         client.emit("subscribeObjects", "*")
-                        // Authentication is sufficient; do not block startup on an unrelated Shelly test state.
-                        post {
-                            if (!reported) {
-                                reported = true
-                                onResult(true, "WebSocket-Verbindung zu ioBroker hergestellt")
+                        client.emit("getState", "shelly.0.SHPLG-S#376CC3#1.Relay0.Switch", IoBrokerAck { stateArgs ->
+                            val err = stateArgs.firstOrNull()
+                            val state = stateArgs.getOrNull(1) as? JSONObject
+                            if (state != null) stateCache["shelly.0.SHPLG-S#376CC3#1.Relay0.Switch"] = state
+                            post {
+                                if (!reported) {
+                                    reported = true
+                                    if (err == null && state != null) onResult(true, "WebSocket-Verbindung zu ioBroker hergestellt")
+                                    else onResult(false, "WebSocket steht, aber der Test-Datenpunkt konnte nicht gelesen werden: ${err ?: "keine Statusantwort"}")
+                                }
                             }
-                        }
+                        })
                     }
                 })
             }
@@ -110,33 +114,18 @@ private class IoBrokerClient {
                 if (state == null) stateCache.remove(id) else stateCache[id] = state
             }
             client.on("disconnect") {
-                if (socket === client) {
-                    connected = false
-                    post { if (socket === client) onResult(false, "WebSocket-Verbindung unterbrochen – Wiederverbindung läuft") }
-                }
+                connected = false
             }
             client.on("connect_error") { args ->
-                if (socket === client) {
-                    connected = false
-                    val message = args.firstOrNull()?.toString() ?: "Verbindung fehlgeschlagen"
-                    post { if (socket === client && !reported) { reported = true; onResult(false, "WebSocket: $message") } }
-                }
+                connected = false
+                val message = args.firstOrNull()?.toString() ?: "Verbindung fehlgeschlagen"
+                post { if (!reported) { reported = true; onResult(false, "WebSocket: $message") } }
             }
             client.connect()
         } catch (e: Exception) {
             connected = false
             onResult(false, e.message ?: e.javaClass.simpleName)
         }
-    }
-
-    fun cachedNumber(id: String): Double? {
-        val raw = stateCache[id]?.opt("val")
-        return when (raw) { is Number -> raw.toDouble(); is String -> raw.toDoubleOrNull(); else -> null }
-    }
-
-    fun cachedText(id: String): String? {
-        val raw = stateCache[id]?.opt("val")
-        return when (raw) { is String -> raw.trim().takeIf { it.isNotBlank() }; is Number, is Boolean -> raw.toString(); else -> null }
     }
 
     private fun requireSocket(): IoBrokerSocket =
@@ -1415,92 +1404,26 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
     }
 }
 
-private fun roidmiStateLabel(value: Int): String = when (value) {
-    1 -> "Schläft"; 2 -> "Bereit"; 3 -> "Pausiert"; 4 -> "Reinigt"; 5 -> "Fährt zur Ladestation"
-    6 -> "Lädt"; 7 -> "Fehler"; 8 -> "Fernsteuerung"; 9 -> "Vollständig geladen"
-    10 -> "Ausgeschaltet"; 11 -> "Rückfahrt pausiert"; else -> "Unbekannter Status ($value)"
-}
-private fun roidmiChargingLabel(value: Int, robotState: Int?): String = when {
-    robotState == 9 -> "Vollständig geladen"
-    robotState == 6 || value == 1 -> "Lädt"
-    value == 2 -> "Lädt nicht"
-    value == 3 || value == 4 -> "Nicht ladefähig (Quellen nennen unterschiedliche Codes)"
-    else -> "Unbekannter Ladecode ($value)"
-}
-private fun roidmiSweepLabel(value: Int): String = when (value) {
-    0 -> "Saugen"; 1 -> "Wischen"; 2 -> "Saugen und Wischen"; else -> "Unbekannt ($value)"
-}
-private fun roidmiFanLabel(value: Int): String = when (value) {
-    0 -> "Aus (nur Wischen)"; 1 -> "Leise"; 2 -> "Standard"; 3 -> "Stark"; 4 -> "Maximum"; else -> "Unbekannt ($value)"
-}
-private fun roidmiWaterLabel(value: Int): String = when (value) {
-    0 -> "Aus (nur Saugen)"; 1 -> "Gering"; 2 -> "Mittel"; 3 -> "Maximum"
-    4 -> "Stufe 4 (nur im python-miio-Mapping)"; else -> "Nicht definiert ($value)"
-}
-private fun roidmiErrorLabel(value: Int): String = when (value) {
-    0 -> "Kein Fehler"; 1 -> "Akku schwach – fährt zur Ladestation"; 2 -> "Akku schwach – schaltet ab"
-    3 -> "Hauptrad blockiert"; 4 -> "Stoßfänger blockiert"; 5 -> "Roboter steht schief"
-    6 -> "Lasersensor blockiert"; 7 -> "Vorderer Kollisionssensor"; 8 -> "Sensorfehler (Quellen uneinheitlich)"
-    9 -> "Hauptbürste blockiert"; 10 -> "Seitenbürste blockiert"; 11 -> "Lüfterfehler"
-    12 -> "Laserdeckel blockiert"; 13 -> "Staubbehälter/Filter prüfen"; 14 -> "Staubbehälter entfernt"
-    15 -> "Staubbehälter und Filter reinigen"; 16 -> "Roboter festgefahren"; 17 -> "Roboter angehoben"
-    18 -> "Wassertank entfernt"; 19 -> "Wassertank fast leer"; 20 -> "Zielbereich nicht erreichbar"
-    21 -> "Start in Sperrzone"; 22 -> "Start nahe einer Kante"; 23 -> "Wasserpumpenfehler"
-    24 -> "Ladestation nicht gefunden"; 25 -> "Laserdrehzahlfehler"; 27 -> "Laser blockiert"
-    30 -> "Laser-Unterbrechung"; 31 -> "Akku-Fehler"; 32 -> "Hauptbürstenfehler"
-    33 -> "Hauptradfehler"; 34 -> "Seitenbürstenfehler"; 35 -> "Lüfterfehler"
-    36 -> "Wasserpumpenfehler"; 37 -> "Firmware-Update fehlgeschlagen"
-    else -> "Unbekannter Fehlercode ($value)"
-}
 private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-two-leobotics/product/1-2.jpg"
 @Composable private fun RoidmiProductPhoto(size: androidx.compose.ui.unit.Dp) {
     AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
 }
 @Composable private fun RoidmiHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }
-    LaunchedEffect(serverUrl, connected) {
-        if (connected) {
-            client.cachedNumber("roidmi.0.battery")?.let { battery = it }
-            client.cachedNumber("roidmi.0.state")?.let { state = it }
-            while (true) {
-                client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> if (v != null) adapter = v }
-                client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it ?: battery }
-                client.getNumericState(serverUrl, "roidmi.0.state") { state = it ?: state }
-                delay(30_000)
-            }
-        }
-    }
+    var adapter by remember { mutableStateOf(false) }; var battery by remember { mutableStateOf<Double?>(null) }; var state by remember { mutableStateOf<Double?>(null) }
+    LaunchedEffect(serverUrl, connected) { if (!connected) { adapter = false; battery = null; state = null } else while (true) {
+        client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> adapter = v == true }; client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it }; client.getNumericState(serverUrl, "roidmi.0.state") { state = it }; delay(30_000) } }
     CardBlock(panel, text, "Roidmi EVE Plus", "Saugroboter · Status und Steuerung öffnen", Icons.Default.CleaningServices, action = onOpen) {
         Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) { RoidmiProductPhoto(104.dp); Spacer(Modifier.width(14.dp)); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text(if (!connected) "ioBroker offline · letzter Stand" else if (adapter) "Adapter verbunden" else "Adapter nicht verbunden", color = if (connected && adapter) Green else Muted, fontWeight = FontWeight.SemiBold)
-            Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp); Text(state?.let { "Status: ${roidmiStateLabel(it.toInt())}" } ?: "Status wird geladen", color = text, fontSize = 13.sp); Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(when { !connected -> "ioBroker nicht verbunden"; !adapter -> "Adapter nicht verbunden"; state != null -> "Statuscode: " + state!!.toInt(); else -> "Status wird geladen" }, color = if (adapter) Green else Muted, fontWeight = FontWeight.SemiBold)
+            Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp); Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         } }
     }
 }
 @Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var connectionText by remember { mutableStateOf(client.cachedText("roidmi.0.info.connectionText")) }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.waterLevel")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.map.mapId")) }
+    var adapter by remember { mutableStateOf(false) }; var connectionText by remember { mutableStateOf<String?>(null) }; var battery by remember { mutableStateOf<Double?>(null) }; var charging by remember { mutableStateOf<Double?>(null) }; var state by remember { mutableStateOf<Double?>(null) }; var error by remember { mutableStateOf<Double?>(null) }; var fan by remember { mutableStateOf<Double?>(null) }; var sweep by remember { mutableStateOf<Double?>(null) }; var water by remember { mutableStateOf<Double?>(null) }; var roomsRaw by remember { mutableStateOf<String?>(null) }; var mapId by remember { mutableStateOf<Double?>(null) }
     var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(serverUrl, connected) {
-        if (connected) {
-            client.cachedText("roidmi.0.info.connectionText")?.let { connectionText = it }
-            client.cachedText("roidmi.0.map.roomsJson")?.let { roomsRaw = it }
-            client.cachedNumber("roidmi.0.map.mapId")?.let { mapId = it }
-            while (true) {
-                client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> if (v != null) adapter = v }
-                client.getTextState(serverUrl, "roidmi.0.info.connectionText") { connectionText = it ?: connectionText }
-                client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it ?: battery }
-                client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it ?: charging }
-                client.getNumericState(serverUrl, "roidmi.0.state") { state = it ?: state }
-                client.getNumericState(serverUrl, "roidmi.0.errorCode") { error = it ?: error }
-                client.getNumericState(serverUrl, "roidmi.0.fanSpeed") { fan = it ?: fan }
-                client.getNumericState(serverUrl, "roidmi.0.sweepType") { sweep = it ?: sweep }
-                client.getNumericState(serverUrl, "roidmi.0.waterLevel") { water = it ?: water }
-                client.getTextState(serverUrl, "roidmi.0.map.roomsJson") { roomsRaw = it ?: roomsRaw }
-                client.getNumericState(serverUrl, "roidmi.0.map.mapId") { mapId = it ?: mapId }
-                delay(30_000)
-            }
-        }
-    }
+    LaunchedEffect(serverUrl, connected) { if (!connected) { adapter = false; connectionText = null; battery = null; charging = null; state = null; error = null; fan = null; sweep = null; water = null; roomsRaw = null; mapId = null } else while (true) {
+        client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> adapter = v == true }; client.getTextState(serverUrl, "roidmi.0.info.connectionText") { connectionText = it }; client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it }; client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it }; client.getNumericState(serverUrl, "roidmi.0.state") { state = it }; client.getNumericState(serverUrl, "roidmi.0.errorCode") { error = it }; client.getNumericState(serverUrl, "roidmi.0.fanSpeed") { fan = it }; client.getNumericState(serverUrl, "roidmi.0.sweepType") { sweep = it }; client.getNumericState(serverUrl, "roidmi.0.waterLevel") { water = it }; client.getTextState(serverUrl, "roidmi.0.map.roomsJson") { roomsRaw = it }; client.getNumericState(serverUrl, "roidmi.0.map.mapId") { mapId = it }; delay(30_000) } }
     val rooms = remember(roomsRaw) { runCatching { val j = org.json.JSONArray(roomsRaw ?: "[]"); (0 until j.length()).mapNotNull { i -> val o = j.optJSONObject(i) ?: return@mapNotNull null; val id = o.optInt("id", -1); val name = o.optString("name").trim(); if (id > 0 && name.isNotBlank()) id to name else null } }.getOrDefault(emptyList()) }
     fun command(id: String, label: String) { if (!connected || !adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
     fun setting(id: String, value: Int, label: String) { if (!connected || !adapter) return; client.setNumericState(serverUrl, "roidmi.0." + id, value.toDouble()) { ok, msg -> message = if (ok) label + " gespeichert." else msg } }
@@ -1509,25 +1432,22 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
         Row(verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }; Text("Roidmi EVE Plus", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text) }
         CardBlock(panel, text, "Gerätestatus", "Daten aus dem ioBroker-Adapter Roidmi", Icons.Default.CleaningServices) {
             Row(verticalAlignment = Alignment.CenterVertically) { RoidmiProductPhoto(124.dp); Spacer(Modifier.width(14.dp)); Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) { Text(if (!connected) "ioBroker nicht verbunden" else if (adapter) "Adapter verbunden" else connectionText ?: "Adapter nicht verbunden", color = if (adapter) Green else Muted, fontWeight = FontWeight.Bold, fontSize = 17.sp); Text("Akku: " + batteryText, color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold) } }
-            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }
-            Text("Ladezustand: " + (charging?.let { roidmiChargingLabel(it.toInt(), state?.toInt()) } ?: "—"), color = text)
-            Text("Betriebsstatus: " + (state?.let { roidmiStateLabel(it.toInt()) } ?: "—"), color = text)
-            Text("Fehler: " + (error?.let { roidmiErrorLabel(it.toInt()) } ?: "—"), color = text)
+            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }; Text("Ladezustand (Rohwert): " + (charging?.toInt()?.toString() ?: "—"), color = text); Text("Betriebsstatus (Rohwert): " + (state?.toInt()?.toString() ?: "—"), color = text); Text("Fehlercode: " + (error?.toInt()?.toString() ?: "—"), color = text)
         }
         CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
             if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = Muted)
-            else { rooms.forEach { (id, name) -> Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { selected = if (id in selected) selected - id else selected + id }, verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = id in selected, onCheckedChange = { v -> selected = if (v) selected + id else selected - id }, modifier = Modifier.size(40.dp)); Text(name, color = text, fontWeight = FontWeight.SemiBold) } }; Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") } }
+            else { rooms.forEach { (id, name) -> Row(Modifier.fillMaxWidth().clickable { selected = if (id in selected) selected - id else selected + id }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) { Checkbox(checked = id in selected, onCheckedChange = { v -> selected = if (v) selected + id else selected - id }); Text(name, color = text, fontWeight = FontWeight.SemiBold) } }; Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") } }
         }
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("start", "Reinigungsstart") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Start") }; OutlinedButton(onClick = { command("pause", "Pause") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Pause, null); Text("Pause") } }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("start", "Reinigungsstart") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Start") }; OutlinedButton(onClick = { command("pause", "Pause") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Pause, null); Text("Pause") } }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("resume", "Fortsetzen") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Weiter") }; OutlinedButton(onClick = { command("dock", "Rückkehrbefehl") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Home, null); Text("Laden") } }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth()); message?.let { Text(it, color = Muted, fontSize = 13.sp) }
         }
         CardBlock(panel, text, "Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
-            Text("Reinigungsart · " + (sweep?.let { roidmiSweepLabel(it.toInt()) } ?: "—"), color = text, fontWeight = FontWeight.SemiBold)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { OutlinedButton(onClick = { setting("sweepType", 0, "Saugen") }, enabled = connected && adapter, modifier = Modifier.weight(1f)) { Text("Saugen") }; OutlinedButton(onClick = { setting("sweepType", 1, "Wischen") }, enabled = connected && adapter, modifier = Modifier.weight(1f)) { Text("Wischen") }; OutlinedButton(onClick = { setting("sweepType", 2, "Saugen/Wischen") }, enabled = connected && adapter, modifier = Modifier.weight(1f)) { Text("Kombi") } }
-            Text("Saugstufe · " + (fan?.let { roidmiFanLabel(it.toInt()) } ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("fanSpeed", ((fan?.toInt() ?: 0) + 1) % 5, "Saugstufe") }, enabled = connected && adapter, modifier = Modifier.fillMaxWidth()) { Text("Saugstufe weiterschalten") }
-            Text("Wasserstufe · " + (water?.let { roidmiWaterLabel(it.toInt()) } ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("waterLevel", ((water?.toInt() ?: 0) + 1) % 5, "Wasserstufe") }, enabled = connected && adapter, modifier = Modifier.fillMaxWidth()) { Text("Wasserstufe weiterschalten") }
+            Text("Reinigungsart · " + (sweep?.toInt()?.toString() ?: "—"), color = text, fontWeight = FontWeight.SemiBold)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { OutlinedButton(onClick = { setting("sweepType", 0, "Standard") }, enabled = adapter, modifier = Modifier.weight(1f)) { Text("Standard") }; OutlinedButton(onClick = { setting("sweepType", 1, "Nur saugen") }, enabled = adapter, modifier = Modifier.weight(1f)) { Text("Saugen") }; OutlinedButton(onClick = { setting("sweepType", 2, "Saugen/Wischen") }, enabled = adapter, modifier = Modifier.weight(1f)) { Text("Wischen") } }
+            Text("Saugstufe · " + (fan?.toInt()?.toString() ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("fanSpeed", ((fan?.toInt() ?: 0) + 1) % 5, "Saugstufe") }, enabled = adapter, modifier = Modifier.fillMaxWidth()) { Text("Saugstufe weiterschalten") }
+            Text("Wasserstufe · " + (water?.toInt()?.toString() ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("waterLevel", ((water?.toInt() ?: 0) + 1) % 5, "Wasserstufe") }, enabled = adapter, modifier = Modifier.fillMaxWidth()) { Text("Wasserstufe weiterschalten") }
         }
     }
 }
