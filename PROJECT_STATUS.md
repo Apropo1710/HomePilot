@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 01.11.2026: Roidmi-Status „Bereit“ auf der Zuhause-Kachel und der Detailseite erhält dieselbe dunkle Textfarbe wie beim MOVA-Mäher. Produktionsversion 1.29.37 (Code 95).
+
+
 - 01.11.2026: Roidmi-Kacheln optisch an MOVA angeglichen: bei fehlerfreiem Adapterstatus wird „Bereit“ angezeigt, redundante Statuszeile auf der Zuhause-Kachel entfällt. Roidmi-Detailkarte zeigt ebenfalls „Bereit“ statt „Adapter verbunden“ und eine kompakte Statusdarstellung; Reinigungszonen werden in drei Spalten angeordnet. Produktionsversion 1.29.36 (Code 94).
 
 

@@ -1481,7 +1481,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                     adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
                     else -> "Nicht verbunden"
                 },
-                color = if (connected && adapter && error == 0.0) Green else Muted,
+                color = if (connected && adapter && error == 0.0) text else Muted,
                 fontWeight = FontWeight.SemiBold
             )
             Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp)
@@ -1529,7 +1529,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                             adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
                             else -> "Nicht verbunden"
                         },
-                        color = if (connected && adapter && error == 0.0) Green else Muted,
+                        color = if (connected && adapter && error == 0.0) text else Muted,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
