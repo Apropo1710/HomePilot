@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: d803363f1f0ca8bb86172bc5400684edce6e8f4a
+- Quellcommit des APK-Builds: 554554e70f029d785abac6309d162eb50cd1b7f3
 - App-Version / versionCode: **1.29.35 / 93**
-- Build-Zeit: 2026-11-01 21:20:24 UTC
+- Build-Zeit: 2026-11-01 21:23:04 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13101233844, 11098136 Bytes
-- APK-SHA-256: 8e2ec581f9729d14360ccc9d59fcb049af45c66a082099167c333518b7bcfe9d
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13101775783, 11100156 Bytes
+- APK-SHA-256: 01100047afe72691724186cd0a28bd7fa128943c8c4017c93551009321900355
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
