@@ -2725,7 +2725,6 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 }
 
 @Composable
-@Composable
 private fun HomePilotAccountLoginScreen(
     registry: HomePilotAccountRegistry?, username: String, onUsername: (String) -> Unit,
     password: String, onPassword: (String) -> Unit, displayName: String, onDisplayName: (String) -> Unit,
@@ -2757,6 +2756,7 @@ private fun HomePilotAccountLoginScreen(
     }
 }
 
+@Composable
 private fun HomePilotLoginScreen(
     username: String, onUsername: (String) -> Unit,
     password: String, onPassword: (String) -> Unit,
