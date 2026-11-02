@@ -139,7 +139,7 @@ internal data class HomePilotUserProfile(
             val version = json.optInt("schemaVersion", -1)
             if (version !in 1..HomePilotSharedConfig.CURRENT_SCHEMA_VERSION) return null
             val timeout = json.optInt("disconnectTimeoutMinutes", 30)
-            if (timeout !in setOf(30, 60, 0)) return null
+            if (timeout !in setOf(15, 30, 60, 0)) return null
             val favorites = json.optJSONArray("favoriteIds") ?: JSONArray()
             val order = json.optJSONArray("favoriteOrder") ?: JSONArray()
             return HomePilotUserProfile(
