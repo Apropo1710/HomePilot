@@ -556,7 +556,10 @@ private fun HomePilotApp() {
     var showConnectionAlert by remember { mutableStateOf(false) }
     var washOn by remember { mutableStateOf(false) }
     var waterOn by remember { mutableStateOf(false) }
-    val credentialStore = remember { IoBrokerCredentialsStore(context) }\n    val ioClient = remember { IoBrokerClient(credentialStore) }\n    var ioBrokerUsername by remember { mutableStateOf(credentialStore.username()) }\n    var ioBrokerPassword by remember { mutableStateOf(credentialStore.password()) }
+    val credentialStore = remember { IoBrokerCredentialsStore(context) }
+    val ioClient = remember { IoBrokerClient(credentialStore) }
+    var ioBrokerUsername by remember { mutableStateOf(credentialStore.username()) }
+    var ioBrokerPassword by remember { mutableStateOf(credentialStore.password()) }
     var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
 
@@ -2347,7 +2350,8 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     serverUrl: String, onServerUrl: (String) -> Unit, weatherCity: String, onWeatherCity: (String) -> Unit,
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
-    inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit,\n    ioBrokerUsername: String, onIoBrokerUsername: (String) -> Unit, ioBrokerPassword: String, onIoBrokerPassword: (String) -> Unit, onSaveCredentials: () -> Unit) {
+    inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit,
+    ioBrokerUsername: String, onIoBrokerUsername: (String) -> Unit, ioBrokerPassword: String, onIoBrokerPassword: (String) -> Unit, onSaveCredentials: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         IconButton(onClick = onBack) {
             Icon(Icons.Default.ArrowBack, contentDescription = "Zurück", tint = Blue)
