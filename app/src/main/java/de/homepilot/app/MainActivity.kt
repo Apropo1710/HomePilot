@@ -659,20 +659,6 @@ private fun HomePilotApp() {
     var editRoomExpanded by remember { mutableStateOf(false) }
     val editableDeviceKinds = listOf("Steckdose" to "plug", "Lampe" to "light", "Sonstiges" to "device")
     var scanStatus by remember { mutableStateOf("") }
-    var sharedConfigLoaded by remember { mutableStateOf(false) }
-    fun saveSharedConfiguration() {
-        if (!sharedConfigLoaded || !connected) return
-        val config = HomePilotSharedConfig.initialFromLocal(
-            rooms = rooms,
-            deviceNames = customNames,
-            deviceRooms = deviceRooms,
-            deviceKinds = deviceKinds,
-            hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
-        )
-        ioClient.setJsonState("0_userdata.0.HomePilot.config", config.toJson()) { success, error ->
-            if (!success) connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
-        }
-    }
     fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply(); saveSharedConfiguration() }
     fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
     fun persistDeviceRooms() { prefs.edit().putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
@@ -703,6 +689,21 @@ private fun HomePilotApp() {
     var ioBrokerPassword by remember { mutableStateOf(credentialStore.password()) }
     var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
+    var sharedConfigLoaded by remember { mutableStateOf(false) }
+    fun saveSharedConfiguration() {
+        if (!sharedConfigLoaded || !connected) return
+        val config = HomePilotSharedConfig.initialFromLocal(
+            rooms = rooms,
+            deviceNames = customNames,
+            deviceRooms = deviceRooms,
+            deviceKinds = deviceKinds,
+            hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
+        )
+        ioClient.setJsonState("0_userdata.0.HomePilot.config", config.toJson()) { success, error ->
+            if (!success) connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
+        }
+    }
+
 
     /** First-connect migration: only seed a document when its ioBroker object is absent. */
     fun initializeHomePilotSync() {
