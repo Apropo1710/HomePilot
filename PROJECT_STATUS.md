@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: b8173df50d4a710668d9040dedec66095e564378
-- App-Version / versionCode: **1.29.40 / 98**
-- Build-Zeit: 2026-11-02 12:51:47 UTC
+- Quellcommit des APK-Builds: 98ddde8b48a7548fbddbc97f63ca3bfc8a9aefae
+- App-Version / versionCode: **1.29.41 / 99**
+- Build-Zeit: 2026-11-02 12:55:21 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13143355573, 11102600 Bytes
-- APK-SHA-256: 7e7de709410285db66dbfa451d8170619ad9578679e790bfdf6a910b254352a8
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13144005879, 11103486 Bytes
+- APK-SHA-256: 21e6a9f2d407cf77a6cae727e064b6efc7c7266873c68855a1c84d74a2e7eba3
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -93,6 +93,9 @@ Weitere Entscheidung:
 - HomePilot und KlimaPilot strikt getrennt behandeln.
 
 ## Änderungsverlauf dieser Dokumentation
+
+- 02.11.2026: Lifecycle-Reconnect gibt einen klaren Status zurück, wenn der Socket bereits automatisch reconnectet; verhindert festhängenden „connecting“-Zustand und unterdrückt Dialog während laufendem Reconnect. Version 1.29.41 (Code 99).
+
 
 - 02.11.2026: Stabilisierung der ioBroker-WebSocket-Wiederverbindung: HomePilot ersetzt eine bereits laufende Verbindung/Reconnect-Schleife beim App-Resume nicht mehr durch einen neuen Socket. Socket-Reconnect ignoriert verspätete Fehler nach explizitem Disconnect. Version 1.29.40 (Code 98).
 
