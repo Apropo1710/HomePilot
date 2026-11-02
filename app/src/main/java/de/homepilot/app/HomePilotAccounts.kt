@@ -89,50 +89,6 @@ internal data class HomePilotAccountRegistry(
         put("accounts", JSONArray().also { array -> accounts.forEach { array.put(it.toJson()) } })
     }
 
-    fun find(username: String): HomePilotAccount? =
-        accounts.firstOrNull { it.username.equals(username.trim(), ignoreCase = true) }
-
-    fun authenticate(username: String, password: CharArray): HomePilotAccount? =
-        find(username)?.takeIf { HomePilotAccount.verify(it, password) }
-
-    fun createInitialAdmin(username: String, displayName: String, password: CharArray): HomePilotAccountRegistry {
-        require(accounts.isEmpty()) { "Der Administrator wurde bereits eingerichtet." }
-        val admin = HomePilotAccount.create(username, displayName, password, HomePilotAccount.ADMIN)
-        return copy(revision = revision + 1, accounts = listOf(admin))
-    }
-
-    fun addAccount(actor: HomePilotAccount, username: String, displayName: String, password: CharArray, role: String): HomePilotAccountRegistry {
-        require(actor.role == HomePilotAccount.ADMIN) { "Nur Administratoren dürfen Benutzer verwalten." }
-        require(find(username) == null) { "Dieser Benutzername ist bereits vergeben." }
-        val account = HomePilotAccount.create(username, displayName, password, role)
-        return copy(revision = revision + 1, accounts = accounts + account)
-    }
-
-    fun resetPassword(actor: HomePilotAccount, username: String, password: CharArray): HomePilotAccountRegistry {
-        require(actor.role == HomePilotAccount.ADMIN || actor.username.equals(username, ignoreCase = true)) {
-            "Keine Berechtigung, dieses Passwort zu ändern."
-        }
-        val target = find(username) ?: throw IllegalArgumentException("Benutzer nicht gefunden.")
-        val replacement = HomePilotAccount.create(target.username, target.displayName, password, target.role)
-        return copy(revision = revision + 1, accounts = accounts.map {
-            if (it.username.equals(target.username, ignoreCase = true)) replacement else it
-        })
-    }
-
-    fun deleteAccount(actor: HomePilotAccount, username: String): HomePilotAccountRegistry {
-        require(actor.role == HomePilotAccount.ADMIN) { "Nur Administratoren dürfen Benutzer löschen." }
-        val target = find(username) ?: throw IllegalArgumentException("Benutzer nicht gefunden.")
-        require(target.role != HomePilotAccount.ADMIN || accounts.count { it.role == HomePilotAccount.ADMIN } > 1) {
-            "Der letzte Administrator kann nicht gelöscht werden."
-        }
-        require(!actor.username.equals(target.username, ignoreCase = true)) {
-            "Der angemeldete Administrator kann sich nicht selbst löschen."
-        }
-        return copy(revision = revision + 1, accounts = accounts.filterNot {
-            it.username.equals(target.username, ignoreCase = true)
-        })
-    }
-
     companion object {
         fun fromJson(json: JSONObject): HomePilotAccountRegistry? {
             if (json.optInt("schemaVersion", -1) != 1) return null
