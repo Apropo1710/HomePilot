@@ -2835,6 +2835,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     var newHomePilotPassword by remember { mutableStateOf("") }
     var newHomePilotRole by remember { mutableStateOf(HomePilotAccount.USER) }
     var resetHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
+    var deleteHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
     var resetHomePilotPasswordValue by remember { mutableStateOf("") }
     CardBlock(panel, text, "HomePilot-Konto", homePilotAccount?.let { "${it.displayName} · ${if (it.role == HomePilotAccount.ADMIN) "Administrator" else "Benutzer"}" } ?: "Nicht angemeldet", Icons.Default.AccountCircle) {
         Text("HomePilot-Anmeldung ist unabhängig von ioBroker.", color = Muted, fontSize = 12.sp)
@@ -2846,7 +2847,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) { Text(account.displayName, color = text, fontWeight = FontWeight.SemiBold); Text("${account.username} · ${if (account.role == HomePilotAccount.ADMIN) "Admin" else "Benutzer"}", color = Muted, fontSize = 11.sp) }
                 TextButton(onClick = { resetHomePilotUser = account; resetHomePilotPasswordValue = "" }) { Text("Passwort") }
-                if (account.username != homePilotAccount.username) TextButton(onClick = { onDeleteHomePilotAccount(account.username) }) { Text("Löschen") }
+                if (account.username != homePilotAccount.username) TextButton(onClick = { deleteHomePilotUser = account }) { Text("Löschen") }
             }
         }
         Button(onClick = { showNewHomePilotUser = true; newHomePilotUsername = ""; newHomePilotDisplayName = ""; newHomePilotPassword = ""; newHomePilotRole = HomePilotAccount.USER }, modifier = Modifier.fillMaxWidth()) { Text("Benutzer hinzufügen") }
@@ -2859,6 +2860,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Text("Rolle")
         Row { TextButton(onClick = { newHomePilotRole = HomePilotAccount.USER }) { Text(if (newHomePilotRole == HomePilotAccount.USER) "✓ Benutzer" else "Benutzer") }; TextButton(onClick = { newHomePilotRole = HomePilotAccount.ADMIN }) { Text(if (newHomePilotRole == HomePilotAccount.ADMIN) "✓ Admin" else "Admin") } }
     } }, confirmButton = { TextButton(onClick = { onAddHomePilotAccount(newHomePilotUsername, newHomePilotDisplayName, newHomePilotPassword, newHomePilotRole); showNewHomePilotUser = false }) { Text("Anlegen") } }, dismissButton = { TextButton(onClick = { showNewHomePilotUser = false }) { Text("Abbrechen") } })
+    deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest = { deleteHomePilotUser = null }, title = { Text("Benutzer wirklich löschen?") }, text = { Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.") }, confirmButton = { TextButton(onClick = { onDeleteHomePilotAccount(account.username); deleteHomePilotUser = null }) { Text("Löschen") } }, dismissButton = { TextButton(onClick = { deleteHomePilotUser = null }) { Text("Abbrechen") } }) }
     resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest = { resetHomePilotUser = null }, title = { Text("Passwort zurücksetzen") }, text = { Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value = resetHomePilotPasswordValue, onValueChange = { resetHomePilotPasswordValue = it }, label = { Text("Neues Passwort (min. 8 Zeichen)") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()) } }, confirmButton = { TextButton(onClick = { onResetHomePilotPassword(account.username, resetHomePilotPasswordValue); resetHomePilotUser = null }) { Text("Speichern") } }, dismissButton = { TextButton(onClick = { resetHomePilotUser = null }) { Text("Abbrechen") } }) }
     CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
         OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("Serveradresse") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
