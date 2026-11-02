@@ -170,7 +170,7 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - HomePilot nutzt die bestehende ioBroker-Benutzerverwaltung und WebSocket-Authentifizierung, keine selbst entwickelte App-Identität.
 - Andreas und Jenny sollen jeweils mit eigenem ioBroker-Benutzer angemeldet sein.
 - ioBroker-Login-Daten werden auf Android mit Android Keystore-gestützter Verschlüsselung geschützt gespeichert; keine Klartextpasswörter in SharedPreferences.
-- Zugangsdaten nicht über unverschlüsseltes WebSocket transportieren. Für Authentifizierung über Netzwerk ist WSS/TLS zu bevorzugen; lokales WS bleibt nur als explizite bestehende/kompatible Heimnetzoption mit Warnhinweis.
+- Der Nutzer hat ausdrücklich entschieden, dass HomePilot im bestehenden vertrauenswürdigen Heimnetz weiterhin `ws://` ohne Zertifikat verwendet. WSS/TLS ist keine Voraussetzung und soll nicht erzwungen werden. Dabei ist bekannt und akzeptiert, dass Zugangsdaten über WS unverschlüsselt im Netzwerk übertragen werden; daher nur im vertrauenswürdigen LAN und nicht über öffentliche/gast WLANs einsetzen. Keine Zertifikatseinrichtung oder WSS-Migration als Voraussetzung einplanen.
 - Geplante ACL-Trennung: globaler Konfigurationsbereich für Jenny lesbar, aber nicht beschreibbar; eigenes Profil von Jenny les-/schreibbar; Andreas kann gemeinsame Konfiguration und beide Profile administrieren.
 - UI-Rollenanzeige ergänzt ioBroker-ACLs und ersetzt sie nicht.
 - Vor Implementation muss geprüft werden, welche Socket.IO-Methoden und Objekt-/State-ACLs im bestehenden ioBroker-Setup verfügbar sind. Keine pauschale Annahme, dass 0_userdata.0-Standard-ACLs automatisch diese Trennung erfüllen.
@@ -214,3 +214,9 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 6. Code-Diff, Android-Build, GitHub Actions und Release-Artefakt prüfen.
 
 **Status:** Zielarchitektur aktualisiert. Feature-Code noch nicht implementiert; noch kein Feature-Build oder Smartphone-Test.\n\n\n
+
+## Build-Status Authentifizierungs-Grundlage (02.11.2026)
+- Commit `d16a2116e153a072eae9f9a85d93c26d3827c250` korrigiert die fehlenden ioBroker-Login-Parameter in der zweiten Einstellungsansicht.
+- GitHub Actions Run `41481137422` für diesen Commit ist erfolgreich abgeschlossen.
+- Erfolgreicher CI-Build bestätigt die Kompilierbarkeit, noch nicht die praktische ioBroker-Anmeldung oder Synchronisation auf beiden Smartphones.
+- Nächster Entwicklungsschritt: zentrale JSON-State-API und sichere Initialisierung/Existenzprüfung des globalen Konfigurationsdatensatzes sowie getrennte Profil-Datenpunkte. Vor Umsetzung ACL-Verhalten und Rechte bei `0_userdata.0` prüfen.
