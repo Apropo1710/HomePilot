@@ -61,7 +61,7 @@ private val DarkBg = Color(0xFF101923)
 private val LightText = Color(0xFF172334)
 private val DarkText = Color(0xFFEAF1F8)
 
-private class IoBrokerClient {
+private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsStore) {
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var socket: IoBrokerSocket? = null
     @Volatile private var connected = false
@@ -97,7 +97,7 @@ private class IoBrokerClient {
             require(address.startsWith("ws://") || address.startsWith("wss://")) {
                 "WebSocket-Adresse muss mit ws:// oder wss:// beginnen"
             }
-            val client = IoBrokerSocket(address, "name=homepilot.android")
+            val client = IoBrokerSocket(address, "name=homepilot.android", credentialStore.username(), credentialStore.password())
             socket = client
             var reported = false
             client.on("connect") {
@@ -556,7 +556,7 @@ private fun HomePilotApp() {
     var showConnectionAlert by remember { mutableStateOf(false) }
     var washOn by remember { mutableStateOf(false) }
     var waterOn by remember { mutableStateOf(false) }
-    val ioClient = remember { IoBrokerClient() }
+    val credentialStore = remember { IoBrokerCredentialsStore(context) }\n    val ioClient = remember { IoBrokerClient(credentialStore) }\n    var ioBrokerUsername by remember { mutableStateOf(credentialStore.username()) }\n    var ioBrokerPassword by remember { mutableStateOf(credentialStore.password()) }
     var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
 
@@ -853,7 +853,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) }, ioBrokerUsername = ioBrokerUsername, onIoBrokerUsername = { ioBrokerUsername = it }, ioBrokerPassword = ioBrokerPassword, onIoBrokerPassword = { ioBrokerPassword = it }, onSaveCredentials = { credentialStore.save(ioBrokerUsername, ioBrokerPassword); ioClient.disconnect(); connected = false; connecting = false; connectToIoBroker() })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -2347,7 +2347,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     serverUrl: String, onServerUrl: (String) -> Unit, weatherCity: String, onWeatherCity: (String) -> Unit,
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
-    inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit) {
+    inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit,\n    ioBrokerUsername: String, onIoBrokerUsername: (String) -> Unit, ioBrokerPassword: String, onIoBrokerPassword: (String) -> Unit, onSaveCredentials: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         IconButton(onClick = onBack) {
             Icon(Icons.Default.ArrowBack, contentDescription = "Zurück", tint = Blue)
@@ -2385,6 +2385,13 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
         }
         Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).", color = Muted, fontSize = 11.sp)
+    }
+    CardBlock(panel, text, "ioBroker-Anmeldung", "Optional bei aktivierter Benutzer-Authentifizierung", Icons.Default.Lock) {
+        OutlinedTextField(value = ioBrokerUsername, onValueChange = onIoBrokerUsername, label = { Text("ioBroker-Benutzer") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = ioBrokerPassword, onValueChange = onIoBrokerPassword, label = { Text("ioBroker-Passwort") }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+        Text("Die Zugangsdaten werden verschlüsselt auf diesem Android-Gerät gespeichert. Für Netzwerkverbindungen mit Passwort wird WSS/TLS empfohlen; ws:// überträgt Zugangsdaten unverschlüsselt.", color = Muted, fontSize = 11.sp)
+        Button(onClick = onSaveCredentials, modifier = Modifier.fillMaxWidth()) { Text("Login speichern & neu verbinden") }
+        TextButton(onClick = { onIoBrokerUsername(""); onIoBrokerPassword(""); onSaveCredentials() }, modifier = Modifier.fillMaxWidth()) { Text("Anmeldung entfernen (Gast/ohne Login)") }
     }
     CardBlock(panel, text, "Verbindung im Hintergrund", "Automatische Trennung bei Nichtbenutzung", Icons.Default.Timer) {
         Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.", color = Muted, fontSize = 10.sp)
