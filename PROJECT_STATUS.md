@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 02.11.2026: Einstellung für automatische ioBroker-Trennung nach 15/30/60 Minuten oder nie (Standard 30 Minuten); Verbindung beim Resume automatisch wiederherstellen. Einmaliger Akkuoptimierungs-Hinweis mit Link zu Android-App-Einstellungen. Version 1.29.42 (Code 100).
+
+
 - 02.11.2026: Lifecycle-Reconnect gibt einen klaren Status zurück, wenn der Socket bereits automatisch reconnectet; verhindert festhängenden „connecting“-Zustand und unterdrückt Dialog während laufendem Reconnect. Version 1.29.41 (Code 99).
 
 

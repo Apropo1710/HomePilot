@@ -11,6 +11,8 @@ import android.Manifest
 import android.os.Handler
 import android.os.Looper
 import android.net.Uri
+import android.content.Intent
+import android.provider.Settings
 import org.json.JSONObject
 import org.json.JSONArray
 import androidx.activity.ComponentActivity
@@ -37,6 +39,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -481,6 +485,9 @@ private fun HomePilotApp() {
     var floodTemperature by remember { mutableStateOf<Double?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
+    val appScope = rememberCoroutineScope()
+    var inactivityMinutes by remember { mutableIntStateOf(prefs.getInt("disconnectAfterMinutes", 30).coerceIn(0, 60)) }
+    var showBatteryOptimizationDialog by remember { mutableStateOf(!prefs.getBoolean("batteryHintShown", false)) }
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
     var favoriteOrder by remember { mutableStateOf(prefs.getString("favoriteOrder", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
@@ -541,7 +548,8 @@ private fun HomePilotApp() {
     var washOn by remember { mutableStateOf(false) }
     var waterOn by remember { mutableStateOf(false) }
     val ioClient = remember { IoBrokerClient() }
-    DisposableEffect(Unit) { onDispose { ioClient.disconnect() } }
+    var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
+    DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
 
     fun connectToIoBroker(manualDeviceSearch: Boolean = false) {
         prefs.edit().putString("server", serverUrl).apply()
@@ -642,14 +650,28 @@ private fun HomePilotApp() {
     }
 
     val hostActivity = context as? ComponentActivity
-    DisposableEffect(hostActivity) {
+    DisposableEffect(hostActivity, inactivityMinutes, serverUrl) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME && !connected && !connecting) {
-                connectToIoBroker()
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
+                    backgroundDisconnectJob?.cancel()
+                    if (inactivityMinutes > 0) backgroundDisconnectJob = appScope.launch {
+                        delay(inactivityMinutes * 60_000L)
+                        ioClient.disconnect()
+                        connected = false
+                        connecting = false
+                        connectionStatus = "Verbindung nach $inactivityMinutes Minuten Hintergrundzeit getrennt"
+                    }
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> {
+                    backgroundDisconnectJob?.cancel(); backgroundDisconnectJob = null
+                    if (!connected && !connecting) connectToIoBroker()
+                }
+                else -> Unit
             }
         }
         hostActivity?.lifecycle?.addObserver(observer)
-        onDispose { hostActivity?.lifecycle?.removeObserver(observer) }
+        onDispose { hostActivity?.lifecycle?.removeObserver(observer); backgroundDisconnectJob?.cancel() }
     }
     LaunchedEffect(connected, serverUrl) {
         while (connected) {
@@ -822,7 +844,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -861,10 +883,17 @@ private fun HomePilotApp() {
                             status = connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
-                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true })
+                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) })
                     }
                     }
                     }
+                    if (showBatteryOptimizationDialog) AlertDialog(
+                        onDismissRequest = { showBatteryOptimizationDialog = false; prefs.edit().putBoolean("batteryHintShown", true).apply() },
+                        title = { Text("HomePilot im Hintergrund erlauben") },
+                        text = { Text("Damit die ioBroker-Verbindung beim kurzen Wechsel zu anderen Apps bestehen bleibt, sollte Android HomePilot nicht durch Akkuoptimierung oder App-Pausierung einschränken. Öffne die App-Einstellungen und stelle Akku auf „Uneingeschränkt“ bzw. deaktiviere „App-Aktivität bei Nichtbenutzung pausieren“.") },
+                        confirmButton = { TextButton(onClick = { showBatteryOptimizationDialog = false; prefs.edit().putBoolean("batteryHintShown", true).apply(); openBatterySettings(context) }) { Text("Einstellungen öffnen") } },
+                        dismissButton = { TextButton(onClick = { showBatteryOptimizationDialog = false; prefs.edit().putBoolean("batteryHintShown", true).apply() }) { Text("Später") } }
+                    )
                     if (showConnectionAlert) AlertDialog(
                         onDismissRequest = { showConnectionAlert = false },
                         icon = { Icon(Icons.Default.WifiOff, null, tint = Color(0xFFD97706)) },
@@ -2308,7 +2337,23 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color, onBack: () -> Unit,
     serverUrl: String, onServerUrl: (String) -> Unit, weatherCity: String, onWeatherCity: (String) -> Unit,
     status: String, connected: Boolean, onConnect: () -> Unit,
-    onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit) {
+    onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
+    inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit) {
+    CardBlock(panel, text, "Verbindung im Hintergrund", "ioBroker-Verbindung nach längerer Nichtbenutzung automatisch trennen", Icons.Default.Timer) {
+        Text("Wenn HomePilot im Hintergrund bleibt, wird die WebSocket-Verbindung nach der gewählten Zeit getrennt. Beim Zurückkehren verbindet sich die App automatisch erneut.", color = Muted, fontSize = 12.sp)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(15, 30, 60, 0).forEach { minutes ->
+                Row(Modifier.fillMaxWidth().clickable { onInactivityMinutes(minutes) }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = inactivityMinutes == minutes, onClick = { onInactivityMinutes(minutes) })
+                    Text(if (minutes == 0) "Nie automatisch trennen" else "Nach $minutes Minuten", color = text)
+                }
+            }
+        }
+    }
+    CardBlock(panel, text, "Akkuoptimierung", "Empfohlene Android-Einstellungen für stabile ioBroker-Liveverbindung", Icons.Default.BatteryFull) {
+        Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst. Die Einstellung muss einmalig manuell bestätigt werden.", color = Muted, fontSize = 12.sp)
+        Button(onClick = onBatterySettings, modifier = Modifier.fillMaxWidth()) { Text("Android-App-Einstellungen öffnen") }
+    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         IconButton(onClick = onBack) {
             Icon(Icons.Default.ArrowBack, contentDescription = "Zurück", tint = Blue)
@@ -2352,4 +2397,13 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.", color = Muted, fontSize = 11.sp)
     }
     GithubUpdateCard(appVersion = BuildConfig.VERSION_NAME)
+}
+
+
+private fun openBatterySettings(context: Context) {
+    val appInfo = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    val batteryList = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try { context.startActivity(appInfo) } catch (_: Exception) {
+        try { context.startActivity(batteryList) } catch (_: Exception) { }
+    }
 }
