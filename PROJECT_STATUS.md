@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 5be476f3866122eb76f19bc0e5ab2bf35826e4b8
+- Quellcommit des APK-Builds: c7ac01aa617c6ba377c779f744765b15c68ce123
 - App-Version / versionCode: **1.29.44 / 102**
-- Build-Zeit: 2026-11-02 15:44:30 UTC
+- Build-Zeit: 2026-11-02 15:55:40 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13157186379, 11109175 Bytes
-- APK-SHA-256: 3322a6f0b5f5b056cdd82153e2f19e875ff66581f4c43afe3c0c9c9ff337acf6
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13156918393, 11109184 Bytes
+- APK-SHA-256: 567a5f14bdbb01ae0cd4266f1c30448e8efda1acfc6a60bc2f58cda14834877d
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -213,4 +213,4 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 5. Admin-/Benutzeransicht und persönliche Einstellungen sauber trennen.
 6. Code-Diff, Android-Build, GitHub Actions und Release-Artefakt prüfen.
 
-**Status:** Zielarchitektur aktualisiert. Feature-Code noch nicht implementiert; noch kein Feature-Build oder Smartphone-Test.\n
+**Status:** Zielarchitektur aktualisiert. Feature-Code noch nicht implementiert; noch kein Feature-Build oder Smartphone-Test.\n\n
