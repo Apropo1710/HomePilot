@@ -158,6 +158,80 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
     private fun requireSocket(): IoBrokerSocket =
         socket?.takeIf { connected && it.connected() } ?: throw IllegalStateException("Keine WebSocket-Verbindung zu ioBroker")
 
+    /** Reads an ioBroker object; null object means it does not exist or could not be decoded. */
+    fun getObject(id: String, callback: (JSONObject?, String?) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) {
+            post { callback(null, e.message ?: "Nicht verbunden") }
+            return
+        }
+        client.emit("getObject", id, IoBrokerAck { args ->
+            val error = args.firstOrNull()?.takeUnless { it == JSONObject.NULL }
+            val raw = args.getOrNull(1)
+            val obj = when (raw) {
+                is JSONObject -> raw
+                is String -> try { JSONObject(raw) } catch (_: Exception) { null }
+                is Map<*, *> -> JSONObject().apply {
+                    raw.forEach { (key, value) -> if (key is String) put(key, value) }
+                }
+                else -> null
+            }
+            post { callback(obj, error?.toString()) }
+        })
+    }
+
+    /** Creates or updates an ioBroker object. The supplied definition must be valid. */
+    fun setObject(id: String, objectDefinition: JSONObject, callback: (Boolean, String?) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) {
+            post { callback(false, e.message ?: "Nicht verbunden") }
+            return
+        }
+        client.emit("setObject", id, objectDefinition, IoBrokerAck { args ->
+            val error = args.firstOrNull()?.takeUnless { it == JSONObject.NULL }
+            post { callback(error == null, error?.toString()) }
+        })
+    }
+
+    /**
+     * Reads a JSON document stored as a string-valued ioBroker state.
+     * Missing or malformed data is not silently converted to an empty object.
+     */
+    fun getJsonState(id: String, callback: (JSONObject?, String?) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) {
+            post { callback(null, e.message ?: "Nicht verbunden") }
+            return
+        }
+        client.emit("getState", id, IoBrokerAck { args ->
+            val error = args.firstOrNull()?.takeUnless { it == JSONObject.NULL }
+            val state = args.getOrNull(1) as? JSONObject
+            if (state != null) stateCache[id] = state
+            val raw = state?.opt("val")
+            val json = when (raw) {
+                is JSONObject -> raw
+                is String -> try { JSONObject(raw) } catch (_: Exception) { null }
+                else -> null
+            }
+            val resultError = when {
+                error != null -> error.toString()
+                state == null -> "Datenpunkt $id existiert noch nicht oder liefert keinen Zustand"
+                json == null -> "Datenpunkt $id enthält kein gültiges JSON-Objekt"
+                else -> null
+            }
+            post { callback(json, resultError) }
+        })
+    }
+
+    /** Stores JSON serialized as a string in ioBroker state.val. */
+    fun setJsonState(id: String, value: JSONObject, callback: (Boolean, String?) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) {
+            post { callback(false, e.message ?: "Nicht verbunden") }
+            return
+        }
+        client.emit("setState", id, JSONObject().put("val", value.toString()).put("ack", false), IoBrokerAck { args ->
+            val error = args.firstOrNull()?.takeUnless { it == JSONObject.NULL }
+            post { callback(error == null, error?.toString()) }
+        })
+    }
+
     fun getState(baseUrl: String, id: String, callback: (Boolean?, String?) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(null, e.message); return }
         client.emit("getState", id, IoBrokerAck { args ->
