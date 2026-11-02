@@ -8,7 +8,7 @@
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: **HomePilot-release-apk**, ID 13155830627, 11109181 Bytes
 - APK-SHA-256: 96259c981c91f8a681fe2344129151d6266c57c5f9a9ff6be08d3a63c6eb0eb8
-- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
+- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
