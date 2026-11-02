@@ -690,6 +690,81 @@ private fun HomePilotApp() {
     var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
 
+    /** First-connect migration: only seed a document when its ioBroker object is absent. */
+    fun initializeHomePilotSync() {
+        val localShared = HomePilotSharedConfig.initialFromLocal(
+            rooms = rooms,
+            deviceNames = customNames,
+            deviceRooms = deviceRooms,
+            deviceKinds = deviceKinds,
+            hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
+        )
+        ioClient.ensureJsonState(
+            "0_userdata.0.HomePilot.config",
+            "HomePilot shared configuration",
+            localShared.toJson()
+        ) { sharedJson, created, sharedError ->
+            if (sharedError != null || sharedJson == null) {
+                connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration nicht synchronisiert: $sharedError"
+                return@ensureJsonState
+            }
+            val shared = HomePilotSharedConfig.fromJson(sharedJson)
+            if (shared == null) {
+                connectionStatus = "ioBroker verbunden · Remote-Konfiguration hat ein unbekanntes/ungültiges Format; lokale Daten bleiben unverändert."
+                return@ensureJsonState
+            }
+            rooms = shared.rooms.toMutableList()
+            customNames = shared.deviceNames
+            deviceRooms = shared.deviceRooms
+            deviceKinds = shared.deviceKinds
+            prefs.edit()
+                .putString("rooms", rooms.joinToString("|"))
+                .putString("deviceNames", JSONObject(customNames as Map<*, *>).toString())
+                .putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString())
+                .putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString())
+                .apply()
+            applyCustomConfig()
+
+            val username = credentialStore.username().trim()
+            if (username.isBlank()) {
+                connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; persönliches Profil benötigt einen ioBroker-Benutzer."
+                return@ensureJsonState
+            }
+            val localProfile = HomePilotUserProfile(
+                revision = 1L,
+                updatedAt = System.currentTimeMillis(),
+                favoriteIds = favoriteIds,
+                favoriteOrder = favoriteOrder,
+                disconnectTimeoutMinutes = inactivityMinutes
+            )
+            val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
+            ioClient.ensureJsonState(profileId, "HomePilot profile: $username", localProfile.toJson()) { profileJson, _, profileError ->
+                if (profileError != null || profileJson == null) {
+                    connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; Profil-Sync fehlgeschlagen: $profileError"
+                    return@ensureJsonState
+                }
+                val profile = HomePilotUserProfile.fromJson(profileJson)
+                if (profile == null) {
+                    connectionStatus = "ioBroker verbunden · Profilformat ungültig; lokale Profileinstellungen bleiben unverändert."
+                    return@ensureJsonState
+                }
+                favoriteIds = profile.favoriteIds
+                favoriteOrder = profile.favoriteOrder
+                inactivityMinutes = profile.disconnectTimeoutMinutes
+                prefs.edit()
+                    .putStringSet("favoriteDevices", profile.favoriteIds)
+                    .putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
+                    .putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
+                    .apply()
+                connectionStatus = if (created) {
+                    "ioBroker verbunden · HomePilot-Konfiguration und Profil erstmalig migriert."
+                } else {
+                    "ioBroker verbunden · gemeinsame Konfiguration und Benutzerprofil geladen."
+                }
+            }
+        }
+    }
+
     fun connectToIoBroker(manualDeviceSearch: Boolean = false) {
         prefs.edit().putString("server", serverUrl).apply()
         if (connecting) return
@@ -701,6 +776,7 @@ private fun HomePilotApp() {
             connectionStatus = if (ok) "WebSocket-Verbindung zu ioBroker hergestellt" else "Verbindung fehlgeschlagen: $msg"
             showConnectionAlert = !ok && !msg.contains("unterbrochen", ignoreCase = true) && !msg.contains("Wiederverbindung läuft", ignoreCase = true)
             if (ok) {
+                initializeHomePilotSync()
                 ioClient.inspectAdapterStates(serverUrl, "dreame.0") { movaIds, movaError ->
                     val expectedMovaIds = listOf(
                         "dreame.0.-112285430.status.battery-level",
