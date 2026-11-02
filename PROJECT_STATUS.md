@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 02.11.2026: Lifecycle-Reconnect gibt einen klaren Status zurück, wenn der Socket bereits automatisch reconnectet; verhindert festhängenden „connecting“-Zustand und unterdrückt Dialog während laufendem Reconnect. Version 1.29.41 (Code 99).
+
+
 - 02.11.2026: Stabilisierung der ioBroker-WebSocket-Wiederverbindung: HomePilot ersetzt eine bereits laufende Verbindung/Reconnect-Schleife beim App-Resume nicht mehr durch einen neuen Socket. Socket-Reconnect ignoriert verspätete Fehler nach explizitem Disconnect. Version 1.29.40 (Code 98).
 
 
