@@ -17,7 +17,9 @@ internal class IoBrokerAck(val callback: (Array<Any?>) -> Unit)
 
 internal class IoBrokerSocket(
     private val address: String,
-    private val query: String = ""
+    private val query: String = "",
+    private val username: String = "",
+    private val password: String = ""
 ) {
     private val main = Handler(Looper.getMainLooper())
     private val client = OkHttpClient.Builder()
@@ -72,8 +74,12 @@ internal class IoBrokerSocket(
         readyReceived = false
         val separator = if (address.contains("?")) "&" else "?"
         val sid = System.currentTimeMillis()
+        val credentialsQuery = if (username.isNotBlank() && password.isNotBlank()) {
+            "&user=" + java.net.URLEncoder.encode(username, "UTF-8") +
+                "&pass=" + java.net.URLEncoder.encode(password, "UTF-8")
+        } else ""
         val fullUrl = address + separator + "sid=" + sid +
-            (if (query.isNotBlank()) "&" + query.trimStart('&', '?') else "")
+            (if (query.isNotBlank()) "&" + query.trimStart('&', '?') else "") + credentialsQuery
         val request = Request.Builder().url(fullUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
