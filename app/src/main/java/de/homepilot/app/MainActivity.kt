@@ -524,6 +524,7 @@ private fun HomePilotApp() {
     var weatherCity by remember { mutableStateOf((prefs.getString("weatherCity", "Kaan") ?: "Kaan").let { if (it.equals("56751 Kaan", ignoreCase = true)) "Kaan" else it }) }
         var connectionStatus by remember { mutableStateOf("Nicht verbunden") }
     var connected by remember { mutableStateOf(false) }
+    var connecting by remember { mutableStateOf(false) }
     var showConnectionAlert by remember { mutableStateOf(false) }
     var washOn by remember { mutableStateOf(false) }
     var waterOn by remember { mutableStateOf(false) }
@@ -532,11 +533,14 @@ private fun HomePilotApp() {
 
     fun connectToIoBroker(manualDeviceSearch: Boolean = false) {
         prefs.edit().putString("server", serverUrl).apply()
+        if (connecting) return
+        connecting = true
         connectionStatus = "Verbindung wird aufgebaut …"
         ioClient.connect(serverUrl) { ok, msg ->
+            connecting = false
             connected = ok
             connectionStatus = if (ok) "WebSocket-Verbindung zu ioBroker hergestellt" else "Verbindung fehlgeschlagen: $msg"
-            showConnectionAlert = !ok
+            showConnectionAlert = !ok && !msg.contains("unterbrochen", ignoreCase = true)
             if (ok) {
                 ioClient.inspectAdapterStates(serverUrl, "dreame.0") { movaIds, movaError ->
                     val expectedMovaIds = listOf(
@@ -625,9 +629,15 @@ private fun HomePilotApp() {
         }
     }
 
-    LaunchedEffect(Unit) {
-        delay(350)
-        connectToIoBroker()
+    val hostActivity = context as? ComponentActivity
+    DisposableEffect(hostActivity) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME && !connected && !connecting) {
+                connectToIoBroker()
+            }
+        }
+        hostActivity?.lifecycle?.addObserver(observer)
+        onDispose { hostActivity?.lifecycle?.removeObserver(observer) }
     }
     LaunchedEffect(connected, serverUrl) {
         while (connected) {
