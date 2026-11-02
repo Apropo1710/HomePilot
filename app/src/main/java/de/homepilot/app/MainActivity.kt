@@ -2348,25 +2348,6 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
     inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit) {
-    CardBlock(panel, text, "Verbindung im Hintergrund", "Automatische Trennung bei Nichtbenutzung", Icons.Default.Timer) {
-        Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.", color = Muted, fontSize = 11.sp)
-        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            listOf(listOf(15, 30), listOf(60, 0)).forEach { rowOptions ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    rowOptions.forEach { minutes ->
-                        Row(Modifier.weight(1f).clickable { onInactivityMinutes(minutes) }.padding(vertical = 0.dp), verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(selected = inactivityMinutes == minutes, onClick = { onInactivityMinutes(minutes) })
-                            Text(if (minutes == 0) "Nie trennen" else "$minutes Min.", color = text, fontSize = 13.sp)
-                        }
-                    }
-                }
-            }
-        }
-    }
-    CardBlock(panel, text, "Energiesparen für HomePilot ausschalten", "Für stabile ioBroker-Verbindung", Icons.Default.BatteryFull) {
-        Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst.", color = Muted, fontSize = 12.sp)
-        Button(onClick = onBatterySettings, modifier = Modifier.fillMaxWidth()) { Text("Android-App-Einstellungen öffnen") }
-    }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         IconButton(onClick = onBack) {
             Icon(Icons.Default.ArrowBack, contentDescription = "Zurück", tint = Blue)
@@ -2404,6 +2385,34 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
             Button(onClick = onConnect, modifier = Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
         }
         Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).", color = Muted, fontSize = 11.sp)
+    }
+    CardBlock(panel, text, "Verbindung im Hintergrund", "Automatische Trennung bei Nichtbenutzung", Icons.Default.Timer) {
+        Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.", color = Muted, fontSize = 10.sp)
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            listOf(listOf(15, 30), listOf(60, 0)).forEach { rowOptions ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    rowOptions.forEach { minutes ->
+                        Row(
+                            Modifier.weight(1f).height(30.dp).clickable { onInactivityMinutes(minutes) },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (inactivityMinutes == minutes) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,
+                                contentDescription = null,
+                                tint = if (inactivityMinutes == minutes) Blue else Muted,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(if (minutes == 0) "Nie trennen" else "$minutes Min.", color = text, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    CardBlock(panel, text, "Energiesparen für HomePilot ausschalten", "Für stabile ioBroker-Verbindung", Icons.Default.BatteryFull) {
+        Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst.", color = Muted, fontSize = 11.sp)
+        Button(onClick = onBatterySettings, modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(vertical = 8.dp)) { Text("Android-App-Einstellungen öffnen") }
     }
     CardBlock(panel, text, "Wetter", "5-Tage-Prognose auf der Startseite", Icons.Default.WbSunny) {
         OutlinedTextField(value = weatherCity, onValueChange = onWeatherCity, label = { Text("Ort oder Postleitzahl") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
