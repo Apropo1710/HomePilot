@@ -232,6 +232,59 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
         })
     }
 
+    /**
+     * Reads a JSON state, creating it only when its ioBroker object is confirmed
+     * absent. Existing objects with missing/unreadable state are treated as errors:
+     * they must never be silently initialized from local preferences.
+     */
+    fun ensureJsonState(
+        id: String,
+        displayName: String,
+        initialValue: JSONObject,
+        callback: (JSONObject?, Boolean, String?) -> Unit
+    ) {
+        getObject(id) { existingObject, objectError ->
+            if (objectError != null) {
+                callback(null, false, "Objekt $id konnte nicht gelesen werden: $objectError")
+                return@getObject
+            }
+            if (existingObject != null) {
+                getJsonState(id) { json, stateError ->
+                    if (stateError != null || json == null) {
+                        callback(null, false, "Vorhandenes Objekt $id hat keinen lesbaren JSON-Zustand. Keine automatische Initialisierung. $stateError")
+                    } else {
+                        callback(json, false, null)
+                    }
+                }
+                return@getObject
+            }
+
+            val definition = JSONObject()
+                .put("type", "state")
+                .put("common", JSONObject()
+                    .put("name", displayName)
+                    .put("type", "string")
+                    .put("role", "json")
+                    .put("read", true)
+                    .put("write", true))
+                .put("native", JSONObject())
+
+            setObject(id, definition) { objectCreated, createError ->
+                if (!objectCreated) {
+                    callback(null, false, "Objekt $id konnte nicht angelegt werden: $createError")
+                    return@setObject
+                }
+                setJsonState(id, initialValue) { stateWritten, stateWriteError ->
+                    if (!stateWritten) {
+                        callback(null, false, "Erstzustand für $id konnte nicht geschrieben werden: $stateWriteError")
+                    } else {
+                        callback(initialValue, true, null)
+                    }
+                }
+            }
+        }
+    }
+
     fun getState(baseUrl: String, id: String, callback: (Boolean?, String?) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(null, e.message); return }
         client.emit("getState", id, IoBrokerAck { args ->
