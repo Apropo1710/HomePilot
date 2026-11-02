@@ -45,16 +45,18 @@ internal data class HomePilotAccount(
             return HomePilotAccount(username, displayName.trim().ifBlank { username }, role, salt, hash)
         }
 
-        fun fromJson(json: JSONObject): HomePilotAccount? = try {
-            val username = json.getString("username")
-            val role = json.getString("role")
-            val iterations = json.getInt("iterations")
-            if (!username.matches(Regex("[A-Za-z0-9_.-]{3,32}")) ||
-                role !in setOf(ADMIN, USER) || iterations !in 50_000..1_000_000) return null
-            HomePilotAccount(username, json.optString("displayName", username), role,
-                json.getString("salt"), json.getString("passwordHash"), iterations,
-                json.optLong("createdAt", 0L))
-        } catch (_: Exception) { null }
+        fun fromJson(json: JSONObject): HomePilotAccount? {
+            return try {
+                val username = json.getString("username")
+                val role = json.getString("role")
+                val iterations = json.getInt("iterations")
+                if (!username.matches(Regex("[A-Za-z0-9_.-]{3,32}")) ||
+                    role !in setOf(ADMIN, USER) || iterations !in 50_000..1_000_000) return null
+                HomePilotAccount(username, json.optString("displayName", username), role,
+                    json.getString("salt"), json.getString("passwordHash"), iterations,
+                    json.optLong("createdAt", 0L))
+            } catch (_: Exception) { null }
+        }
 
         fun verify(account: HomePilotAccount, password: CharArray): Boolean {
             val salt = Base64.decode(account.salt, Base64.NO_WRAP)
