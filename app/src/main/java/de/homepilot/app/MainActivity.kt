@@ -659,11 +659,6 @@ private fun HomePilotApp() {
     var editRoomExpanded by remember { mutableStateOf(false) }
     val editableDeviceKinds = listOf("Steckdose" to "plug", "Lampe" to "light", "Sonstiges" to "device")
     var scanStatus by remember { mutableStateOf("") }
-    fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply(); saveSharedConfiguration() }
-    fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
-    fun persistDeviceRooms() { prefs.edit().putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
-    fun persistDeviceKinds() { prefs.edit().putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
-    fun persistHiddenItems() { prefs.edit().putString("hiddenDeviceItems", writeHiddenItems(hiddenItems)).apply(); saveSharedConfiguration() }
     fun applyCustomConfig() {
         for (i in devices.indices) {
             val item = devices[i]
@@ -703,6 +698,11 @@ private fun HomePilotApp() {
             if (!success) connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
         }
     }
+    fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply(); saveSharedConfiguration() }
+    fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
+    fun persistDeviceRooms() { prefs.edit().putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
+    fun persistDeviceKinds() { prefs.edit().putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
+    fun persistHiddenItems() { prefs.edit().putString("hiddenDeviceItems", writeHiddenItems(hiddenItems)).apply(); saveSharedConfiguration() }
 
 
     /** First-connect migration: only seed a document when its ioBroker object is absent. */
