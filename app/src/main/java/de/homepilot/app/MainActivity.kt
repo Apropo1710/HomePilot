@@ -686,6 +686,26 @@ private fun HomePilotApp() {
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
     var sharedConfigLoaded by remember { mutableStateOf(false) }
     var sharedConfigRevision by remember { mutableStateOf(0L) }
+    var userProfileLoaded by remember { mutableStateOf(false) }
+    var userProfileRevision by remember { mutableStateOf(0L) }
+    fun saveUserProfile() {
+        if (!userProfileLoaded || !connected) return
+        val username = credentialStore.username().trim()
+        if (username.isBlank()) return
+        val nextRevision = userProfileRevision + 1L
+        val profile = HomePilotUserProfile(
+            revision = nextRevision,
+            updatedAt = System.currentTimeMillis(),
+            favoriteIds = favoriteIds,
+            favoriteOrder = favoriteOrder,
+            disconnectTimeoutMinutes = inactivityMinutes
+        )
+        val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
+        ioClient.setJsonState(profileId, profile.toJson()) { success, error ->
+            if (success) userProfileRevision = maxOf(userProfileRevision, nextRevision)
+            else connectionStatus = "ioBroker verbunden · persönliches HomePilot-Profil konnte nicht gespeichert werden: $error"
+        }
+    }
     fun saveSharedConfiguration() {
         if (!sharedConfigLoaded || !connected) return
         val nextRevision = sharedConfigRevision + 1L
@@ -770,6 +790,7 @@ private fun HomePilotApp() {
                     connectionStatus = "ioBroker verbunden · Profilformat ungültig; lokale Profileinstellungen bleiben unverändert."
                     return@ensureJsonState
                 }
+                userProfileRevision = profile.revision
                 favoriteIds = profile.favoriteIds
                 favoriteOrder = profile.favoriteOrder
                 inactivityMinutes = profile.disconnectTimeoutMinutes
@@ -778,6 +799,7 @@ private fun HomePilotApp() {
                     .putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
                     .putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
                     .apply()
+                userProfileLoaded = true
                 connectionStatus = if (created) {
                     "ioBroker verbunden · HomePilot-Konfiguration und Profil erstmalig migriert."
                 } else {
@@ -1055,7 +1077,7 @@ private fun HomePilotApp() {
                                     val adding = id !in favoriteIds
                                     favoriteIds = if (adding) favoriteIds + id else favoriteIds - id
                                     favoriteOrder = if (adding) (favoriteOrder.filter { it != id } + id) else favoriteOrder.filter { it != id }
-                                    prefs.edit().putStringSet("favoriteDevices", favoriteIds).putString("favoriteOrder", favoriteOrder.joinToString("|")).apply()
+                                    prefs.edit().putStringSet("favoriteDevices", favoriteIds).putString("favoriteOrder", favoriteOrder.joinToString("|")).apply(); saveUserProfile()
                                 }
                             },
                             onMove = { id, delta ->
@@ -1067,7 +1089,7 @@ private fun HomePilotApp() {
                                     val moved = mutable.removeAt(index)
                                     mutable.add(target, moved)
                                     favoriteOrder = mutable
-                                    prefs.edit().putString("favoriteOrder", favoriteOrder.joinToString("|")).apply()
+                                    prefs.edit().putString("favoriteOrder", favoriteOrder.joinToString("|")).apply(); saveUserProfile()
                                 }
                             },
                             onSwitch = { item, value ->
@@ -1081,7 +1103,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) }, ioBrokerUsername = ioBrokerUsername, onIoBrokerUsername = { ioBrokerUsername = it }, ioBrokerPassword = ioBrokerPassword, onIoBrokerPassword = { ioBrokerPassword = it }, onSaveCredentials = { credentialStore.save(ioBrokerUsername, ioBrokerPassword); ioClient.disconnect(); connected = false; connecting = false; connectToIoBroker() })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, ioBrokerUsername = ioBrokerUsername, onIoBrokerUsername = { ioBrokerUsername = it }, ioBrokerPassword = ioBrokerPassword, onIoBrokerPassword = { ioBrokerPassword = it }, onSaveCredentials = { credentialStore.save(ioBrokerUsername, ioBrokerPassword); ioClient.disconnect(); connected = false; connecting = false; connectToIoBroker() })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
