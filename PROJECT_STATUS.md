@@ -162,35 +162,38 @@ Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten gr�
 4. Steuerbefehle einzeln anbinden und am Roidmi EVE Plus praktisch testen.
 5. Erweiterte Funktionen wie Räume/Zonen, Karte, Verlauf und Wartung erst ergänzen, wenn Adapter und Gerät sie zuverlässig bereitstellen.\n\n\n\n\n\n\n\n\n\n\n\n\n
 
-## Neue Funktion: Benutzerrollen, gemeinsame Smart-Home-Konfiguration und persönliche Einstellungen
+## Neue Funktion: Gemeinsame Konfiguration, Benutzerprofile und Sicherung
 
-Beschluss vom 02.11.2026:
+Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 
-- Andreas ist HomePilot-Admin; Jenny ist Benutzerin.
-- Adminrechte dürfen nicht allein durch lokale App-Einstellungen oder einen frei editierbaren Profilwert vergeben werden.
-- Gemeinsame Smart-Home-Konfiguration wird zentral synchronisiert und gilt für beide Geräte: Räume, Raum-/Gerätezuordnungen, Gerätenamen, Geräteklassifizierung und weitere globale Smart-Home-Einstellungen.
-- Persönliche Einstellungen bleiben pro Benutzer getrennt (z. B. Favoriten, Reihenfolge, Anzeige-/Bedienpräferenzen). Persönliche Sicherung/Wiederherstellung darf niemals die globale Konfiguration überschreiben.
-- Beide Benutzer dürfen Geräte bedienen und die App nutzen; nur der Admin darf die globale Struktur/Einrichtung ändern.
-- Gerätebeitritt erfolgt mit zentraler Freigabe durch den Admin. Neue oder zurückgesetzte Geräte erhalten nicht automatisch Adminrechte. Admin muss Geräte sperren/widerrufen können.
-- Rollen und Rechte müssen serverseitig bzw. durch eine vertrauenswürdige ioBroker-Komponente geprüft werden. UI-only-Rechte sind ausdrücklich nicht ausreichend.
+### Gemeinsame Smart-Home-Konfiguration
+- Räume, Raum-/Gerätezuordnungen, Gerätenamen, Geräteklassifizierung und globale Einstellungen sind zentral in ioBroker gespeichert.
+- Andreas verwaltet die globale Konfiguration; beide Smartphones erhalten Änderungen automatisch.
+- Jenny kann Geräte bedienen, aber die administrativen Konfigurationsbereiche (z. B. Geräteeinstellungen und ausgeblendete Geräte verwalten) sind in ihrer App ausgeblendet.
+- Es wird kein zusätzlicher ioBroker-Adapter und kein weiterer dauerhaft laufender Serverdienst installiert.
+- Die vereinfachte UI-Rollenlösung ist für den normalen Haushalt gedacht, nicht als sicherheitskritische Zugriffskontrolle. UI-Ausblendung allein ist keine serverseitige Autorisierung.
 
-### Verbindliche Einschränkung: kein zusätzlicher ioBroker-Adapter
+### Persönliche Einstellungen und Profile
+- Persönliche Einstellungen bleiben pro Benutzer getrennt, z. B. Favoriten, Anzeigeoptionen und persönliche Zeitwerte (15/30/60 Minuten bzw. Nie).
+- Jenny darf ihre persönlichen Einstellungen selbst ändern.
+- Andreas’ persönliche Einstellungen dürfen durch Jenny weder überschrieben noch gelöscht werden.
+- Persönliche Einstellungen und globale Konfiguration werden getrennt gespeichert und gesichert.
 
-Beschluss vom 02.11.2026: Ein zusätzlicher ioBroker-Adapter oder ein weiterer dauerhaft laufender Serverdienst für HomePilot ist ausdrücklich ausgeschlossen. Die Rollen-/Synchronisationslösung muss ohne zusätzliche Adapterinstallation und mit möglichst geringem Ressourcenverbrauch auskommen. Ein Adapter darf nicht als Ausweichlösung angelegt oder installiert werden.
+### Synchronisation, Sicherung und Wiederherstellung
+- Gemeinsame Konfiguration wird über ioBroker synchronisiert und bei Änderungen auf beiden Smartphones aktualisiert.
+- Persönliche Profile (Andreas/Jenny) werden separat gespeichert.
+- Änderungen werden nach erfolgreicher Speicherung bestätigt; fehlgeschlagene/offline Änderungen dürfen nicht stillschweigend als synchronisiert gelten.
+- Sicherung erfolgt automatisiert nach relevanten Änderungen mit kurzer Verzögerung sowie zusätzlich über „Jetzt sichern“.
+- Wiederherstellung eines persönlichen Profils darf nicht die globale Raum-/Gerätekonfiguration oder das andere persönliche Profil überschreiben.
+- Konflikte bei gleichzeitig geänderten Daten müssen erkannt und nachvollziehbar behandelt werden.
+- Vorhandene lokale Einstellungen müssen beim Upgrade migriert werden, ohne sie zu verlieren. Bestehende lokale Räume, Gerätenamen, Zuordnungen, Klassifizierungen und ausgeblendete Geräte sind als Ausgangspunkt für die globale Konfiguration zu behandeln; die Migration darf keine vorhandene zentrale Konfiguration ungefragt überschreiben.
 
-Vor jeder Umsetzung sind die vorhandenen ioBroker-Benutzer-/ACL-Möglichkeiten und die bestehende HomePilot-WebSocket-Verbindung zu prüfen. Falls die gewünschten Rechte ohne zusätzliche Komponente nicht sicher erreichbar sind, müssen die technischen Grenzen transparent benannt und eine Alternative innerhalb der vorhandenen Installation gesucht werden; keine unsichere UI-only-Lösung als Ersatz.
+### Umsetzungsreihenfolge
+1. Vorhandene WebSocket-/ioBroker-API und aktuelle Konfigurationspersistenz vollständig prüfen.
+2. Schema und Speicherorte für gemeinsame Konfiguration sowie getrennte Benutzerprofile definieren.
+3. Synchronisations- und Sicherungsmechanismus mit Fehler-/Offline-Verhalten implementieren.
+4. Migration vorhandener Einstellungen und Konfliktverhalten implementieren.
+5. Admin-/Benutzeransicht und persönliche Einstellungen sauber trennen.
+6. Code-Diff, Android-Build, GitHub Actions und Release-Artefakt prüfen.
 
-### Sicherheits-/Architekturhinweis
-
-HomePilot verbindet sich aktuell über den ioBroker-WebSocket direkt und authentifiziert die Verbindung über den bestehenden Socket-Handshake. Eine sichere Benutzeridentität/Rollenprüfung lässt sich nicht durch einen lokalen isAdmin-Schalter oder bloßes Ausblenden von UI-Elementen garantieren. Da ein zusätzlicher Adapter und Serverdienst ausgeschlossen sind, ist zunächst zu prüfen, ob die vorhandenen ioBroker-Benutzer-/ACL-Funktionen und vorhandene Datenpunkte/Objekte die benötigte Autorisierung und Synchronisation sicher ermöglichen. Keine zusätzliche Komponente installieren. Die App darf administrative Aktionen nur nach erfolgreicher zentraler Autorisierung ausführen.
-
-### Geplante Umsetzung (noch nicht implementiert)
-
-1. IoBroker-seitige sichere Provisionierung und Rollenprüfung (Admin-/Benutzer-Geräte, Freigabe, Widerruf, zentrale gemeinsame Konfiguration).
-2. Android-Einrichtung: Admin-Erstregistrierung/Wiederherstellung und Benutzerbeitritt mit Admin-Freigabe.
-3. Synchronisation der globalen Smart-Home-Konfiguration mit konfliktrobustem Verhalten und Offline-Warteschlange.
-4. Getrennte persönliche Einstellungen und eigene Sicherung/Wiederherstellung.
-5. Admin-/Benutzeroberfläche, Berechtigungsschutz und Migration bestehender lokaler Einstellungen.
-6. Sicherheits- und Update-/Migrationsprüfung sowie GitHub Actions Produktionsbuild.
-
-**Status:** Architektur-/Codeprüfung begonnen; noch keine Feature-Codeänderung, kein Feature-Commit und kein Build für diese Funktion.\n\n
+**Status:** Zielarchitektur aktualisiert. Feature-Code noch nicht implementiert; noch kein Feature-Build oder Smartphone-Test.
