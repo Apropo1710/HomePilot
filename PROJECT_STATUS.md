@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 12ad262e58f695212e010f3004ec01192298e481
+- Quellcommit des APK-Builds: 9336e3bcd17e53eeb0e7d27a6b02e808af930bcc
 - App-Version / versionCode: **1.29.44 / 102**
-- Build-Zeit: 2026-11-02 15:01:25 UTC
+- Build-Zeit: 2026-11-02 15:21:17 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13153082345, 11109190 Bytes
-- APK-SHA-256: 56e0b486efafd8a516899dbaf7c6ed0109fa69d1ef464f026ae82c5e3909b246
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13155830627, 11109181 Bytes
+- APK-SHA-256: 96259c981c91f8a681fe2344129151d6266c57c5f9a9ff6be08d3a63c6eb0eb8
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -187,4 +187,4 @@ HomePilot verbindet sich aktuell über den ioBroker-WebSocket direkt und authent
 5. Admin-/Benutzeroberfläche, Berechtigungsschutz und Migration bestehender lokaler Einstellungen.
 6. Sicherheits- und Update-/Migrationsprüfung sowie GitHub Actions Produktionsbuild.
 
-**Status:** Architektur-/Codeprüfung begonnen; noch keine Feature-Codeänderung, kein Feature-Commit und kein Build für diese Funktion.
+**Status:** Architektur-/Codeprüfung begonnen; noch keine Feature-Codeänderung, kein Feature-Commit und kein Build für diese Funktion.\n
