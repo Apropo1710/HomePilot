@@ -61,6 +61,7 @@ private class IoBrokerClient {
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var socket: IoBrokerSocket? = null
     @Volatile private var connected = false
+    @Volatile private var activeAddress: String? = null
     private val stateCache = java.util.concurrent.ConcurrentHashMap<String, JSONObject>()
     private val pendingConnect = java.util.concurrent.CopyOnWriteArrayList<(Boolean, String) -> Unit>()
 
@@ -70,13 +71,23 @@ private class IoBrokerClient {
         socket?.disconnect()
         socket?.close()
         socket = null
+        activeAddress = null
     }
 
     private fun post(block: () -> Unit) = mainHandler.post(block)
 
     fun connect(url: String, onResult: (Boolean, String) -> Unit) {
-        disconnect()
         val address = url.trim().trimEnd('/')
+        if (socket?.isActive() == true && connected && activeAddress == address) {
+            post { onResult(true, "WebSocket-Verbindung zu ioBroker besteht bereits") }
+            return
+        }
+        if (socket?.isActive() == true && activeAddress == address) {
+            // Socket already owns the reconnect loop; don't replace it on activity resume.
+            return
+        }
+        disconnect()
+        activeAddress = address
         try {
             require(address.startsWith("ws://") || address.startsWith("wss://")) {
                 "WebSocket-Adresse muss mit ws:// oder wss:// beginnen"

@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 02.11.2026: Stabilisierung der ioBroker-WebSocket-Wiederverbindung: HomePilot ersetzt eine bereits laufende Verbindung/Reconnect-Schleife beim App-Resume nicht mehr durch einen neuen Socket. Socket-Reconnect ignoriert verspätete Fehler nach explizitem Disconnect. Version 1.29.40 (Code 98).
+
+
 - 02.11.2026: IoBroker-Verbindung wird beim Android-Lifecycle-Event ON_RESUME automatisch neu aufgebaut, falls sie getrennt ist. Reconnect-Statusdialog bei kurzem Verbindungsabbruch unterdrückt. Startverbindung wird gegen doppelte Connect-Aufrufe abgesichert. Version 1.29.39 (Code 97).
 
 

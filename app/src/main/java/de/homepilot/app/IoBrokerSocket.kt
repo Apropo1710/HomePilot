@@ -141,6 +141,7 @@ internal class IoBrokerSocket(
     }
 
     private fun onLost(message: String) {
+        if (stopped) return
         val wasReady = isConnected || readyReceived
         isConnected = false
         readyReceived = false
@@ -186,6 +187,7 @@ internal class IoBrokerSocket(
     }
 
     fun connected(): Boolean = isConnected
+    fun isActive(): Boolean = !stopped
 
     fun disconnect() {
         stopped = true
