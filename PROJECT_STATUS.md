@@ -166,6 +166,23 @@ Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten gr�
 
 Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 
+### ioBroker-Authentifizierung und Speicherrechte (Entscheidung)
+- HomePilot nutzt die bestehende ioBroker-Benutzerverwaltung und WebSocket-Authentifizierung, keine selbst entwickelte App-Identität.
+- Andreas und Jenny sollen jeweils mit eigenem ioBroker-Benutzer angemeldet sein.
+- ioBroker-Login-Daten werden auf Android mit Android Keystore-gestützter Verschlüsselung geschützt gespeichert; keine Klartextpasswörter in SharedPreferences.
+- Zugangsdaten nicht über unverschlüsseltes WebSocket transportieren. Für Authentifizierung über Netzwerk ist WSS/TLS zu bevorzugen; lokales WS bleibt nur als explizite bestehende/kompatible Heimnetzoption mit Warnhinweis.
+- Geplante ACL-Trennung: globaler Konfigurationsbereich für Jenny lesbar, aber nicht beschreibbar; eigenes Profil von Jenny les-/schreibbar; Andreas kann gemeinsame Konfiguration und beide Profile administrieren.
+- UI-Rollenanzeige ergänzt ioBroker-ACLs und ersetzt sie nicht.
+- Vor Implementation muss geprüft werden, welche Socket.IO-Methoden und Objekt-/State-ACLs im bestehenden ioBroker-Setup verfügbar sind. Keine pauschale Annahme, dass 0_userdata.0-Standard-ACLs automatisch diese Trennung erfüllen.
+
+### Speicherentwurf (noch nicht implementiert)
+- Namespace: 0_userdata.0.HomePilot
+- config: gemeinsame Räume, Gerätezuordnungen, Gerätenamen, Klassifizierung, globale ausgeblendete Geräte und Revision/Änderungsmetadaten.
+- profiles.<ioBrokerUser>: benutzerspezifische Favoriten, Reihenfolge, Disconnect-Timer und Anzeigepräferenzen.
+- backup.config und backup.profiles.<user>: getrennte Sicherungsstände bzw. Snapshots; Wiederherstellung eines Profils darf globale Konfiguration oder andere Profile nicht ersetzen.
+- Entwurf: eine versionierte JSON-Konfiguration je Bereich statt zahlreicher einzeln verstreuter State-IDs; ACLs müssen auf Objekt/State-Ebene passend geprüft und eingerichtet werden.
+- Vor Migration zuerst zentral vorhandene Konfiguration prüfen; lokale Bestandsdaten nur initial importieren, wenn noch keine globale Konfiguration existiert. Bei mehreren Smartphones mit unterschiedlichem lokalen Bestand keine automatische Überschreibung, sondern kontrollierter Import/Abgleich.
+
 ### Gemeinsame Smart-Home-Konfiguration
 - Räume, Raum-/Gerätezuordnungen, Gerätenamen, Geräteklassifizierung und globale Einstellungen sind zentral in ioBroker gespeichert.
 - Andreas verwaltet die globale Konfiguration; beide Smartphones erhalten Änderungen automatisch.
