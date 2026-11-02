@@ -485,6 +485,41 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
         })
     }
 }
+/** ioBroker-backed HomePilot account registry with revision conflict protection. */
+private class HomePilotAccountRepository(private val client: IoBrokerClient) {
+    companion object { const val STATE_ID = "0_userdata.0.HomePilot.accounts" }
+
+    fun load(callback: (HomePilotAccountRegistry?, String?) -> Unit) {
+        client.ensureJsonState(STATE_ID, "HomePilot account registry", HomePilotAccountRegistry().toJson()) { json, _, error ->
+            if (error != null || json == null) {
+                callback(null, error ?: "Konten konnten nicht geladen werden.")
+                return@ensureJsonState
+            }
+            val registry = HomePilotAccountRegistry.fromJson(json)
+            if (registry == null) callback(null, "Die HomePilot-Kontenliste ist ungültig oder hat ein unbekanntes Format.")
+            else callback(registry, null)
+        }
+    }
+
+    fun save(expectedRevision: Long, registry: HomePilotAccountRegistry, callback: (Boolean, String?) -> Unit) {
+        load { current, error ->
+            if (error != null || current == null) {
+                callback(false, error ?: "Kontenliste konnte nicht geprüft werden.")
+                return@load
+            }
+            if (current.revision != expectedRevision) {
+                callback(false, "Die Kontenliste wurde zwischenzeitlich geändert. Bitte erneut laden.")
+                return@load
+            }
+            if (registry.revision != expectedRevision + 1) {
+                callback(false, "Ungültige Versionsnummer der Kontenliste.")
+                return@load
+            }
+            client.setJsonState(STATE_ID, registry.toJson(), callback)
+        }
+    }
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
