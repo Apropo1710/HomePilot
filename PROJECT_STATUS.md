@@ -94,6 +94,8 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 02.11.2026: Profilvalidierung korrigiert: Der Disconnect-Timer akzeptiert jetzt auch 15 Minuten (neben 30/60 Minuten und Nie). GitHub Actions Run #231 erfolgreich; Commit `05520b0`. APK erfolgreich signiert und als `latest` veröffentlicht. Ein Smartphone-Test ist noch nicht bestätigt.
+
 - 02.11.2026: Akku-Hinweis nur bei frischer Installation, nicht bei App-Updates; Einstellungen für Hintergrundverbindung kompakter; Akku-Kachel umbenannt und Text gekürzt. Version 1.29.43 (Code 101).
 
 
