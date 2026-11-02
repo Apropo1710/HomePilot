@@ -2776,8 +2776,6 @@ private fun HomePilotLoginScreen(
         Spacer(Modifier.height(8.dp))
         Text("Bitte mit deinem ioBroker-Benutzer anmelden.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(Modifier.height(22.dp))
-        OutlinedTextField(value = serverUrl, onValueChange = onServerUrl, label = { Text("ioBroker-WebSocket-Adresse") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(10.dp))
         OutlinedTextField(value = username, onValueChange = onUsername, label = { Text("Benutzername") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(10.dp))
         OutlinedTextField(value = password, onValueChange = onPassword, label = { Text("Passwort") }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
