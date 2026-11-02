@@ -701,9 +701,20 @@ private fun HomePilotApp() {
             disconnectTimeoutMinutes = inactivityMinutes
         )
         val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
-        ioClient.setJsonState(profileId, profile.toJson()) { success, error ->
-            if (success) userProfileRevision = maxOf(userProfileRevision, nextRevision)
-            else connectionStatus = "ioBroker verbunden · persönliches HomePilot-Profil konnte nicht gespeichert werden: $error"
+        ioClient.getJsonState(profileId) { remote, readError ->
+            if (readError != null || remote == null) {
+                connectionStatus = "ioBroker verbunden · Profiländerung nicht gespeichert (Remote-Prüfung fehlgeschlagen): $readError"
+                return@getJsonState
+            }
+            val remoteProfile = HomePilotUserProfile.fromJson(remote)
+            if (remoteProfile == null || remoteProfile.revision != userProfileRevision) {
+                connectionStatus = "HomePilot: Profilkonflikt erkannt – Remote-Profil wurde zwischenzeitlich geändert. Änderung nicht übertragen."
+                return@getJsonState
+            }
+            ioClient.setJsonState(profileId, profile.toJson()) { success, error ->
+                if (success) userProfileRevision = maxOf(userProfileRevision, nextRevision)
+                else connectionStatus = "ioBroker verbunden · persönliches HomePilot-Profil konnte nicht gespeichert werden: $error"
+            }
         }
     }
     fun saveSharedConfiguration() {
@@ -718,9 +729,20 @@ private fun HomePilotApp() {
             deviceKinds = deviceKinds,
             hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
         )
-        ioClient.setJsonState("0_userdata.0.HomePilot.config", config.toJson()) { success, error ->
-            if (success) sharedConfigRevision = maxOf(sharedConfigRevision, nextRevision)
-            else connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
+        ioClient.getJsonState("0_userdata.0.HomePilot.config") { remote, readError ->
+            if (readError != null || remote == null) {
+                connectionStatus = "ioBroker verbunden · Konfigurationsänderung nicht gespeichert (Remote-Prüfung fehlgeschlagen): $readError"
+                return@getJsonState
+            }
+            val remoteConfig = HomePilotSharedConfig.fromJson(remote)
+            if (remoteConfig == null || remoteConfig.revision != sharedConfigRevision) {
+                connectionStatus = "HomePilot: Konflikt erkannt – Remote-Konfiguration wurde zwischenzeitlich geändert. Lokale Änderung nicht übertragen; bitte erneut verbinden/laden."
+                return@getJsonState
+            }
+            ioClient.setJsonState("0_userdata.0.HomePilot.config", config.toJson()) { success, error ->
+                if (success) sharedConfigRevision = maxOf(sharedConfigRevision, nextRevision)
+                else connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
+            }
         }
     }
     fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply(); saveSharedConfiguration() }
