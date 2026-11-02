@@ -174,9 +174,15 @@ Beschluss vom 02.11.2026:
 - Gerätebeitritt erfolgt mit zentraler Freigabe durch den Admin. Neue oder zurückgesetzte Geräte erhalten nicht automatisch Adminrechte. Admin muss Geräte sperren/widerrufen können.
 - Rollen und Rechte müssen serverseitig bzw. durch eine vertrauenswürdige ioBroker-Komponente geprüft werden. UI-only-Rechte sind ausdrücklich nicht ausreichend.
 
+### Verbindliche Einschränkung: kein zusätzlicher ioBroker-Adapter
+
+Beschluss vom 02.11.2026: Ein zusätzlicher ioBroker-Adapter oder ein weiterer dauerhaft laufender Serverdienst für HomePilot ist ausdrücklich ausgeschlossen. Die Rollen-/Synchronisationslösung muss ohne zusätzliche Adapterinstallation und mit möglichst geringem Ressourcenverbrauch auskommen. Ein Adapter darf nicht als Ausweichlösung angelegt oder installiert werden.
+
+Vor jeder Umsetzung sind die vorhandenen ioBroker-Benutzer-/ACL-Möglichkeiten und die bestehende HomePilot-WebSocket-Verbindung zu prüfen. Falls die gewünschten Rechte ohne zusätzliche Komponente nicht sicher erreichbar sind, müssen die technischen Grenzen transparent benannt und eine Alternative innerhalb der vorhandenen Installation gesucht werden; keine unsichere UI-only-Lösung als Ersatz.
+
 ### Sicherheits-/Architekturhinweis
 
-HomePilot verbindet sich aktuell über den ioBroker-WebSocket direkt und authentifiziert die Verbindung über den bestehenden Socket-Handshake. Eine sichere Benutzeridentität/Rollenprüfung lässt sich nicht durch einen lokalen isAdmin-Schalter oder bloßes Ausblenden von UI-Elementen garantieren. Vor der Android-Implementierung ist daher eine zentrale ioBroker-seitige Autorisierungs-/Provisionierungsinstanz zu entwerfen und umzusetzen. Die zentrale Komponente muss Geräteidentität, Benutzerrolle, Freigabe/Widerruf und gemeinsame Konfiguration verwalten. Die App darf administrative Aktionen nur nach erfolgreicher zentraler Autorisierung ausführen.
+HomePilot verbindet sich aktuell über den ioBroker-WebSocket direkt und authentifiziert die Verbindung über den bestehenden Socket-Handshake. Eine sichere Benutzeridentität/Rollenprüfung lässt sich nicht durch einen lokalen isAdmin-Schalter oder bloßes Ausblenden von UI-Elementen garantieren. Da ein zusätzlicher Adapter und Serverdienst ausgeschlossen sind, ist zunächst zu prüfen, ob die vorhandenen ioBroker-Benutzer-/ACL-Funktionen und vorhandene Datenpunkte/Objekte die benötigte Autorisierung und Synchronisation sicher ermöglichen. Keine zusätzliche Komponente installieren. Die App darf administrative Aktionen nur nach erfolgreicher zentraler Autorisierung ausführen.
 
 ### Geplante Umsetzung (noch nicht implementiert)
 
