@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 9d2c2ac77415695da462bb381f10ea568cf31c3c
+- Quellcommit des APK-Builds: a9c3ab2f95df1aa9f2d355e63e43e8fb3798f8bc
 - App-Version / versionCode: **1.29.44 / 102**
-- Build-Zeit: 2026-11-02 17:32:10 UTC
+- Build-Zeit: 2026-11-02 17:37:16 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13164527228, 11865158 Bytes
-- APK-SHA-256: c140acec56a92f81797f7fed88b46f42115a5f3056f9a4484004219f52d103be
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13163979319, 11866742 Bytes
+- APK-SHA-256: fdd758d70c2a2fe539b06154ec608c7ca7344ff9eb7e151631e7d4ae772ef305
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -219,4 +219,4 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Commit `d16a2116e153a072eae9f9a85d93c26d3827c250` korrigiert die fehlenden ioBroker-Login-Parameter in der zweiten Einstellungsansicht.
 - GitHub Actions Run `41481137422` für diesen Commit ist erfolgreich abgeschlossen.
 - Erfolgreicher CI-Build bestätigt die Kompilierbarkeit, noch nicht die praktische ioBroker-Anmeldung oder Synchronisation auf beiden Smartphones.
-- Nächster Entwicklungsschritt: zentrale JSON-State-API und sichere Initialisierung/Existenzprüfung des globalen Konfigurationsdatensatzes sowie getrennte Profil-Datenpunkte. Vor Umsetzung ACL-Verhalten und Rechte bei `0_userdata.0` prüfen.\n\n\n
+- Nächster Entwicklungsschritt: zentrale JSON-State-API und sichere Initialisierung/Existenzprüfung des globalen Konfigurationsdatensatzes sowie getrennte Profil-Datenpunkte. Vor Umsetzung ACL-Verhalten und Rechte bei `0_userdata.0` prüfen.\n\n\n\n
