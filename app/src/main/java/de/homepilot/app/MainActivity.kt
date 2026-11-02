@@ -685,17 +685,22 @@ private fun HomePilotApp() {
     var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
     var sharedConfigLoaded by remember { mutableStateOf(false) }
+    var sharedConfigRevision by remember { mutableStateOf(0L) }
     fun saveSharedConfiguration() {
         if (!sharedConfigLoaded || !connected) return
-        val config = HomePilotSharedConfig.initialFromLocal(
-            rooms = rooms,
+        val nextRevision = sharedConfigRevision + 1L
+        val config = HomePilotSharedConfig(
+            revision = nextRevision,
+            updatedAt = System.currentTimeMillis(),
+            rooms = rooms.filter(String::isNotBlank).distinct().ifEmpty { HomePilotSharedConfig.DEFAULT_ROOMS },
             deviceNames = customNames,
             deviceRooms = deviceRooms,
             deviceKinds = deviceKinds,
             hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
         )
         ioClient.setJsonState("0_userdata.0.HomePilot.config", config.toJson()) { success, error ->
-            if (!success) connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
+            if (success) sharedConfigRevision = maxOf(sharedConfigRevision, nextRevision)
+            else connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
         }
     }
     fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply(); saveSharedConfiguration() }
@@ -728,6 +733,7 @@ private fun HomePilotApp() {
                 connectionStatus = "ioBroker verbunden · Remote-Konfiguration hat ein unbekanntes/ungültiges Format; lokale Daten bleiben unverändert."
                 return@ensureJsonState
             }
+            sharedConfigRevision = shared.revision
             rooms = shared.rooms.toMutableList()
             customNames = shared.deviceNames
             deviceRooms = shared.deviceRooms
