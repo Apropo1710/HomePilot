@@ -84,7 +84,6 @@ private class IoBrokerClient {
         }
         if (socket?.isActive() == true && activeAddress == address) {
             // Socket already owns the reconnect loop; don't replace it on activity resume.
-            post { onResult(false, "WebSocket-Wiederverbindung läuft bereits") }
             return
         }
         disconnect()
@@ -552,7 +551,7 @@ private fun HomePilotApp() {
             connecting = false
             connected = ok
             connectionStatus = if (ok) "WebSocket-Verbindung zu ioBroker hergestellt" else "Verbindung fehlgeschlagen: $msg"
-            showConnectionAlert = !ok && !msg.contains("unterbrochen", ignoreCase = true) && !msg.contains("Wiederverbindung läuft", ignoreCase = true)
+            showConnectionAlert = !ok && !msg.contains("unterbrochen", ignoreCase = true)
             if (ok) {
                 ioClient.inspectAdapterStates(serverUrl, "dreame.0") { movaIds, movaError ->
                     val expectedMovaIds = listOf(
