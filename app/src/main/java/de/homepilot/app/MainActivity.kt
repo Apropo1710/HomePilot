@@ -780,7 +780,9 @@ private fun HomePilotApp() {
             customNames = shared.deviceNames
             deviceRooms = shared.deviceRooms
             deviceKinds = shared.deviceKinds
+            hiddenIds = shared.hiddenDeviceItems
             prefs.edit()
+                .putStringSet("hiddenDevices", hiddenIds)
                 .putString("rooms", rooms.joinToString("|"))
                 .putString("deviceNames", JSONObject(customNames as Map<*, *>).toString())
                 .putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString())
