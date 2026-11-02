@@ -659,11 +659,25 @@ private fun HomePilotApp() {
     var editRoomExpanded by remember { mutableStateOf(false) }
     val editableDeviceKinds = listOf("Steckdose" to "plug", "Lampe" to "light", "Sonstiges" to "device")
     var scanStatus by remember { mutableStateOf("") }
-    fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply() }
-    fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply() }
-    fun persistDeviceRooms() { prefs.edit().putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString()).apply() }
-    fun persistDeviceKinds() { prefs.edit().putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString()).apply() }
-    fun persistHiddenItems() { prefs.edit().putString("hiddenDeviceItems", writeHiddenItems(hiddenItems)).apply() }
+    var sharedConfigLoaded by remember { mutableStateOf(false) }
+    fun saveSharedConfiguration() {
+        if (!sharedConfigLoaded || !connected) return
+        val config = HomePilotSharedConfig.initialFromLocal(
+            rooms = rooms,
+            deviceNames = customNames,
+            deviceRooms = deviceRooms,
+            deviceKinds = deviceKinds,
+            hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
+        )
+        ioClient.setJsonState("0_userdata.0.HomePilot.config", config.toJson()) { success, error ->
+            if (!success) connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
+        }
+    }
+    fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply(); saveSharedConfiguration() }
+    fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
+    fun persistDeviceRooms() { prefs.edit().putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
+    fun persistDeviceKinds() { prefs.edit().putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
+    fun persistHiddenItems() { prefs.edit().putString("hiddenDeviceItems", writeHiddenItems(hiddenItems)).apply(); saveSharedConfiguration() }
     fun applyCustomConfig() {
         for (i in devices.indices) {
             val item = devices[i]
@@ -724,6 +738,7 @@ private fun HomePilotApp() {
                 .putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString())
                 .apply()
             applyCustomConfig()
+            sharedConfigLoaded = true
 
             val username = credentialStore.username().trim()
             if (username.isBlank()) {
