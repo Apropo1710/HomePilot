@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 02.11.2026: Akku-Hinweis nur bei frischer Installation, nicht bei App-Updates; Einstellungen für Hintergrundverbindung kompakter; Akku-Kachel umbenannt und Text gekürzt. Version 1.29.43 (Code 101).
+
+
 - 02.11.2026: Einstellung für automatische ioBroker-Trennung nach 15/30/60 Minuten oder nie (Standard 30 Minuten); Verbindung beim Resume automatisch wiederherstellen. Einmaliger Akkuoptimierungs-Hinweis mit Link zu Android-App-Einstellungen. Version 1.29.42 (Code 100).
 
 

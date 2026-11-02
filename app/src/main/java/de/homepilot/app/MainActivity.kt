@@ -487,7 +487,16 @@ private fun HomePilotApp() {
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     val appScope = rememberCoroutineScope()
     var inactivityMinutes by remember { mutableIntStateOf(prefs.getInt("disconnectAfterMinutes", 30).coerceIn(0, 60)) }
-    var showBatteryOptimizationDialog by remember { mutableStateOf(!prefs.getBoolean("batteryHintShown", false)) }
+    val isFreshInstall = remember {
+        try {
+            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            packageInfo.firstInstallTime >= packageInfo.lastUpdateTime - 5_000L
+        } catch (_: Exception) { false }
+    }
+    var showBatteryOptimizationDialog by remember { mutableStateOf(isFreshInstall && !prefs.getBoolean("batteryHintShown", false)) }
+    LaunchedEffect(isFreshInstall) {
+        if (!isFreshInstall && !prefs.getBoolean("batteryHintShown", false)) prefs.edit().putBoolean("batteryHintShown", true).apply()
+    }
     var favoriteIds by remember { mutableStateOf(prefs.getStringSet("favoriteDevices", emptySet())?.toSet() ?: emptySet()) }
     var favoriteOrder by remember { mutableStateOf(prefs.getString("favoriteOrder", "")?.split("|")?.filter { it.isNotBlank() } ?: emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
@@ -2339,19 +2348,23 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
     inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit) {
-    CardBlock(panel, text, "Verbindung im Hintergrund", "ioBroker-Verbindung nach längerer Nichtbenutzung automatisch trennen", Icons.Default.Timer) {
-        Text("Wenn HomePilot im Hintergrund bleibt, wird die WebSocket-Verbindung nach der gewählten Zeit getrennt. Beim Zurückkehren verbindet sich die App automatisch erneut.", color = Muted, fontSize = 12.sp)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf(15, 30, 60, 0).forEach { minutes ->
-                Row(Modifier.fillMaxWidth().clickable { onInactivityMinutes(minutes) }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = inactivityMinutes == minutes, onClick = { onInactivityMinutes(minutes) })
-                    Text(if (minutes == 0) "Nie automatisch trennen" else "Nach $minutes Minuten", color = text)
+    CardBlock(panel, text, "Verbindung im Hintergrund", "Automatische Trennung bei Nichtbenutzung", Icons.Default.Timer) {
+        Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.", color = Muted, fontSize = 11.sp)
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            listOf(listOf(15, 30), listOf(60, 0)).forEach { rowOptions ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    rowOptions.forEach { minutes ->
+                        Row(Modifier.weight(1f).clickable { onInactivityMinutes(minutes) }.padding(vertical = 0.dp), verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = inactivityMinutes == minutes, onClick = { onInactivityMinutes(minutes) })
+                            Text(if (minutes == 0) "Nie trennen" else "$minutes Min.", color = text, fontSize = 13.sp)
+                        }
+                    }
                 }
             }
         }
     }
-    CardBlock(panel, text, "Akkuoptimierung", "Empfohlene Android-Einstellungen für stabile ioBroker-Liveverbindung", Icons.Default.BatteryFull) {
-        Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst. Die Einstellung muss einmalig manuell bestätigt werden.", color = Muted, fontSize = 12.sp)
+    CardBlock(panel, text, "Energiesparen für HomePilot ausschalten", "Für stabile ioBroker-Verbindung", Icons.Default.BatteryFull) {
+        Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst.", color = Muted, fontSize = 12.sp)
         Button(onClick = onBatterySettings, modifier = Modifier.fillMaxWidth()) { Text("Android-App-Einstellungen öffnen") }
     }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
