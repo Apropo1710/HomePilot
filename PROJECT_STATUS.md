@@ -161,3 +161,30 @@ Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten gr�
 3. Roboter-Dashboard und Statusanzeige mit tatsächlich verfügbaren Datenpunkten integrieren.
 4. Steuerbefehle einzeln anbinden und am Roidmi EVE Plus praktisch testen.
 5. Erweiterte Funktionen wie Räume/Zonen, Karte, Verlauf und Wartung erst ergänzen, wenn Adapter und Gerät sie zuverlässig bereitstellen.\n\n\n\n\n\n\n\n\n\n\n\n\n
+
+## Neue Funktion: Benutzerrollen, gemeinsame Smart-Home-Konfiguration und persönliche Einstellungen
+
+Beschluss vom 02.11.2026:
+
+- Andreas ist HomePilot-Admin; Jenny ist Benutzerin.
+- Adminrechte dürfen nicht allein durch lokale App-Einstellungen oder einen frei editierbaren Profilwert vergeben werden.
+- Gemeinsame Smart-Home-Konfiguration wird zentral synchronisiert und gilt für beide Geräte: Räume, Raum-/Gerätezuordnungen, Gerätenamen, Geräteklassifizierung und weitere globale Smart-Home-Einstellungen.
+- Persönliche Einstellungen bleiben pro Benutzer getrennt (z. B. Favoriten, Reihenfolge, Anzeige-/Bedienpräferenzen). Persönliche Sicherung/Wiederherstellung darf niemals die globale Konfiguration überschreiben.
+- Beide Benutzer dürfen Geräte bedienen und die App nutzen; nur der Admin darf die globale Struktur/Einrichtung ändern.
+- Gerätebeitritt erfolgt mit zentraler Freigabe durch den Admin. Neue oder zurückgesetzte Geräte erhalten nicht automatisch Adminrechte. Admin muss Geräte sperren/widerrufen können.
+- Rollen und Rechte müssen serverseitig bzw. durch eine vertrauenswürdige ioBroker-Komponente geprüft werden. UI-only-Rechte sind ausdrücklich nicht ausreichend.
+
+### Sicherheits-/Architekturhinweis
+
+HomePilot verbindet sich aktuell über den ioBroker-WebSocket direkt und authentifiziert die Verbindung über den bestehenden Socket-Handshake. Eine sichere Benutzeridentität/Rollenprüfung lässt sich nicht durch einen lokalen isAdmin-Schalter oder bloßes Ausblenden von UI-Elementen garantieren. Vor der Android-Implementierung ist daher eine zentrale ioBroker-seitige Autorisierungs-/Provisionierungsinstanz zu entwerfen und umzusetzen. Die zentrale Komponente muss Geräteidentität, Benutzerrolle, Freigabe/Widerruf und gemeinsame Konfiguration verwalten. Die App darf administrative Aktionen nur nach erfolgreicher zentraler Autorisierung ausführen.
+
+### Geplante Umsetzung (noch nicht implementiert)
+
+1. IoBroker-seitige sichere Provisionierung und Rollenprüfung (Admin-/Benutzer-Geräte, Freigabe, Widerruf, zentrale gemeinsame Konfiguration).
+2. Android-Einrichtung: Admin-Erstregistrierung/Wiederherstellung und Benutzerbeitritt mit Admin-Freigabe.
+3. Synchronisation der globalen Smart-Home-Konfiguration mit konfliktrobustem Verhalten und Offline-Warteschlange.
+4. Getrennte persönliche Einstellungen und eigene Sicherung/Wiederherstellung.
+5. Admin-/Benutzeroberfläche, Berechtigungsschutz und Migration bestehender lokaler Einstellungen.
+6. Sicherheits- und Update-/Migrationsprüfung sowie GitHub Actions Produktionsbuild.
+
+**Status:** Architektur-/Codeprüfung begonnen; noch keine Feature-Codeänderung, kein Feature-Commit und kein Build für diese Funktion.
