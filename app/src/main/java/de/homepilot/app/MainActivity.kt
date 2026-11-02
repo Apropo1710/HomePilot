@@ -718,6 +718,28 @@ private fun HomePilotApp() {
     var ioBrokerUsername by remember { mutableStateOf(credentialStore.username()) }
     var ioBrokerPassword by remember { mutableStateOf(credentialStore.password()) }
     var loginAccepted by remember { mutableStateOf(false) }
+    var homePilotAuthenticated by remember { mutableStateOf(false) }
+    var homePilotRegistry by remember { mutableStateOf<HomePilotAccountRegistry?>(null) }
+    var homePilotAccount by remember { mutableStateOf<HomePilotAccount?>(null) }
+    var homePilotUsername by remember { mutableStateOf("") }
+    var homePilotPassword by remember { mutableStateOf("") }
+    var homePilotDisplayName by remember { mutableStateOf("") }
+    var homePilotAccountLoading by remember { mutableStateOf(false) }
+    val homePilotAccountRepository = remember { HomePilotAccountRepository(ioClient) }
+    fun loadHomePilotAccounts() {
+        homePilotAccountLoading = true
+        homePilotAccountRepository.load { registry, error ->
+            homePilotAccountLoading = false
+            homePilotRegistry = registry
+            if (error != null) connectionStatus = "HomePilot-Konten konnten nicht geladen werden: $error"
+        }
+    }
+    fun saveHomePilotRegistry(expectedRevision: Long, next: HomePilotAccountRegistry, onSaved: (Boolean, String?) -> Unit) {
+        homePilotAccountRepository.save(expectedRevision, next) { success, error ->
+            if (success) homePilotRegistry = next
+            onSaved(success, error)
+        }
+    }
     var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
     var sharedConfigLoaded by remember { mutableStateOf(false) }
@@ -885,6 +907,7 @@ private fun HomePilotApp() {
             connecting = false
             connected = ok
             if (ok) loginAccepted = true
+            if (ok) loadHomePilotAccounts()
             connectionStatus = if (ok) "WebSocket-Verbindung zu ioBroker hergestellt" else "Verbindung fehlgeschlagen: $msg"
             showConnectionAlert = !ok && !msg.contains("unterbrochen", ignoreCase = true) && !msg.contains("Wiederverbindung läuft", ignoreCase = true)
             if (ok) {
@@ -1040,6 +1063,32 @@ private fun HomePilotApp() {
                             credentialStore.save(ioBrokerUsername, ioBrokerPassword)
                             ioClient.disconnect(); connected = false; connecting = false; loginAccepted = false
                             connectToIoBroker()
+                        }
+                    }
+                )
+            } else if (!homePilotAuthenticated) {
+                HomePilotAccountLoginScreen(
+                    registry = homePilotRegistry,
+                    username = homePilotUsername, onUsername = { homePilotUsername = it },
+                    password = homePilotPassword, onPassword = { homePilotPassword = it },
+                    displayName = homePilotDisplayName, onDisplayName = { homePilotDisplayName = it },
+                    loading = homePilotAccountLoading, status = connectionStatus,
+                    onReload = { if (connected) loadHomePilotAccounts() },
+                    onLogin = {
+                        val registry = homePilotRegistry
+                        if (registry == null) connectionStatus = "Kontenliste noch nicht verfügbar. Bitte erneut laden."
+                        else if (registry.accounts.isEmpty()) {
+                            try {
+                                val next = registry.createInitialAdmin(homePilotUsername, homePilotDisplayName, homePilotPassword.toCharArray())
+                                saveHomePilotRegistry(registry.revision, next) { saved, error ->
+                                    if (saved) { homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; homePilotPassword = "" }
+                                    else connectionStatus = "Admin konnte nicht angelegt werden: " + error
+                                }
+                            } catch (e: Exception) { connectionStatus = e.message ?: "Admin-Einrichtung fehlgeschlagen." }
+                        } else {
+                            val account = registry.authenticate(homePilotUsername, homePilotPassword.toCharArray())
+                            if (account == null) connectionStatus = "HomePilot-Benutzername oder Passwort falsch."
+                            else { homePilotAccount = account; homePilotAuthenticated = true; homePilotPassword = ""; connectionStatus = "HomePilot angemeldet: " + account.displayName }
                         }
                     }
                 )
@@ -2676,6 +2725,38 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 }
 
 @Composable
+@Composable
+private fun HomePilotAccountLoginScreen(
+    registry: HomePilotAccountRegistry?, username: String, onUsername: (String) -> Unit,
+    password: String, onPassword: (String) -> Unit, displayName: String, onDisplayName: (String) -> Unit,
+    loading: Boolean, status: String, onReload: () -> Unit, onLogin: () -> Unit
+) {
+    val setup = registry?.accounts?.isEmpty() == true
+    Column(Modifier.fillMaxSize().statusBarsPadding().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Icon(Icons.Default.Home, contentDescription = null, tint = Blue, modifier = Modifier.size(58.dp))
+        Spacer(Modifier.height(12.dp))
+        Text("HomePilot", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+        Spacer(Modifier.height(8.dp))
+        Text(if (registry == null) "HomePilot-Konten werden geladen …" else if (setup) "Ersteinrichtung · Administrator erstellen" else "Mit deinem HomePilot-Konto anmelden", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Spacer(Modifier.height(18.dp))
+        if (registry == null) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onReload, enabled = !loading) { Text("Konten erneut laden") }
+        } else {
+            OutlinedTextField(value = username, onValueChange = onUsername, label = { Text("HomePilot-Benutzername") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            if (setup) { Spacer(Modifier.height(8.dp)); OutlinedTextField(value = displayName, onValueChange = onDisplayName, label = { Text("Anzeigename (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth()) }
+            Spacer(Modifier.height(8.dp))
+            OutlinedTextField(value = password, onValueChange = onPassword, label = { Text(if (setup) "Passwort (mind. 8 Zeichen)" else "HomePilot-Passwort") }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+            Spacer(Modifier.height(14.dp))
+            Button(onClick = onLogin, enabled = !loading && username.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(if (setup) "Administrator erstellen" else "Anmelden") }
+        }
+        if (status.isNotBlank()) { Spacer(Modifier.height(10.dp)); Text(status, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center) }
+        Spacer(Modifier.height(8.dp))
+        Text("ioBroker-Verbindung und HomePilot-Konto sind getrennte Anmeldungen.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+    }
+}
+
 private fun HomePilotLoginScreen(
     username: String, onUsername: (String) -> Unit,
     password: String, onPassword: (String) -> Unit,
