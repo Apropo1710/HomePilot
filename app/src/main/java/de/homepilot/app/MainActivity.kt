@@ -1259,7 +1259,7 @@ private fun MovaHomeTile(serverUrl: String, connected: Boolean, client: IoBroker
                 Text(status, color = if (mowerStatus?.toInt() in listOf(1,3,12)) Green else text, fontWeight = FontWeight.SemiBold)
                 if (!connected) Text("Verbindung fehlt", color = Color(0xFFD62828), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Text("Akku: ${battery?.let { "${it.toInt()} %" } ?: "—"}", color = text, fontSize = 13.sp)
-                Text("Zur Mähersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

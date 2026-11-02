@@ -94,6 +94,9 @@ Weitere Entscheidung:
 
 ## Änderungsverlauf dieser Dokumentation
 
+- 02.11.2026: Einheitliche Beschriftung aller Roboter-Kacheln: „Zur Robotersteuerung“ (MOVA statt „Zur Mähersteuerung“). Für zukünftige Roboter dieselbe Bezeichnung und Gestaltung verwenden. Produktionsversion 1.29.38 (Code 96).
+
+
 - 01.11.2026: Roidmi-Status „Bereit“ auf der Zuhause-Kachel und der Detailseite erhält dieselbe dunkle Textfarbe wie beim MOVA-Mäher. Produktionsversion 1.29.37 (Code 95).
 
 
