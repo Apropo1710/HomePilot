@@ -804,6 +804,13 @@ private fun HomePilotApp() {
             }
         }
     }
+    DisposableEffect(userProfileLoaded, connected) {
+        val orderListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key in tileOrderPreferenceKeys) saveUserProfile()
+        }
+        prefs.registerOnSharedPreferenceChangeListener(orderListener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(orderListener) }
+    }
     fun saveSharedConfiguration() {
         if (!sharedConfigLoaded || !connected) return
         val nextRevision = sharedConfigRevision + 1L
@@ -1180,7 +1187,7 @@ private fun HomePilotApp() {
                         Modifier.fillMaxWidth().graphicsLayer { alpha = pageAlpha.value },
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                    key(displayedTab) {
+                    key(displayedTab, homePilotAccount?.username, userProfileSyncToken) {
                     when (displayedTab) {
                         Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
