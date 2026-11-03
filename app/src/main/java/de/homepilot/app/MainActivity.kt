@@ -2558,10 +2558,17 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
     }
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     else if (devices.isEmpty()) Text("Noch keine Shelly-Geräte gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val context = LocalContext.current
+    val deviceOrder = remember { mutableStateListOf<String>().apply {
+        val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("deviceCardOrder", null)
+        addAll(saved?.split("|").orEmpty())
+    } }
     val grouped = visibleDevices.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
     val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
     roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
-        val roomItems = grouped[room].orEmpty().sortedBy { it.name.lowercase() }
+        val rawItems = grouped[room].orEmpty()
+        val knownIds = rawItems.map { it.stateId ?: it.name }
+        val roomItems = (deviceOrder.filter { it in knownIds }.mapNotNull { id -> rawItems.find { (it.stateId ?: it.name) == id } } + rawItems.filter { (it.stateId ?: it.name) !in deviceOrder }.sortedBy { it.name.lowercase() })
         val roomAccent = when (room.lowercase()) {
             "wohnzimmer" -> Color(0xFF6C63C7)
             "küche" -> Color(0xFFE09A22)
@@ -2583,6 +2590,37 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
                 }
             }
             roomItems.forEach { item ->
+                val itemId = item.stateId ?: item.name
+                var dragOffset by remember(itemId) { mutableFloatStateOf(0f) }
+                Box(Modifier.fillMaxWidth().pointerInput(itemId, roomItems.size) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dragOffset = 0f },
+                        onVerticalDrag = { change, amount ->
+                            change.consume()
+                            dragOffset += amount
+                            val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                            val shift = (dragOffset / threshold).toInt()
+                            if (shift != 0) {
+                                val ids = roomItems.map { it.stateId ?: it.name }
+                                val idx = ids.indexOf(itemId)
+                                val target = (idx + shift).coerceIn(0, ids.lastIndex)
+                                if (idx >= 0 && target != idx) {
+                                    val moved = deviceOrder.remove(itemId)
+                                    if (moved == null) {
+                                        deviceOrder.addAll(ids.filter { it !in deviceOrder })
+                                    }
+                                    deviceOrder.remove(itemId)
+                                    deviceOrder.add(target.coerceIn(0, deviceOrder.size), itemId)
+                                    context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
+                                        .putString("deviceCardOrder", deviceOrder.joinToString("|")).apply()
+                                    dragOffset -= shift * threshold
+                                }
+                            }
+                        },
+                        onDragEnd = { dragOffset = 0f },
+                        onDragCancel = { dragOffset = 0f }
+                    )
+                }) {
                 CardBlock(panel, text, item.name, item.subtitle, when { item.name == "Wasser" -> Icons.Default.WaterDrop; item.kind == "light" -> Icons.Default.Lightbulb; item.kind == "device" -> Icons.Default.Devices; else -> Icons.Default.Power }, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Column(Modifier.weight(1f)) {
@@ -2593,6 +2631,7 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
                         }
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
+                }
                 }
             }
         }
