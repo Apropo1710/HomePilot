@@ -2017,15 +2017,48 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             }
         }
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("start", "Reinigungsstart") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Start") }; OutlinedButton(onClick = { command("pause", "Pause") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Pause, null); Text("Pause") } }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("resume", "Fortsetzen") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Weiter") }; OutlinedButton(onClick = { command("dock", "Rückkehrbefehl") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Home, null); Text("Laden") } }
-            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth()); message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RoidmiActionButton("Start", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { command("start", "Reinigungsstart") }
+                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RoidmiActionButton("Weiter", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("resume", "Fortsetzen") }
+                RoidmiActionButton("Laden", Icons.Default.Home, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("dock", "Rückkehrbefehl") }
+            }
+            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
         }
         CardBlock(panel, text, "Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
-            Text("Reinigungsart · " + (sweep?.let { roidmiSweepLabel(it.toInt()) } ?: "—"), color = text, fontWeight = FontWeight.SemiBold)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { OutlinedButton(onClick = { setting("sweepType", 0, "Saugen") }, enabled = connected && adapter, modifier = Modifier.weight(1f)) { Text("Saugen") }; OutlinedButton(onClick = { setting("sweepType", 1, "Wischen") }, enabled = connected && adapter, modifier = Modifier.weight(1f)) { Text("Wischen") }; OutlinedButton(onClick = { setting("sweepType", 2, "Saugen/Wischen") }, enabled = connected && adapter, modifier = Modifier.weight(1f)) { Text("Kombi") } }
-            Text("Saugstufe · " + (fan?.let { roidmiFanLabel(it.toInt()) } ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("fanSpeed", ((fan?.toInt() ?: 0) + 1) % 5, "Saugstufe") }, enabled = connected && adapter, modifier = Modifier.fillMaxWidth()) { Text("Saugstufe weiterschalten") }
-            Text("Wasserstufe · " + (water?.let { roidmiWaterLabel(it.toInt()) } ?: "—"), color = text, fontWeight = FontWeight.SemiBold); OutlinedButton(onClick = { setting("waterLevel", ((water?.toInt() ?: 0) + 1) % 5, "Wasserstufe") }, enabled = connected && adapter, modifier = Modifier.fillMaxWidth()) { Text("Wasserstufe weiterschalten") }
+            Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                RoidmiModeChoice("Saugen", selected = sweep == 0.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 0, "Saugen") }
+                RoidmiModeChoice("Wischen", selected = sweep == 1.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 1, "Wischen") }
+                RoidmiModeChoice("Kombi", selected = sweep == 2.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 2, "Saugen/Wischen") }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Saugstufe", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                Text(fan?.let { roidmiFanLabel(it.toInt()) } ?: "—", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("Aus", "Leise", "Std.", "Stark", "Max.").forEachIndexed { level, label ->
+                    RoidmiLevelChoice(label, selected = fan?.toInt() == level, enabled = connected && adapter, icon = if (level == 0) Icons.Default.Remove else Icons.Default.Air, modifier = Modifier.weight(1f)) {
+                        setting("fanSpeed", level, "Saugstufe")
+                    }
+                }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Wasserstufe", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                Text(water?.let { roidmiWaterLabel(it.toInt()) } ?: "—", color = Color(0xFF159A9C), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("Aus", "Klein", "Mittel", "Max.").forEachIndexed { level, label ->
+                    RoidmiLevelChoice(label, selected = water?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.WaterDrop, modifier = Modifier.weight(1f), accent = Color(0xFF159A9C)) {
+                        setting("waterLevel", level, "Wasserstufe")
+                    }
+                }
+            }
         }
     }
 }
@@ -2980,5 +3013,36 @@ private fun openBatterySettings(context: Context) {
     val batteryList = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     try { context.startActivity(appInfo) } catch (_: Exception) {
         try { context.startActivity(batteryList) } catch (_: Exception) { }
+    }
+}
+
+
+@Composable
+private fun RoidmiActionButton(label: String, icon: ImageVector, enabled: Boolean, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
+    val bg = if (primary) Blue else MaterialTheme.colorScheme.surfaceVariant
+    val fg = if (primary) Color.White else Blue
+    Row(modifier.height(39.dp).clip(RoundedCornerShape(11.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        Icon(icon, null, tint = fg.copy(alpha = if (enabled) 1f else 0.55f), modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun RoidmiModeChoice(label: String, selected: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val bg = if (selected) Blue else MaterialTheme.colorScheme.surfaceVariant
+    val fg = if (selected) Color.White else Blue
+    Box(modifier.heightIn(min = 36.dp).clip(RoundedCornerShape(10.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 4.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 10.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun RoidmiLevelChoice(label: String, selected: Boolean, enabled: Boolean, icon: ImageVector, modifier: Modifier = Modifier, accent: Color = Blue, onClick: () -> Unit) {
+    val bg = if (selected) accent else MaterialTheme.colorScheme.surfaceVariant
+    val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(modifier.heightIn(min = 43.dp).clip(RoundedCornerShape(9.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 2.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Icon(icon, null, tint = fg.copy(alpha = if (enabled) 1f else 0.55f), modifier = Modifier.size(15.dp))
+        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 9.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
     }
 }
