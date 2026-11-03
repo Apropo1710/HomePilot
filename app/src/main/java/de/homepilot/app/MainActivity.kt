@@ -2245,7 +2245,19 @@ private fun FavoritesScreen(items: List<DeviceItem>, favoriteIds: Set<String>, f
     if (ids.isEmpty()) Text("Noch keine Favoriten. Öffne die Gerätebearbeitung und tippe auf den Stern.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     ids.forEachIndexed { index, id ->
         val item = byId[id] ?: return@forEachIndexed
-        CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Star, action = { onEdit(item) }, actionIcon = Icons.Default.Edit) {
+        var dragOffset by remember(id) { mutableFloatStateOf(0f) }
+        CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Star, action = { onEdit(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(id, ids.size) {
+            detectVerticalDragGestures(onDragStart = { dragOffset = 0f }, onVerticalDrag = { change, amount ->
+                change.consume()
+                dragOffset += amount
+                val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                val shift = (dragOffset / threshold).toInt()
+                if (shift != 0) {
+                    onMove(id, shift.coerceIn(-index, ids.lastIndex - index))
+                    dragOffset -= shift * threshold
+                }
+            }, onDragEnd = { dragOffset = 0f }, onDragCancel = { dragOffset = 0f })
+        }) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), fontSize = 12.sp)
                 if (item.writable) Switch(checked = item.initialOn, onCheckedChange = { onSwitch(item, it) })
