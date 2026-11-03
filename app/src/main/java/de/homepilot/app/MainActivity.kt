@@ -2707,7 +2707,16 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         if (roomItems.isEmpty()) Text("Noch keine Geräte zugeordnet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (lamps.isNotEmpty()) {
             Text("Lampen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
-            lamps.forEach { item ->
+            val context = LocalContext.current
+            val roomCardOrder_Lamp = remember { mutableStateListOf<String>().apply {
+                val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("roomLampOrder", null)
+                addAll(saved?.split("|").orEmpty())
+            } }
+            val ordered_Lamp = roomCardOrder_Lamp.filter { id -> lamps.any { (it.stateId ?: it.name) == id } }.mapNotNull { id -> lamps.find { (it.stateId ?: it.name) == id } } +
+                lamps.filter { (it.stateId ?: it.name) !in roomCardOrder_Lamp }
+            ordered_Lamp.forEach { item ->
+                val roomItemId_Lamp = item.stateId ?: item.name
+                var roomDragOffset_Lamp by remember(roomItemId_Lamp) { mutableFloatStateOf(0f) }
                 var expanded by remember(item.stateId) { mutableStateOf(false) }
                 var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
@@ -2718,7 +2727,24 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
                 LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
-                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(roomItemId_Lamp, ordered_Lamp.size) {
+                    detectVerticalDragGestures(onDragStart = { roomDragOffset_Lamp = 0f }, onVerticalDrag = { change, amount ->
+                        change.consume(); roomDragOffset_Lamp += amount
+                        val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                        val shift = (roomDragOffset_Lamp / threshold).toInt()
+                        if (shift != 0) {
+                            val ids = ordered_Lamp.map { it.stateId ?: it.name }; val idx = ids.indexOf(roomItemId_Lamp)
+                            val target = (idx + shift).coerceIn(0, ids.lastIndex)
+                            if (idx >= 0 && target != idx) {
+                                ids.filter { it !in roomCardOrder_Lamp }.forEach { roomCardOrder_Lamp.add(it) }
+                                roomCardOrder_Lamp.remove(roomItemId_Lamp)
+                                roomCardOrder_Lamp.add(roomCardOrder_Lamp.indexOf(ids[target]).coerceAtLeast(0), roomItemId_Lamp)
+                                context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit().putString("roomLampOrder", roomCardOrder_Lamp.joinToString("|")).apply()
+                                roomDragOffset_Lamp -= shift * threshold
+                            }
+                        }
+                    }, onDragEnd = { roomDragOffset_Lamp = 0f }, onDragCancel = { roomDragOffset_Lamp = 0f })
+                }) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
@@ -2758,8 +2784,34 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         }
         if (switches.isNotEmpty()) {
             Text("Schalter & Steckdosen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
-            switches.forEach { item ->
-                CardBlock(panel, text, item.name, "", Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
+            val context = LocalContext.current
+            val roomCardOrder_Switch = remember { mutableStateListOf<String>().apply {
+                val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("roomSwitchOrder", null)
+                addAll(saved?.split("|").orEmpty())
+            } }
+            val ordered_Switch = roomCardOrder_Switch.filter { id -> switches.any { (it.stateId ?: it.name) == id } }.mapNotNull { id -> switches.find { (it.stateId ?: it.name) == id } } +
+                switches.filter { (it.stateId ?: it.name) !in roomCardOrder_Switch }
+            ordered_Switch.forEach { item ->
+                val roomItemId_Switch = item.stateId ?: item.name
+                var roomDragOffset_Switch by remember(roomItemId_Switch) { mutableFloatStateOf(0f) }
+                CardBlock(panel, text, item.name, "", Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(roomItemId_Switch, ordered_Switch.size) {
+                    detectVerticalDragGestures(onDragStart = { roomDragOffset_Switch = 0f }, onVerticalDrag = { change, amount ->
+                        change.consume(); roomDragOffset_Switch += amount
+                        val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                        val shift = (roomDragOffset_Switch / threshold).toInt()
+                        if (shift != 0) {
+                            val ids = ordered_Switch.map { it.stateId ?: it.name }; val idx = ids.indexOf(roomItemId_Switch)
+                            val target = (idx + shift).coerceIn(0, ids.lastIndex)
+                            if (idx >= 0 && target != idx) {
+                                ids.filter { it !in roomCardOrder_Switch }.forEach { roomCardOrder_Switch.add(it) }
+                                roomCardOrder_Switch.remove(roomItemId_Switch)
+                                roomCardOrder_Switch.add(roomCardOrder_Switch.indexOf(ids[target]).coerceAtLeast(0), roomItemId_Switch)
+                                context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit().putString("roomSwitchOrder", roomCardOrder_Switch.joinToString("|")).apply()
+                                roomDragOffset_Switch -= shift * threshold
+                            }
+                        }
+                    }, onDragEnd = { roomDragOffset_Switch = 0f }, onDragCancel = { roomDragOffset_Switch = 0f })
+                }) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                         Switch(
@@ -2780,8 +2832,34 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         }
         if (otherItems.isNotEmpty()) {
             Text("Sonstiges", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
-            otherItems.forEach { item ->
-                CardBlock(panel, text, item.name, "", Icons.Default.Devices, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
+            val context = LocalContext.current
+            val roomCardOrder_Other = remember { mutableStateListOf<String>().apply {
+                val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("roomOtherOrder", null)
+                addAll(saved?.split("|").orEmpty())
+            } }
+            val ordered_Other = roomCardOrder_Other.filter { id -> otherItems.any { (it.stateId ?: it.name) == id } }.mapNotNull { id -> otherItems.find { (it.stateId ?: it.name) == id } } +
+                otherItems.filter { (it.stateId ?: it.name) !in roomCardOrder_Other }
+            ordered_Other.forEach { item ->
+                val roomItemId_Other = item.stateId ?: item.name
+                var roomDragOffset_Other by remember(roomItemId_Other) { mutableFloatStateOf(0f) }
+                CardBlock(panel, text, item.name, "", Icons.Default.Devices, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(roomItemId_Other, ordered_Other.size) {
+                    detectVerticalDragGestures(onDragStart = { roomDragOffset_Other = 0f }, onVerticalDrag = { change, amount ->
+                        change.consume(); roomDragOffset_Other += amount
+                        val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                        val shift = (roomDragOffset_Other / threshold).toInt()
+                        if (shift != 0) {
+                            val ids = ordered_Other.map { it.stateId ?: it.name }; val idx = ids.indexOf(roomItemId_Other)
+                            val target = (idx + shift).coerceIn(0, ids.lastIndex)
+                            if (idx >= 0 && target != idx) {
+                                ids.filter { it !in roomCardOrder_Other }.forEach { roomCardOrder_Other.add(it) }
+                                roomCardOrder_Other.remove(roomItemId_Other)
+                                roomCardOrder_Other.add(roomCardOrder_Other.indexOf(ids[target]).coerceAtLeast(0), roomItemId_Other)
+                                context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit().putString("roomOtherOrder", roomCardOrder_Other.joinToString("|")).apply()
+                                roomDragOffset_Other -= shift * threshold
+                            }
+                        }
+                    }, onDragEnd = { roomDragOffset_Other = 0f }, onDragCancel = { roomDragOffset_Other = 0f })
+                }) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(item.detail.ifBlank { item.kind }, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     }
