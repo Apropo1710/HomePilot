@@ -2233,30 +2233,35 @@ private fun HomeScreen(
     var draggingHomeCard by remember { mutableStateOf<String?>(null) }
     var homeDragOffset by remember { mutableFloatStateOf(0f) }
     homeCardOrder.forEach { cardId ->
-        Box(Modifier.fillMaxWidth().pointerInput(cardId, homeCardOrder.toList()) {
-            detectVerticalDragGestures(
-                onDragStart = { draggingHomeCard = cardId; homeDragOffset = 0f },
-                onVerticalDrag = { change, amount ->
-                    change.consume()
-                    homeDragOffset += amount
-                    val index = homeCardOrder.indexOf(cardId)
-                    val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
-                    val shift = (homeDragOffset / threshold).toInt()
-                    val targetIndex = (index + shift).coerceIn(0, homeCardOrder.lastIndex)
-                    if (index >= 0 && targetIndex != index) {
-                        val moved = homeCardOrder.removeAt(index)
-                        homeCardOrder.add(targetIndex, moved)
-                        homeDragOffset -= shift * threshold
-                    }
-                },
-                onDragEnd = {
-                    context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
-                        .putString("homeCardOrder", homeCardOrder.joinToString("|")).apply()
-                    draggingHomeCard = null; homeDragOffset = 0f
-                },
-                onDragCancel = { draggingHomeCard = null; homeDragOffset = 0f }
-            )
-        }) {
+        val isDraggingHomeCard = draggingHomeCard == cardId
+        Box(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
+                .then(if (isDraggingHomeCard) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp)) else Modifier)
+                .pointerInput(cardId, homeCardOrder.toList()) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { draggingHomeCard = cardId; homeDragOffset = 0f },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            homeDragOffset += amount.y
+                            val index = homeCardOrder.indexOf(cardId)
+                            val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                            val shift = (homeDragOffset / threshold).toInt()
+                            val targetIndex = (index + shift).coerceIn(0, homeCardOrder.lastIndex)
+                            if (index >= 0 && targetIndex != index) {
+                                val moved = homeCardOrder.removeAt(index)
+                                homeCardOrder.add(targetIndex, moved)
+                                homeDragOffset -= shift * threshold
+                            }
+                        },
+                        onDragEnd = {
+                            context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
+                                .putString("homeCardOrder", homeCardOrder.joinToString("|")).apply()
+                            draggingHomeCard = null; homeDragOffset = 0f
+                        },
+                        onDragCancel = { draggingHomeCard = null; homeDragOffset = 0f }
+                    )
+                }
+        ) {
             when (cardId) {
                 "weather" -> WeatherForecastCard(city = weatherCity, panel = panel, text = text)
                 "mova" -> MovaHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenMova)
@@ -2444,6 +2449,7 @@ private fun LightsScreen(
             roomItems.forEach { item ->
                 val itemId = item.stateId ?: item.name
                 var dragOffset by remember(itemId) { mutableFloatStateOf(0f) }
+                var isDraggingLight by remember(itemId) { mutableStateOf(false) }
                 var expanded by remember(item.stateId) { mutableStateOf(false) }
                 var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
@@ -2454,12 +2460,14 @@ private fun LightsScreen(
                 LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
                 LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
-                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(item.stateId, roomItems.size) {
-                    detectVerticalDragGestures(
-                        onDragStart = { dragOffset = 0f },
-                        onVerticalDrag = { change, amount ->
+                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier
+                    .then(if (isDraggingLight) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(18.dp)) else Modifier)
+                    .pointerInput(item.stateId, roomItems.size) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { isDraggingLight = true; dragOffset = 0f },
+                        onDrag = { change, amount ->
                             change.consume()
-                            dragOffset += amount
+                            dragOffset += amount.y
                             val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
                             val shift = (dragOffset / threshold).toInt()
                             if (shift != 0) {
@@ -2478,8 +2486,8 @@ private fun LightsScreen(
                                 }
                             }
                         },
-                        onDragEnd = { dragOffset = 0f },
-                        onDragCancel = { dragOffset = 0f }
+                        onDragEnd = { dragOffset = 0f; isDraggingLight = false },
+                        onDragCancel = { dragOffset = 0f; isDraggingLight = false }
                     )
                 }) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2678,12 +2686,15 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
             roomItems.forEach { item ->
                 val itemId = item.stateId ?: item.name
                 var dragOffset by remember(itemId) { mutableFloatStateOf(0f) }
-                Box(Modifier.fillMaxWidth().pointerInput(itemId, roomItems.size) {
-                    detectVerticalDragGestures(
-                        onDragStart = { dragOffset = 0f },
-                        onVerticalDrag = { change, amount ->
+                var isDraggingDevice by remember(itemId) { mutableStateOf(false) }
+                Box(Modifier.fillMaxWidth()
+                    .then(if (isDraggingDevice) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(18.dp)) else Modifier)
+                    .pointerInput(itemId, roomItems.size) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = { isDraggingDevice = true; dragOffset = 0f },
+                        onDrag = { change, amount ->
                             change.consume()
-                            dragOffset += amount
+                            dragOffset += amount.y
                             val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
                             val shift = (dragOffset / threshold).toInt()
                             if (shift != 0) {
@@ -2702,8 +2713,8 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
                                 }
                             }
                         },
-                        onDragEnd = { dragOffset = 0f },
-                        onDragCancel = { dragOffset = 0f }
+                        onDragEnd = { dragOffset = 0f; isDraggingDevice = false },
+                        onDragCancel = { dragOffset = 0f; isDraggingDevice = false }
                     )
                 }) {
                 CardBlock(panel, text, item.name, item.subtitle, when { item.name == "Wasser" -> Icons.Default.WaterDrop; item.kind == "light" -> Icons.Default.Lightbulb; item.kind == "device" -> Icons.Default.Devices; else -> Icons.Default.Power }, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
