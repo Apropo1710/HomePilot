@@ -123,7 +123,9 @@ internal data class HomePilotUserProfile(
     val updatedAt: Long = 0L,
     val favoriteIds: Set<String> = emptySet(),
     val favoriteOrder: List<String> = emptyList(),
-    val disconnectTimeoutMinutes: Int = 30
+    val disconnectTimeoutMinutes: Int = 30,
+    /** Per-account ordering of all reorderable HomePilot tile groups. */
+    val tileOrders: Map<String, List<String>> = emptyMap()
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("schemaVersion", schemaVersion)
@@ -132,6 +134,9 @@ internal data class HomePilotUserProfile(
         put("favoriteIds", JSONArray(favoriteIds.sorted()))
         put("favoriteOrder", JSONArray(favoriteOrder))
         put("disconnectTimeoutMinutes", disconnectTimeoutMinutes)
+        put("tileOrders", JSONObject().apply {
+            tileOrders.toSortedMap().forEach { (key, order) -> put(key, JSONArray(order)) }
+        })
     }
 
     companion object {
@@ -142,6 +147,15 @@ internal data class HomePilotUserProfile(
             if (timeout !in setOf(15, 30, 60, 0)) return null
             val favorites = json.optJSONArray("favoriteIds") ?: JSONArray()
             val order = json.optJSONArray("favoriteOrder") ?: JSONArray()
+            val tileOrdersJson = json.optJSONObject("tileOrders") ?: JSONObject()
+            val tileOrders = LinkedHashMap<String, List<String>>()
+            val tileOrderKeys = tileOrdersJson.keys()
+            while (tileOrderKeys.hasNext()) {
+                val key = tileOrderKeys.next()
+                val values = tileOrdersJson.optJSONArray(key) ?: continue
+                tileOrders[key] = (0 until values.length())
+                    .mapNotNull { values.optString(it).takeIf(String::isNotBlank) }
+            }
             return HomePilotUserProfile(
                 schemaVersion = version,
                 revision = json.optLong("revision", 0L).coerceAtLeast(0L),
@@ -150,7 +164,8 @@ internal data class HomePilotUserProfile(
                     .mapNotNull { favorites.optString(it).takeIf(String::isNotBlank) }.toSet(),
                 favoriteOrder = (0 until order.length())
                     .mapNotNull { order.optString(it).takeIf(String::isNotBlank) },
-                disconnectTimeoutMinutes = timeout
+                disconnectTimeoutMinutes = timeout,
+                tileOrders = tileOrders
             )
         }
     }
