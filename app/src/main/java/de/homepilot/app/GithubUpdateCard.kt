@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.launch
@@ -76,18 +77,18 @@ internal fun GithubUpdateCard(appVersion: String) {
 
     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface), shape = RoundedCornerShape(18.dp)) {
         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("App-Version", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+            Text("App-Version", fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
             val isCurrentVersion = status == "Du verwendest bereits die aktuelle Version."
             val isUpdateAvailable = newerVersion != null
             Text(
                 status,
                 color = if (isCurrentVersion || isUpdateAvailable) androidx.compose.ui.graphics.Color(0xFF218838) else MaterialTheme.colorScheme.onSurfaceVariant,
-                style = if (isCurrentVersion || isUpdateAvailable) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodySmall,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Normal
             )
-            Text("Installierte Version: $appVersion", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodyMedium)
+            Text("Installierte Version: $appVersion", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp)
             if (latestVersion != null) {
-                Text("Verfügbare Version: $latestVersion", color = if (newerVersion != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium, fontWeight = if (newerVersion != null) FontWeight.SemiBold else FontWeight.Normal)
+                Text("Verfügbare Version: $latestVersion", color = if (newerVersion != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = if (newerVersion != null) FontWeight.SemiBold else FontWeight.Normal)
             }
             if (code != null) {
                 Text("GitHub-Code: $code", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -122,9 +123,9 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 busy = false
                             }
                         }
-                    }) { Text(if (pending != null) "Anmeldung fortsetzen" else "Mit GitHub verbinden") }
+                    }) { Text(if (pending != null) "Anmeldung fortsetzen" else "Mit GitHub verbinden", fontSize = 12.sp) }
                 } else {
-                    OutlinedButton(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = { scope.launch { checkForUpdates() } }) { Text("Nach Updates suchen", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                    OutlinedButton(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = { scope.launch { checkForUpdates() } }) { Text("Nach Updates suchen", fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
                 }
                 if (newerVersion != null && assetId != null) {
                     Button(enabled = !busy, onClick = {
@@ -163,7 +164,7 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 busy = false
                             }
                         }
-                    }, modifier = Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp)) { Text("Update laden", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                    }, modifier = Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp)) { Text("Update laden", fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
                 }
             }
             if (busy) {
