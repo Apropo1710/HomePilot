@@ -222,3 +222,9 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - GitHub Actions Run `41481137422` für diesen Commit ist erfolgreich abgeschlossen.
 - Erfolgreicher CI-Build bestätigt die Kompilierbarkeit, noch nicht die praktische ioBroker-Anmeldung oder Synchronisation auf beiden Smartphones.
 - Nächster Entwicklungsschritt: zentrale JSON-State-API und sichere Initialisierung/Existenzprüfung des globalen Konfigurationsdatensatzes sowie getrennte Profil-Datenpunkte. Vor Umsetzung ACL-Verhalten und Rechte bei `0_userdata.0` prüfen.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+
+## Raumauswahl-Kachel (03.11.2026)
+- Gemeinsame Raumauswahl wird in einer eigenen Kachel mit der Überschrift **Raumauswahl** dargestellt.
+- Die Kachel erscheint auf der Startseite sowie in den Licht-, Geräte- und Raumansichten.
+- In den Einstellungen kann ein Raum direkt gewählt werden; HomePilot öffnet anschließend die Raumansicht.
+- Version für diese Änderung: **1.29.56 (versionCode 114)**. Smartphone-Test steht nach dem CI-Build noch aus.
