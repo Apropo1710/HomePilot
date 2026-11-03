@@ -723,6 +723,7 @@ private fun HomePilotApp() {
     var homePilotAccount by remember { mutableStateOf<HomePilotAccount?>(null) }
     var homePilotUsername by remember { mutableStateOf("") }
     var homePilotPassword by remember { mutableStateOf("") }
+    var homePilotPasswordConfirmation by remember { mutableStateOf("") }
     var homePilotDisplayName by remember { mutableStateOf("") }
     var homePilotAccountLoading by remember { mutableStateOf(false) }
     val homePilotAccountRepository = remember { HomePilotAccountRepository(ioClient) }
@@ -1059,6 +1060,7 @@ private fun HomePilotApp() {
                     registry = homePilotRegistry,
                     username = homePilotUsername, onUsername = { homePilotUsername = it },
                     password = homePilotPassword, onPassword = { homePilotPassword = it },
+                    passwordConfirmation = homePilotPasswordConfirmation, onPasswordConfirmation = { homePilotPasswordConfirmation = it },
                     displayName = homePilotDisplayName, onDisplayName = { homePilotDisplayName = it },
                     loading = homePilotAccountLoading, status = connectionStatus,
                     onReload = { if (connected) loadHomePilotAccounts() },
@@ -1069,7 +1071,7 @@ private fun HomePilotApp() {
                             try {
                                 val next = registry.createInitialAdmin(homePilotUsername, homePilotDisplayName, homePilotPassword.toCharArray())
                                 saveHomePilotRegistry(registry.revision, next) { saved, error ->
-                                    if (saved) { homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; homePilotPassword = ""; initializeHomePilotSync() }
+                                    if (saved) { homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; homePilotPassword = ""; homePilotPasswordConfirmation = ""; initializeHomePilotSync() }
                                     else connectionStatus = "Admin konnte nicht angelegt werden: " + error
                                 }
                             } catch (e: Exception) { connectionStatus = e.message ?: "Admin-Einrichtung fehlgeschlagen." }
@@ -2715,7 +2717,8 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 @Composable
 private fun HomePilotAccountLoginScreen(
     registry: HomePilotAccountRegistry?, username: String, onUsername: (String) -> Unit,
-    password: String, onPassword: (String) -> Unit, displayName: String, onDisplayName: (String) -> Unit,
+    password: String, onPassword: (String) -> Unit, passwordConfirmation: String, onPasswordConfirmation: (String) -> Unit,
+    displayName: String, onDisplayName: (String) -> Unit,
     loading: Boolean, status: String, onReload: () -> Unit, onLogin: () -> Unit
 ) {
     val setup = registry?.accounts?.isEmpty() == true
@@ -2735,8 +2738,15 @@ private fun HomePilotAccountLoginScreen(
             if (setup) { Spacer(Modifier.height(8.dp)); OutlinedTextField(value = displayName, onValueChange = onDisplayName, label = { Text("Anzeigename (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth()) }
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(value = password, onValueChange = onPassword, label = { Text(if (setup) "Passwort (mind. 8 Zeichen)" else "HomePilot-Passwort") }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+            if (setup) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(value = passwordConfirmation, onValueChange = onPasswordConfirmation, label = { Text("Passwort wiederholen") }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+                if (passwordConfirmation.isNotEmpty() && password != passwordConfirmation) {
+                    Text("Die Passwörter stimmen nicht überein.", color = Color(0xFFD32F2F), fontSize = 12.sp)
+                }
+            }
             Spacer(Modifier.height(14.dp))
-            Button(onClick = onLogin, enabled = !loading && username.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text(if (setup) "Administrator erstellen" else "Anmelden") }
+            Button(onClick = onLogin, enabled = !loading && username.isNotBlank() && password.isNotBlank() && (!setup || (passwordConfirmation.isNotBlank() && password == passwordConfirmation)), modifier = Modifier.fillMaxWidth()) { Text(if (setup) "Administrator erstellen" else "Anmelden") }
         }
         if (status.isNotBlank()) { Spacer(Modifier.height(10.dp)); Text(status, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center) }
         Spacer(Modifier.height(8.dp))
