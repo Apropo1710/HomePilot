@@ -1061,7 +1061,7 @@ private fun HomePilotApp() {
     val text = if (dark) DarkText else LightText
     val scheme = if (dark) darkColorScheme(primary = Color(0xFF78B9F3), secondary = Color(0xFF67D4A5), background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFF293747), onSurfaceVariant = Color(0xFFB2C1D0)) else lightColorScheme(primary = Blue, secondary = Green, background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFFE6EDF5), onSurfaceVariant = Muted, outline = Color(0xFFCBD5E1))
 
-    CompositionLocalProvider(LocalDensity provides LocalDensity.current.copy(fontScale = LocalDensity.current.fontScale * appFontScale)) {
+    CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(LocalDensity.current.density, LocalDensity.current.fontScale * appFontScale)) {
     MaterialTheme(colorScheme = scheme) {
         Surface(Modifier.fillMaxSize(), color = bg) {
             if (!loginAccepted) {
@@ -1277,7 +1277,7 @@ private fun HomePilotApp() {
                             hiddenItems = hiddenItems,
                             onShowHidden = { showHiddenDevices = true },
                             onRequestDeleteRoom = { room -> confirmDeleteRoom = room })
-                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() },
+                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; prefs.edit().putFloat("appFontScale", it).apply() }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() },
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() },
                             status = connectionStatus, connected = connected,
@@ -1523,6 +1523,7 @@ private fun HomePilotApp() {
                 Spacer(Modifier.navigationBarsPadding().height(0.dp))
             }
         }
+    }
     }
 }
 
@@ -2793,7 +2794,6 @@ private fun HomePilotAccountLoginScreen(
             }
         }
 
-    }
     }
 }
 
