@@ -3133,14 +3133,19 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Spacer(Modifier.width(8.dp))
         Switch(checked=dark,onCheckedChange=onDark)
     }
-    SettingsMenuSection(panel,text,"Geräte-Einstellungen","Geräte suchen, verwalten und Probleme prüfen",Icons.Default.Tune,expandedSetting=="Geräte-Einstellungen",{toggle("Geräte-Einstellungen")}) {
-        Button(onClick=onSearchDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Search,null); Spacer(Modifier.width(8.dp)); Text("Geräte suchen") }
-        Button(onClick=onOpenLights,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb,null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
-        Button(onClick=onOpenDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices,null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
-        Button(onClick=onOpenRooms,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork,null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
-        Button(onClick=onShowHidden,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.VisibilityOff,null); Spacer(Modifier.width(8.dp)); Text("Ausgeblendete Geräte") }
-        Button(onClick=onOpenHealth,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety,null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
+
+    val context = LocalContext.current
+    val settingsSectionIds = listOf("devices", "users", "app", "weather")
+    val settingsSectionOrder = remember {
+        mutableStateListOf<String>().apply {
+            val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE)
+                .getString("settingsSectionOrder", null)
+            val stored = saved?.split("|")?.filter { it in settingsSectionIds }.orEmpty()
+            addAll(stored + (settingsSectionIds - stored.toSet()))
+        }
     }
+    var draggingSettingsSection by remember { mutableStateOf<String?>(null) }
+    var settingsDragOffset by remember { mutableFloatStateOf(0f) }
     var showOwnPasswordDialog by remember { mutableStateOf(false) }
     var ownHomePilotPassword by remember { mutableStateOf("") }
     var showOwnPassword by remember { mutableStateOf(false) }
@@ -3156,6 +3161,20 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     var resetHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
     var deleteHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
     var resetHomePilotPasswordValue by remember { mutableStateOf("") }
+    @Composable
+    fun renderSettingsSection(sectionId: String) {
+        when (sectionId) {
+            "devices" -> {
+    SettingsMenuSection(panel,text,"Geräte-Einstellungen","Geräte suchen, verwalten und Probleme prüfen",Icons.Default.Tune,expandedSetting=="Geräte-Einstellungen",{toggle("Geräte-Einstellungen")}) {
+        Button(onClick=onSearchDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Search,null); Spacer(Modifier.width(8.dp)); Text("Geräte suchen") }
+        Button(onClick=onOpenLights,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb,null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
+        Button(onClick=onOpenDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices,null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
+        Button(onClick=onOpenRooms,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork,null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
+        Button(onClick=onShowHidden,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.VisibilityOff,null); Spacer(Modifier.width(8.dp)); Text("Ausgeblendete Geräte") }
+        Button(onClick=onOpenHealth,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety,null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
+    }
+            }
+            "users" -> {
     SettingsMenuSection(panel,text,"Benutzereinstellungen","Eigene Kontoeinstellungen und Benutzerverwaltung",Icons.Default.ManageAccounts,expandedSetting=="Benutzereinstellungen",{toggle("Benutzereinstellungen")}) {
         Text("Eigene Kontoeinstellungen",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
         Text(homePilotAccount?.let { "${it.displayName} · ${if(it.role==HomePilotAccount.ADMIN) "Administrator" else "Benutzer"}" } ?: "Nicht angemeldet",color=Muted,fontSize=12.sp)
@@ -3175,27 +3194,8 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
             Button(onClick={showNewHomePilotUser=true;newHomePilotUsername="";newHomePilotDisplayName="";newHomePilotPassword="";newHomePilotPasswordConfirmation="";newHomePilotRole=HomePilotAccount.USER},modifier=Modifier.fillMaxWidth()) { Text("Benutzer hinzufügen") }
         }
     }
-    if(showOwnPasswordDialog && homePilotAccount!=null) AlertDialog(onDismissRequest={showOwnPasswordDialog=false},title={Text("Eigenes HomePilot-Passwort ändern")},text={Column { Text("Neues Passwort (mindestens 8 Zeichen)"); OutlinedTextField(value=ownHomePilotPassword,onValueChange={ownHomePilotPassword=it},singleLine=true,visualTransformation=if(showOwnPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showOwnPassword=!showOwnPassword}) { Icon(if(showOwnPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showOwnPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(homePilotAccount.username,ownHomePilotPassword);showOwnPasswordDialog=false}) { Text("Speichern") }},dismissButton={TextButton(onClick={showOwnPasswordDialog=false}) { Text("Abbrechen") }})
-    if(showNewHomePilotUser) Dialog(onDismissRequest={showNewHomePilotUser=false},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
-        Surface(modifier=Modifier.fillMaxWidth(0.92f).heightIn(max=560.dp),shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surface,tonalElevation=6.dp) {
-            Column(modifier=Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("HomePilot-Benutzer anlegen",style=MaterialTheme.typography.headlineSmall)
-                OutlinedTextField(value=newHomePilotUsername,onValueChange={newHomePilotUsername=it},label={Text("Benutzername")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                OutlinedTextField(value=newHomePilotDisplayName,onValueChange={newHomePilotDisplayName=it},label={Text("Anzeigename")},singleLine=true,modifier=Modifier.fillMaxWidth())
-                OutlinedTextField(value=newHomePilotPassword,onValueChange={newHomePilotPassword=it},label={Text("Passwort (min. 8 Zeichen)")},singleLine=true,visualTransformation=if(showNewUserPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showNewUserPassword=!showNewUserPassword}) { Icon(if(showNewUserPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showNewUserPassword) "Passwort verbergen" else "Passwort anzeigen") }},modifier=Modifier.fillMaxWidth())
-                OutlinedTextField(value=newHomePilotPasswordConfirmation,onValueChange={newHomePilotPasswordConfirmation=it},label={Text("Passwort wiederholen")},singleLine=true,visualTransformation=if(showNewUserPasswordConfirmation) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showNewUserPasswordConfirmation=!showNewUserPasswordConfirmation}) { Icon(if(showNewUserPasswordConfirmation) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showNewUserPasswordConfirmation) "Passwort verbergen" else "Passwort anzeigen") }},modifier=Modifier.fillMaxWidth())
-                if(newHomePilotPasswordConfirmation.isNotEmpty() && newHomePilotPassword!=newHomePilotPasswordConfirmation) Text("Die Passwörter stimmen nicht überein.",color=Color(0xFFD32F2F),fontSize=12.sp)
-                Text("Rolle")
-                Row { TextButton(onClick={newHomePilotRole=HomePilotAccount.USER}) { Text(if(newHomePilotRole==HomePilotAccount.USER) "✓ Benutzer" else "Benutzer") }; TextButton(onClick={newHomePilotRole=HomePilotAccount.ADMIN}) { Text(if(newHomePilotRole==HomePilotAccount.ADMIN) "✓ Admin" else "Admin") } }
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
-                    TextButton(onClick={showNewHomePilotUser=false}) { Text("Abbrechen") }
-                    TextButton(onClick={onAddHomePilotAccount(newHomePilotUsername,newHomePilotDisplayName,newHomePilotPassword,newHomePilotRole);showNewHomePilotUser=false},enabled=newHomePilotUsername.isNotBlank() && newHomePilotPassword.length>=8 && newHomePilotPasswordConfirmation.isNotBlank() && newHomePilotPassword==newHomePilotPasswordConfirmation) { Text("Anlegen") }
-                }
             }
-        }
-    }
-    deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest={deleteHomePilotUser=null},title={Text("Benutzer wirklich löschen?")},text={Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.")},confirmButton={TextButton(onClick={onDeleteHomePilotAccount(account.username);deleteHomePilotUser=null}) { Text("Löschen") }},dismissButton={TextButton(onClick={deleteHomePilotUser=null}) { Text("Abbrechen") }}) }
-    resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest={resetHomePilotUser=null},title={Text("Passwort zurücksetzen")},text={Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value=resetHomePilotPasswordValue,onValueChange={resetHomePilotPasswordValue=it},label={Text("Neues Passwort (min. 8 Zeichen)")},visualTransformation=if(showResetPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showResetPassword=!showResetPassword}) { Icon(if(showResetPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showResetPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(account.username,resetHomePilotPasswordValue);resetHomePilotUser=null}) { Text("Speichern") }},dismissButton={TextButton(onClick={resetHomePilotUser=null}) { Text("Abbrechen") }}) }
+            "app" -> {
     SettingsMenuSection(panel,text,"App-Einstellungen","ioBroker-Verbindung, Hintergrund, Energiesparen und Version",Icons.Default.Settings,expandedSetting=="App-Einstellungen",{toggle("App-Einstellungen")}) {
         Text("Schriftgröße",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
         Text("Passt die Schrift in der gesamten App an.",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp)
@@ -3241,10 +3241,64 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Text("App-Version",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
         GithubUpdateCard(appVersion=BuildConfig.VERSION_NAME)
     }
+            }
+            "weather" -> {
     SettingsMenuSection(panel,text,"Wetter","5-Tage-Prognose auf der Startseite",Icons.Default.WbSunny,expandedSetting=="Wetter",{toggle("Wetter")}) {
         OutlinedTextField(value=weatherCity,onValueChange=onWeatherCity,label={Text("Ort oder Postleitzahl")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
         Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.",color=Muted,fontSize=11.sp)
     }
+            }
+        }
+    }
+    settingsSectionOrder.forEach { sectionId ->
+        Box(Modifier.fillMaxWidth().pointerInput(sectionId, settingsSectionOrder.toList()) {
+            detectVerticalDragGestures(
+                onDragStart = { draggingSettingsSection = sectionId; settingsDragOffset = 0f },
+                onVerticalDrag = { change, amount ->
+                    change.consume()
+                    settingsDragOffset += amount
+                    val index = settingsSectionOrder.indexOf(sectionId)
+                    val threshold = 150.dp.toPx()
+                    val shift = (settingsDragOffset / threshold).toInt()
+                    val target = (index + shift).coerceIn(0, settingsSectionOrder.lastIndex)
+                    if (index >= 0 && target != index) {
+                        val moved = settingsSectionOrder.removeAt(index)
+                        settingsSectionOrder.add(target, moved)
+                        settingsDragOffset -= shift * threshold
+                    }
+                },
+                onDragEnd = {
+                    context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
+                        .putString("settingsSectionOrder", settingsSectionOrder.joinToString("|")).apply()
+                    draggingSettingsSection = null; settingsDragOffset = 0f
+                },
+                onDragCancel = { draggingSettingsSection = null; settingsDragOffset = 0f }
+            )
+        }) {
+            renderSettingsSection(sectionId)
+        }
+    }
+    if(showOwnPasswordDialog && homePilotAccount!=null) AlertDialog(onDismissRequest={showOwnPasswordDialog=false},title={Text("Eigenes HomePilot-Passwort ändern")},text={Column { Text("Neues Passwort (mindestens 8 Zeichen)"); OutlinedTextField(value=ownHomePilotPassword,onValueChange={ownHomePilotPassword=it},singleLine=true,visualTransformation=if(showOwnPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showOwnPassword=!showOwnPassword}) { Icon(if(showOwnPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showOwnPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(homePilotAccount.username,ownHomePilotPassword);showOwnPasswordDialog=false}) { Text("Speichern") }},dismissButton={TextButton(onClick={showOwnPasswordDialog=false}) { Text("Abbrechen") }})
+    if(showNewHomePilotUser) Dialog(onDismissRequest={showNewHomePilotUser=false},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
+        Surface(modifier=Modifier.fillMaxWidth(0.92f).heightIn(max=560.dp),shape=RoundedCornerShape(28.dp),color=MaterialTheme.colorScheme.surface,tonalElevation=6.dp) {
+            Column(modifier=Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text("HomePilot-Benutzer anlegen",style=MaterialTheme.typography.headlineSmall)
+                OutlinedTextField(value=newHomePilotUsername,onValueChange={newHomePilotUsername=it},label={Text("Benutzername")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                OutlinedTextField(value=newHomePilotDisplayName,onValueChange={newHomePilotDisplayName=it},label={Text("Anzeigename")},singleLine=true,modifier=Modifier.fillMaxWidth())
+                OutlinedTextField(value=newHomePilotPassword,onValueChange={newHomePilotPassword=it},label={Text("Passwort (min. 8 Zeichen)")},singleLine=true,visualTransformation=if(showNewUserPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showNewUserPassword=!showNewUserPassword}) { Icon(if(showNewUserPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showNewUserPassword) "Passwort verbergen" else "Passwort anzeigen") }},modifier=Modifier.fillMaxWidth())
+                OutlinedTextField(value=newHomePilotPasswordConfirmation,onValueChange={newHomePilotPasswordConfirmation=it},label={Text("Passwort wiederholen")},singleLine=true,visualTransformation=if(showNewUserPasswordConfirmation) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showNewUserPasswordConfirmation=!showNewUserPasswordConfirmation}) { Icon(if(showNewUserPasswordConfirmation) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showNewUserPasswordConfirmation) "Passwort verbergen" else "Passwort anzeigen") }},modifier=Modifier.fillMaxWidth())
+                if(newHomePilotPasswordConfirmation.isNotEmpty() && newHomePilotPassword!=newHomePilotPasswordConfirmation) Text("Die Passwörter stimmen nicht überein.",color=Color(0xFFD32F2F),fontSize=12.sp)
+                Text("Rolle")
+                Row { TextButton(onClick={newHomePilotRole=HomePilotAccount.USER}) { Text(if(newHomePilotRole==HomePilotAccount.USER) "✓ Benutzer" else "Benutzer") }; TextButton(onClick={newHomePilotRole=HomePilotAccount.ADMIN}) { Text(if(newHomePilotRole==HomePilotAccount.ADMIN) "✓ Admin" else "Admin") } }
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End) {
+                    TextButton(onClick={showNewHomePilotUser=false}) { Text("Abbrechen") }
+                    TextButton(onClick={onAddHomePilotAccount(newHomePilotUsername,newHomePilotDisplayName,newHomePilotPassword,newHomePilotRole);showNewHomePilotUser=false},enabled=newHomePilotUsername.isNotBlank() && newHomePilotPassword.length>=8 && newHomePilotPasswordConfirmation.isNotBlank() && newHomePilotPassword==newHomePilotPasswordConfirmation) { Text("Anlegen") }
+                }
+            }
+        }
+    }
+    deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest={deleteHomePilotUser=null},title={Text("Benutzer wirklich löschen?")},text={Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.")},confirmButton={TextButton(onClick={onDeleteHomePilotAccount(account.username);deleteHomePilotUser=null}) { Text("Löschen") }},dismissButton={TextButton(onClick={deleteHomePilotUser=null}) { Text("Abbrechen") }}) }
+    resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest={resetHomePilotUser=null},title={Text("Passwort zurücksetzen")},text={Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value=resetHomePilotPasswordValue,onValueChange={resetHomePilotPasswordValue=it},label={Text("Neues Passwort (min. 8 Zeichen)")},visualTransformation=if(showResetPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showResetPassword=!showResetPassword}) { Icon(if(showResetPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showResetPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(account.username,resetHomePilotPasswordValue);resetHomePilotUser=null}) { Text("Speichern") }},dismissButton={TextButton(onClick={resetHomePilotUser=null}) { Text("Abbrechen") }}) }
 }
 
 private fun openBatterySettings(context: Context) {
