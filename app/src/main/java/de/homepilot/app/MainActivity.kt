@@ -2938,12 +2938,19 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         }
         Divider()
         Text("ioBroker-Verbindung",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
-        OutlinedTextField(value=serverUrl,onValueChange=onServerUrl,label={Text("Serveradresse")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
+        OutlinedTextField(
+            value=serverUrl,
+            onValueChange=onServerUrl,
+            label={Text("Serveradresse",fontSize=10.sp)},
+            singleLine=true,
+            textStyle=LocalTextStyle.current.copy(fontSize=12.sp),
+            modifier=Modifier.fillMaxWidth().height((48 + 12*fontScale).dp),
+            trailingIcon={InputConfirmIcon()}
+        )
         val statusHasError=listOf("fehlgeschlagen","timeout","nicht geantwortet","send failed","Fehler","disconnected").any { status.contains(it,ignoreCase=true) }
         val statusColor=when { statusHasError -> Color(0xFFD32F2F); connected && !status.contains("prüfe",ignoreCase=true) -> Green; else -> Muted }
-        Text(status,color=statusColor,fontSize=12.sp)
+        Text(if(connected && !statusHasError) "ioBroker verbunden" else status,color=statusColor,fontSize=12.sp)
         if(!connected) Button(onClick=onConnect,modifier=Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
-        Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).",color=Muted,fontSize=11.sp)
         Divider()
         Text("Verbindung im Hintergrund",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
         Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.",color=Muted,fontSize=11.sp)
