@@ -2028,12 +2028,11 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
         }
-        CardBlock(panel, text, "Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
+        CardBlock(panel, text, "Saug/Wisch-Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
             Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 RoidmiModeChoice("Saugen", selected = sweep == 0.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 0, "Saugen") }
                 RoidmiModeChoice("Wischen", selected = sweep == 1.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 1, "Wischen") }
-                RoidmiModeChoice("Kombi", selected = sweep == 2.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 2, "Saugen/Wischen") }
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Saugstufe", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
@@ -2899,7 +2898,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Button(onClick=onOpenLights,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb,null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
         Button(onClick=onOpenDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices,null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
         Button(onClick=onOpenRooms,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork,null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
-        Button(onClick=onShowHidden,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.VisibilityOff,null); Spacer(Modifier.width(8.dp)); Text("Ausgeblendete Geräte verwalten") }
+        Button(onClick=onShowHidden,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.VisibilityOff,null); Spacer(Modifier.width(8.dp)); Text("Ausgeblendete Geräte") }
         Button(onClick=onOpenHealth,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety,null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
     }
     var showOwnPasswordDialog by remember { mutableStateOf(false) }
