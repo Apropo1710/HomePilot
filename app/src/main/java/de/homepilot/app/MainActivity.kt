@@ -2770,6 +2770,21 @@ private fun HomePilotAccountLoginScreen(
             }
             Spacer(Modifier.height(14.dp))
             Button(onClick = onLogin, enabled = !loading && username.isNotBlank() && password.isNotBlank() && (!setup || (passwordConfirmation.isNotBlank() && password == passwordConfirmation)), modifier = Modifier.fillMaxWidth()) { Text(if (setup) "Administrator erstellen" else "Anmelden") }
+            if (!setup && status.contains("Benutzername oder Passwort falsch", ignoreCase = true)) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFFE8E8)).padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(Icons.Default.Error, contentDescription = "Anmeldefehler", tint = Color(0xFFB71C1C))
+                    Text(
+                        "Anmeldung fehlgeschlagen\\nBenutzername oder Passwort ist falsch. Bitte prüfe deine Eingabe.",
+                        color = Color(0xFFB71C1C), fontSize = 15.sp, fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
 
     }
