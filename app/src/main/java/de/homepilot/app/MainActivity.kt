@@ -2725,7 +2725,7 @@ private fun HomePilotAccountLoginScreen(
     loading: Boolean, status: String, onReload: () -> Unit, onLogin: () -> Unit
 ) {
     val setup = registry?.accounts?.isEmpty() == true
-    Column(Modifier.fillMaxSize().statusBarsPadding().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(Icons.Default.Home, contentDescription = null, tint = Blue, modifier = Modifier.size(58.dp))
         Spacer(Modifier.height(12.dp))
         Text("HomePilot", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
