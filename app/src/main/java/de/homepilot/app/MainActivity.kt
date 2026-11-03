@@ -1544,19 +1544,54 @@ private fun Header(dark: Boolean, text: Color, connected: Boolean, status: Strin
 
 @Composable
 private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, text: Color, onSelectRoom: (String) -> Unit, extraItems: List<Pair<String, () -> Unit>> = emptyList()) {
-    val entries = rooms.filter { it != "Nicht zugeordnet" }.map { room -> room to { onSelectRoom(room) } } + extraItems
-    CardBlock(panel, text, "Raumauswahl", "Räume auswählen und direkt öffnen", Icons.Default.HomeWork) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
+    val roomNames = rooms.filter { it != "Nicht zugeordnet" }
+    val orderedRooms = remember(roomNames) {
+        val saved = prefs.getString("roomMenuOrder", "").orEmpty().split("|").filter { it in roomNames }
+        mutableStateListOf<String>().apply { addAll((saved + roomNames.filterNot { it in saved }).distinct()) }
+    }
+    LaunchedEffect(roomNames) {
+        val merged = (orderedRooms.filter { it in roomNames } + roomNames.filterNot { it in orderedRooms }).distinct()
+        orderedRooms.clear()
+        orderedRooms.addAll(merged)
+    }
+    var draggingRoom by remember { mutableStateOf<String?>(null) }
+    var dragOffset by remember { mutableFloatStateOf(0f) }
+    val entries = orderedRooms.map { room -> room to { onSelectRoom(room) } } + extraItems
+    CardBlock(panel, text, "Raumauswahl", "Räume auswählen · länger drücken zum Sortieren", Icons.Default.HomeWork) {
+        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             entries.chunked(3).forEach { rowItems ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                     rowItems.forEach { (label, action) ->
                         val selected = label == selectedRoom
                         Button(
-                            onClick = action,
-                            modifier = Modifier.weight(1f),
+                            onClick = { if (draggingRoom == null) action() },
+                            modifier = Modifier.weight(1f).then(
+                                if (label in orderedRooms) Modifier.pointerInput(label, orderedRooms.toList()) {
+                                    androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress(
+                                        onDragStart = { draggingRoom = label; dragOffset = 0f },
+                                        onDrag = { change, amount ->
+                                            change.consume()
+                                            dragOffset += amount.y
+                                            val current = orderedRooms.indexOf(label)
+                                            val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.8f
+                                            val delta = (dragOffset / threshold).toInt()
+                                            val target = (current + delta).coerceIn(0, orderedRooms.lastIndex)
+                                            if (current != target && current >= 0) {
+                                                val moved = orderedRooms.removeAt(current)
+                                                orderedRooms.add(target, moved)
+                                                dragOffset -= delta * threshold
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            prefs.edit().putString("roomMenuOrder", orderedRooms.joinToString("|")).apply()
+                                            draggingRoom = null; dragOffset = 0f
+                                        },
+                                        onDragCancel = { draggingRoom = null; dragOffset = 0f }
+                                    )
+                                } else Modifier
+                            ),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = if (selected) Blue else panel, contentColor = if (selected) Color.White else text),
                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 3.dp)
