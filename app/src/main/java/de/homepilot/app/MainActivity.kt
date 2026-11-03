@@ -766,9 +766,17 @@ private fun HomePilotApp() {
     var sharedConfigRevision by remember { mutableStateOf(0L) }
     var userProfileLoaded by remember { mutableStateOf(false) }
     var userProfileRevision by remember { mutableStateOf(0L) }
+    var userProfileSyncToken by remember { mutableIntStateOf(0) }
+    val tileOrderPreferenceKeys = listOf(
+        "homeCardOrder", "lightCardOrder", "deviceCardOrder", "roomMenuOrder",
+        "roomLampOrder", "roomSwitchOrder", "roomOtherOrder", "settingsSectionOrder"
+    )
+    fun readLocalTileOrders(): Map<String, List<String>> = tileOrderPreferenceKeys.associateWith { key ->
+        prefs.getString(key, "").orEmpty().split("|").filter(String::isNotBlank)
+    }
     fun saveUserProfile() {
         if (!userProfileLoaded || !connected) return
-        val username = (homePilotAccount?.username ?: credentialStore.username()).trim()
+        val username = homePilotAccount?.username?.trim().orEmpty()
         if (username.isBlank()) return
         val nextRevision = userProfileRevision + 1L
         val profile = HomePilotUserProfile(
@@ -776,7 +784,8 @@ private fun HomePilotApp() {
             updatedAt = System.currentTimeMillis(),
             favoriteIds = favoriteIds,
             favoriteOrder = favoriteOrder,
-            disconnectTimeoutMinutes = inactivityMinutes
+            disconnectTimeoutMinutes = inactivityMinutes,
+            tileOrders = readLocalTileOrders()
         )
         val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
         ioClient.getJsonState(profileId) { remote, readError ->
@@ -869,9 +878,9 @@ private fun HomePilotApp() {
             applyCustomConfig()
             sharedConfigLoaded = true
 
-            val username = credentialStore.username().trim()
+            val username = homePilotAccount?.username?.trim().orEmpty()
             if (username.isBlank()) {
-                connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; persönliches Profil benötigt einen ioBroker-Benutzer."
+                connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; bitte mit einem HomePilot-Konto anmelden, um persönliche Einstellungen zu synchronisieren."
                 return@ensureJsonState
             }
             val localProfile = HomePilotUserProfile(
@@ -879,7 +888,8 @@ private fun HomePilotApp() {
                 updatedAt = System.currentTimeMillis(),
                 favoriteIds = favoriteIds,
                 favoriteOrder = favoriteOrder,
-                disconnectTimeoutMinutes = inactivityMinutes
+                disconnectTimeoutMinutes = inactivityMinutes,
+                tileOrders = readLocalTileOrders()
             )
             val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
             ioClient.ensureJsonState(profileId, "HomePilot profile: $username", localProfile.toJson()) { profileJson, _, profileError ->
@@ -896,12 +906,30 @@ private fun HomePilotApp() {
                 favoriteIds = profile.favoriteIds
                 favoriteOrder = profile.favoriteOrder
                 inactivityMinutes = profile.disconnectTimeoutMinutes
-                prefs.edit()
-                    .putStringSet("favoriteDevices", profile.favoriteIds)
-                    .putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
-                    .putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
-                    .apply()
+                val localOrders = readLocalTileOrders()
+                val ordersToApply = profile.tileOrders.filterKeys { it in tileOrderPreferenceKeys }
+                prefs.edit().apply {
+                    putStringSet("favoriteDevices", profile.favoriteIds)
+                    putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
+                    putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
+                    ordersToApply.forEach { (key, order) -> putString(key, order.joinToString("|")) }
+                    apply()
+                }
                 userProfileLoaded = true
+                userProfileSyncToken++
+                // Older profiles have no tile-order data. Keep this device's existing
+                // order and immediately seed it into the HomePilot account profile.
+                if (profile.tileOrders.isEmpty()) saveUserProfile()
+                else if (ordersToApply.size < tileOrderPreferenceKeys.size) {
+                    val merged = localOrders + profile.tileOrders
+                    prefs.edit().apply {
+                        tileOrderPreferenceKeys.forEach { key ->
+                            if (key !in profile.tileOrders) putString(key, merged[key].orEmpty().joinToString("|"))
+                        }
+                        apply()
+                    }
+                    saveUserProfile()
+                }
                 connectionStatus = if (created) {
                     "ioBroker verbunden · HomePilot-Konfiguration und Profil erstmalig migriert."
                 } else {
