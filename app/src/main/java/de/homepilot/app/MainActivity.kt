@@ -748,7 +748,7 @@ private fun HomePilotApp() {
     var userProfileRevision by remember { mutableStateOf(0L) }
     fun saveUserProfile() {
         if (!userProfileLoaded || !connected) return
-        val username = credentialStore.username().trim()
+        val username = (homePilotAccount?.username ?: credentialStore.username()).trim()
         if (username.isBlank()) return
         val nextRevision = userProfileRevision + 1L
         val profile = HomePilotUserProfile(
@@ -1069,14 +1069,14 @@ private fun HomePilotApp() {
                             try {
                                 val next = registry.createInitialAdmin(homePilotUsername, homePilotDisplayName, homePilotPassword.toCharArray())
                                 saveHomePilotRegistry(registry.revision, next) { saved, error ->
-                                    if (saved) { homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; homePilotPassword = "" }
+                                    if (saved) { homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; homePilotPassword = ""; initializeHomePilotSync() }
                                     else connectionStatus = "Admin konnte nicht angelegt werden: " + error
                                 }
                             } catch (e: Exception) { connectionStatus = e.message ?: "Admin-Einrichtung fehlgeschlagen." }
                         } else {
                             val account = registry.authenticate(homePilotUsername, homePilotPassword.toCharArray())
                             if (account == null) connectionStatus = "HomePilot-Benutzername oder Passwort falsch."
-                            else { homePilotAccount = account; homePilotAuthenticated = true; homePilotPassword = ""; connectionStatus = "HomePilot angemeldet: " + account.displayName }
+                            else { homePilotAccount = account; homePilotAuthenticated = true; homePilotPassword = ""; connectionStatus = "HomePilot angemeldet: " + account.displayName; initializeHomePilotSync() }
                         }
                     }
                 )
