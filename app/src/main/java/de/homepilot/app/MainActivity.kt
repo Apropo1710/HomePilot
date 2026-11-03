@@ -2923,36 +2923,36 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     }
     deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest={deleteHomePilotUser=null},title={Text("Benutzer wirklich löschen?")},text={Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.")},confirmButton={TextButton(onClick={onDeleteHomePilotAccount(account.username);deleteHomePilotUser=null}) { Text("Löschen") }},dismissButton={TextButton(onClick={deleteHomePilotUser=null}) { Text("Abbrechen") }}) }
     resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest={resetHomePilotUser=null},title={Text("Passwort zurücksetzen")},text={Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value=resetHomePilotPasswordValue,onValueChange={resetHomePilotPasswordValue=it},label={Text("Neues Passwort (min. 8 Zeichen)")},visualTransformation=if(showResetPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showResetPassword=!showResetPassword}) { Icon(if(showResetPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showResetPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(account.username,resetHomePilotPasswordValue);resetHomePilotUser=null}) { Text("Speichern") }},dismissButton={TextButton(onClick={resetHomePilotUser=null}) { Text("Abbrechen") }}) }
-    SettingsMenuSection(panel,text,"App-Einstellungen","ioBroker-Verbindung, Hintergrund, Energiesparen und Version",Icons.Default.Settings,expandedSetting=="App-Einstellungen",{toggle("App-Einstellungen")}) {
-        Text("ioBroker-Verbindung",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
-        OutlinedTextField(value=serverUrl,onValueChange=onServerUrl,label={Text("Serveradresse")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
-        val statusHasError=listOf("fehlgeschlagen","timeout","nicht geantwortet","send failed","Fehler","disconnected").any { status.contains(it,ignoreCase=true) }
-        val statusColor=when { statusHasError -> Color(0xFFD32F2F); connected && !status.contains("prüfe",ignoreCase=true) -> Green; else -> Muted }
-        Text(status,color=statusColor,fontSize=12.sp)
-        if(!connected) Button(onClick=onConnect,modifier=Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
-        Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).",color=Muted,fontSize=11.sp)
-        Divider()
-        Text("Verbindung im Hintergrund",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
-        Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.",color=Muted,fontSize=11.sp)
-        Column(verticalArrangement=Arrangement.spacedBy(2.dp)) { listOf(listOf(15,30),listOf(60,0)).forEach { rowOptions ->
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { rowOptions.forEach { minutes ->
-                Row(Modifier.weight(1f).height(34.dp).clickable { onInactivityMinutes(minutes) },verticalAlignment=Alignment.CenterVertically) {
-                    Icon(if(inactivityMinutes==minutes) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,contentDescription=null,tint=if(inactivityMinutes==minutes) Blue else Muted,modifier=Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if(minutes==0) "Nie trennen" else "$minutes Min.",color=text,fontSize=12.sp)
-                }
+    SettingsMenuSection(panel,text,"App-Einstellungen","ioBroker, Verbindung, Energiesparen und App-Version",Icons.Default.Settings,expandedSetting=="App-Einstellungen",{toggle("App-Einstellungen")}) {
+            SettingsMenuSection(panel,text,"ioBroker-Verbindung",if(connected) "Verbunden" else "Nicht verbunden",Icons.Default.Cloud,expandedSetting=="ioBroker-Verbindung",{toggle("ioBroker-Verbindung")}) {
+            OutlinedTextField(value=serverUrl,onValueChange=onServerUrl,label={Text("Serveradresse")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
+            val statusHasError=listOf("fehlgeschlagen","timeout","nicht geantwortet","send failed","Fehler","disconnected").any { status.contains(it,ignoreCase=true) }
+            val statusColor=when { statusHasError -> Color(0xFFD32F2F); connected && !status.contains("prüfe",ignoreCase=true) -> Green; else -> Muted }
+            Text(status,color=statusColor,fontSize=12.sp)
+            if(!connected) Button(onClick=onConnect,modifier=Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
+            Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).",color=Muted,fontSize=11.sp)
+        }
+            SettingsMenuSection(panel,text,"Verbindung im Hintergrund","Automatische Trennung bei Nichtbenutzung",Icons.Default.Timer,expandedSetting=="Verbindung im Hintergrund",{toggle("Verbindung im Hintergrund")}) {
+            Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.",color=Muted,fontSize=10.sp)
+            Column(verticalArrangement=Arrangement.spacedBy(2.dp)) { listOf(listOf(15,30),listOf(60,0)).forEach { rowOptions ->
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { rowOptions.forEach { minutes ->
+                    Row(Modifier.weight(1f).height(30.dp).clickable { onInactivityMinutes(minutes) },verticalAlignment=Alignment.CenterVertically) {
+                        Icon(if(inactivityMinutes==minutes) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,contentDescription=null,tint=if(inactivityMinutes==minutes) Blue else Muted,modifier=Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if(minutes==0) "Nie trennen" else "$minutes Min.",color=text,fontSize=12.sp)
+                    }
+                } }
             } }
-        } }
-        Divider()
-        Text("Energiesparen für HomePilot ausschalten",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
-        Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst.",color=Muted,fontSize=11.sp)
-        Button(onClick=onBatterySettings,modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(vertical=8.dp)) { Text("Android-App-Einstellungen öffnen") }
-        Divider()
-        Text("App-Version",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
-        GithubUpdateCard(appVersion=BuildConfig.VERSION_NAME)
+        }
+            SettingsMenuSection(panel,text,"Energiesparen für HomePilot ausschalten","Für stabile ioBroker-Verbindung",Icons.Default.BatteryFull,expandedSetting=="Energiesparen für HomePilot ausschalten",{toggle("Energiesparen für HomePilot ausschalten")}) {
+            Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst.",color=Muted,fontSize=11.sp)
+            Button(onClick=onBatterySettings,modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(vertical=8.dp)) { Text("Android-App-Einstellungen öffnen") }
+        }
+    
     }
     SettingsMenuSection(panel,text,"Wetter","5-Tage-Prognose auf der Startseite",Icons.Default.WbSunny,expandedSetting=="Wetter",{toggle("Wetter")}) {
         OutlinedTextField(value=weatherCity,onValueChange=onWeatherCity,label={Text("Ort oder Postleitzahl")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
         Text("Wetterdaten von Open-Meteo; benötigt eine Internetverbindung.",color=Muted,fontSize=11.sp)
     }
+    SettingsMenuSection(panel,text,"App-Version","Updates und Versionsinformationen",Icons.Default.SystemUpdate,expandedSetting=="App-Version",{toggle("App-Version")}) { GithubUpdateCard(appVersion=BuildConfig.VERSION_NAME) }
 }
 
 private fun openBatterySettings(context: Context) {
