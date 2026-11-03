@@ -97,7 +97,7 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
             require(address.startsWith("ws://") || address.startsWith("wss://")) {
                 "WebSocket-Adresse muss mit ws:// oder wss:// beginnen"
             }
-            val client = IoBrokerSocket(address, "name=homepilot.android", credentialStore.username(), credentialStore.password())
+            val client = IoBrokerSocket(address, "name=homepilot.android")
             socket = client
             var reported = false
             client.on("connect") {
@@ -892,13 +892,6 @@ private fun HomePilotApp() {
     }
 
     fun connectToIoBroker(manualDeviceSearch: Boolean = false) {
-        if (!credentialStore.hasCredentials()) {
-            connecting = false
-            connected = false
-            connectionStatus = "Bitte mit einem ioBroker-Benutzer anmelden."
-            loginAccepted = false
-            return
-        }
         prefs.edit().putString("server", serverUrl).apply()
         if (connecting) return
         connecting = true
@@ -1053,17 +1046,12 @@ private fun HomePilotApp() {
         Surface(Modifier.fillMaxSize(), color = bg) {
             if (!loginAccepted) {
                 HomePilotLoginScreen(
-                    username = ioBrokerUsername, onUsername = { ioBrokerUsername = it },
-                    password = ioBrokerPassword, onPassword = { ioBrokerPassword = it },
-                    serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                     status = connectionStatus, loading = connecting,
                     onLogin = {
-                        if (ioBrokerUsername.isBlank() || ioBrokerPassword.isBlank()) connectionStatus = "Bitte Benutzername und Passwort eingeben."
-                        else {
-                            credentialStore.save(ioBrokerUsername, ioBrokerPassword)
-                            ioClient.disconnect(); connected = false; connecting = false; loginAccepted = false
-                            connectToIoBroker()
-                        }
+                        // This ioBroker instance uses an unauthenticated WebSocket.
+                        credentialStore.clear()
+                        ioClient.disconnect(); connected = false; connecting = false; loginAccepted = false
+                        connectToIoBroker()
                     }
                 )
             } else if (!homePilotAuthenticated) {
@@ -2774,23 +2762,21 @@ private fun HomePilotLoginScreen(
         Spacer(Modifier.height(14.dp))
         Text("HomePilot", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(8.dp))
-        Text("Bitte mit deinem ioBroker-Benutzer anmelden.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text("Verbindung zu ioBroker wird ohne Benutzerkonto hergestellt.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
         Spacer(Modifier.height(22.dp))
-        OutlinedTextField(value = username, onValueChange = onUsername, label = { Text("Benutzername") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Spacer(Modifier.height(10.dp))
-        OutlinedTextField(value = password, onValueChange = onPassword, label = { Text("Passwort") }, singleLine = true, modifier = Modifier.fillMaxWidth(), visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
+        Text("WebSocket: ws://192.168.178.54:8084", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         Spacer(Modifier.height(14.dp))
         if (status != "Nicht verbunden" && status.isNotBlank()) {
             Text(status, color = if (statusError) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, textAlign = TextAlign.Center)
             Spacer(Modifier.height(8.dp))
         }
-        Button(onClick = onLogin, enabled = !loading && username.isNotBlank() && password.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onLogin, enabled = !loading, modifier = Modifier.fillMaxWidth()) {
             if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Icon(Icons.Default.Login, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (loading) "Anmeldung läuft …" else "Anmelden")
+            Text(if (loading) "Verbindung läuft …" else "Mit ioBroker verbinden")
         }
         Spacer(Modifier.height(10.dp))
-        Text("Es werden vorhandene ioBroker-Konten verwendet. Benutzerkonten werden in ioBroker Admin verwaltet.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text("Danach meldest du dich mit deinem HomePilot-Konto an.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
     }
 }
 
