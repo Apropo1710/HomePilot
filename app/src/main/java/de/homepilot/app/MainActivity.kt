@@ -1901,10 +1901,10 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             }
         }
         CardBlock(panel, text, "Wartung", "Zustand der Verschleißteile und Wartungspunkt", Icons.Default.Build) {
-            Text("Messerzustand: ${bladeHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
-            Text("Gerätewartung: ${maintenanceHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
+            Text("Messerzustand: ${bladeHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text, fontSize = 14.sp)
+            Text("Gerätewartung: ${maintenanceHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text, fontSize = 14.sp)
             Spacer(Modifier.height(6.dp))
-            Text("Fährt den in der MOVA-App gespeicherten Wartungspunkt an.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text("Fährt den in der MOVA-App gespeicherten Wartungspunkt an.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             OutlinedButton(
                 onClick = { showMaintenanceConfirm = true },
                 enabled = connected && !commandBusy,
@@ -1915,7 +1915,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             ) {
                 Icon(Icons.Default.Build, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Wartungspunkt anfahren", fontWeight = FontWeight.Bold)
+                Text("Wartungspunkt anfahren", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
             commandMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp) }
         }
