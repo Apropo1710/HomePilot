@@ -93,11 +93,11 @@ internal fun GithubUpdateCard(appVersion: String) {
                 Text("GitHub-Code: $code", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                 Text("Gib diesen Code auf der geöffneten GitHub-Seite ein und bestätige den Zugriff.", style = MaterialTheme.typography.bodySmall)
             }
-            Row(Modifier.fillMaxWidth(),horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (!connected) {
                     Button(
                         enabled = !busy,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                         onClick = {
                         scope.launch {
@@ -124,7 +124,7 @@ internal fun GithubUpdateCard(appVersion: String) {
                         }
                     }) { Text(if (pending != null) "Anmeldung fortsetzen" else "Mit GitHub verbinden") }
                 } else {
-                    OutlinedButton(enabled = !busy, modifier = Modifier.weight(1f), onClick = { scope.launch { checkForUpdates() } }) { Text("Nach Updates suchen", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                    OutlinedButton(enabled = !busy, modifier = Modifier.fillMaxWidth(), onClick = { scope.launch { checkForUpdates() } }) { Text("Nach Updates suchen", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
                 }
                 if (newerVersion != null && assetId != null) {
                     Button(enabled = !busy, onClick = {
@@ -163,7 +163,7 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 busy = false
                             }
                         }
-                    }, modifier = Modifier.weight(1f)) { Text("Update laden", maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                    }, modifier = Modifier.fillMaxWidth(), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 12.dp)) { Text("Update laden", textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
                 }
             }
             if (busy) {
