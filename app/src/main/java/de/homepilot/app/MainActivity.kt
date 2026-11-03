@@ -1274,7 +1274,7 @@ private fun HomePilotApp() {
                             hiddenItems = hiddenItems,
                             onShowHidden = { showHiddenDevices = true },
                             onRequestDeleteRoom = { room -> confirmDeleteRoom = room })
-                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) },
+                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() },
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() },
                             status = connectionStatus, connected = connected,
@@ -1304,7 +1304,7 @@ private fun HomePilotApp() {
                         }
                     )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true, trailingIcon = { InputConfirmIcon() }) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
-                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else Muted) } } }, text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else MaterialTheme.colorScheme.onSurfaceVariant) } } }, text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() })
                 Text("Gerätetyp")
                 Box {
@@ -1370,7 +1370,7 @@ private fun HomePilotApp() {
                         title = { Text("Tuya-Geräte auswählen") },
                         text = {
                             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Wähle die Tuya-Geräte aus und ordne jedes Gerät direkt einem Raum zu. Die Auswahl wird erst nach Bestätigung übernommen.", color = Muted, fontSize = 12.sp)
+                                Text("Wähle die Tuya-Geräte aus und ordne jedes Gerät direkt einem Raum zu. Die Auswahl wird erst nach Bestätigung übernommen.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                 discoveredTuyaDevices.forEach { item ->
                                     val id = item.stateId.orEmpty()
                                     Column(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -1382,7 +1382,7 @@ private fun HomePilotApp() {
                                             })
                                             Column(Modifier.weight(1f)) {
                                                 OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
-                                                Text(id, color = Muted, fontSize = 9.sp)
+                                                Text(id, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
                                             }
                                         }
                                         TextButton(onClick = {
@@ -1435,7 +1435,7 @@ private fun HomePilotApp() {
                         title = { Text("Hue-Geräte auswählen") },
                         text = {
                             Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text("Wähle nur die Lampen aus, die du in HomePilot verwenden möchtest. Andere Datenpunkte werden nicht übernommen.", color = Muted, fontSize = 12.sp)
+                                Text("Wähle nur die Lampen aus, die du in HomePilot verwenden möchtest. Andere Datenpunkte werden nicht übernommen.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                 discoveredLights.forEach { item ->
                                     val id = item.stateId.orEmpty()
                                     Row(Modifier.fillMaxWidth().clickable {
@@ -1446,7 +1446,7 @@ private fun HomePilotApp() {
                                         })
                                         Column(Modifier.weight(1f)) {
                                             OutlinedTextField(value = discoveredNames[id] ?: item.name, onValueChange = { discoveredNames = discoveredNames + (id to it) }, label = { Text("Gerätename") }, singleLine = true, modifier = Modifier.fillMaxWidth(), trailingIcon = { InputConfirmIcon() })
-                                            Text(id, color = Muted, fontSize = 9.sp)
+                                            Text(id, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
                                         }
                                     }
                                     TextButton(onClick = {
@@ -1484,7 +1484,7 @@ private fun HomePilotApp() {
                         text = { Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                             if (hiddenItems.isEmpty()) Text("Keine ausgeblendeten Geräte.")
                             hiddenItems.forEach { item -> Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) { Text(item.name, fontWeight = FontWeight.SemiBold); Text(item.subtitle, color = Muted, fontSize = 12.sp) }
+                                Column(Modifier.weight(1f)) { Text(item.name, fontWeight = FontWeight.SemiBold); Text(item.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
                                 TextButton(onClick = {
                                     val id = item.stateId
                                     if (id != null) { hiddenIds = hiddenIds - id; prefs.edit().putStringSet("hiddenDevices", hiddenIds).apply(); hiddenItems = hiddenItems.filterNot { it.stateId == id }; persistHiddenItems(); if (item.kind == "light") { importedLightIds = importedLightIds + id; prefs.edit().putStringSet("importedLights", importedLightIds).apply(); if (lights.none { it.stateId == id }) lights.add(item) } else { if (devices.none { it.stateId == id }) devices.add(item) }; applyCustomConfig(); refreshStates(ioClient, serverUrl, devices, lights) }
@@ -1532,7 +1532,7 @@ private fun Header(dark: Boolean, text: Color, connected: Boolean, status: Strin
                 Text("HOMEPILOT", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                 Icon(if (connected) Icons.Default.CheckCircle else Icons.Default.Cancel, contentDescription = if (connected) "ioBroker verbunden" else "ioBroker nicht verbunden", tint = if (connected) Green else Color(0xFFD62828), modifier = Modifier.size(14.dp))
             }
-            Text("Smart Home auf einen Blick", color = if (dark) Color(0xFFB2C1D0) else Muted, fontSize = 13.sp)
+            Text("Smart Home auf einen Blick", color = if (dark) Color(0xFFB2C1D0) else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
             if (!connected && status.startsWith("Verbindung fehlgeschlagen")) Text("Verbindung fehlgeschlagen. Bitte VPN prüfen.", color = Color(0xFFD62828), fontSize = 11.sp, maxLines = 2)
         }
     }
@@ -1654,17 +1654,17 @@ private fun WeatherForecastCard(city: String, panel: Color, text: Color) {
                 if (loading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             }
             currentLabel?.let { Text(it, color = text, fontWeight = FontWeight.SemiBold, fontSize = 13.sp) }
-            if (error != null) Text(error!!, color = Muted, fontSize = 12.sp)
+            if (error != null) Text(error!!, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             days.forEachIndexed { index, day ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val label = try { val d = java.time.LocalDate.parse(day.date); when (index) { 0 -> "Heute"; 1 -> "Morgen"; else -> d.format(java.time.format.DateTimeFormatter.ofPattern("EEE", java.util.Locale.GERMAN)) } } catch (_: Exception) { day.date }
                     Text(label, color = text, modifier = Modifier.width(62.dp), fontSize = 12.sp)
-                    Text(weatherDescription(day.code), color = Muted, modifier = Modifier.weight(1f), fontSize = 12.sp, maxLines = 1)
+                    Text(weatherDescription(day.code), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), fontSize = 12.sp, maxLines = 1)
                     Text("${day.high.toInt()}° / ${day.low.toInt()}°", color = text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     day.rain?.let { Text("$it%", color = Blue, fontSize = 11.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.End) }
                 }
             }
-            if (days.isNotEmpty()) Text("Regenwahrscheinlichkeit rechts · Quelle: Open-Meteo", color = Muted, fontSize = 10.sp)
+            if (days.isNotEmpty()) Text("Regenwahrscheinlichkeit rechts · Quelle: Open-Meteo", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
         }
     }
 }
@@ -1789,8 +1789,8 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }
         }
         CardBlock(panel, text, "Mähzonen", "Eine oder mehrere Zonen auswählen und gezielt starten", Icons.Default.Map) {
-            if (!connected) Text("Bitte zuerst die ioBroker-Verbindung herstellen.", color = Muted)
-            else if (zones.isEmpty()) Text("Zonen werden geladen. Bitte kurz warten.", color = Muted)
+            if (!connected) Text("Bitte zuerst die ioBroker-Verbindung herstellen.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else if (zones.isEmpty()) Text("Zonen werden geladen. Bitte kurz warten.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             zones.forEach { (id, info) ->
                 Row(Modifier.fillMaxWidth().clickable {
                     selectedZones = if (id in selectedZones) selectedZones - id else selectedZones + id
@@ -1798,7 +1798,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
                     Checkbox(checked = id in selectedZones, onCheckedChange = { checked -> selectedZones = if (checked) selectedZones + id else selectedZones - id })
                     Column(Modifier.weight(1f)) {
                         Text(info.first, color = text, fontWeight = FontWeight.SemiBold)
-                        Text("Zone $id · ${String.format(java.util.Locale.GERMANY, "%.1f", info.second)} m²", color = Muted, fontSize = 14.sp)
+                        Text("Zone $id · ${String.format(java.util.Locale.GERMANY, "%.1f", info.second)} m²", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                     }
                 }
             }
@@ -1810,7 +1810,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             }, enabled = connected && selectedZones.isNotEmpty() && !commandBusy && !mowing, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Zone(n) starten")
             }
-            commandMessage?.let { Text(it, color = Muted, fontSize = 14.sp) }
+            commandMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) }
         }
         CardBlock(panel, text, "Steuerung", "Mähvorgang und Ladestation", Icons.Default.Gamepad) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1823,7 +1823,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             Text("Messerzustand: ${bladeHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
             Text("Gerätewartung: ${maintenanceHealth?.let { "${it.toInt()} %" } ?: "—"}", color = text)
             Spacer(Modifier.height(6.dp))
-            Text("Fährt den in der MOVA-App gespeicherten Wartungspunkt an.", color = Muted, fontSize = 12.sp)
+            Text("Fährt den in der MOVA-App gespeicherten Wartungspunkt an.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             OutlinedButton(
                 onClick = { showMaintenanceConfirm = true },
                 enabled = connected && !commandBusy,
@@ -1836,7 +1836,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
                 Spacer(Modifier.width(8.dp))
                 Text("Wartungspunkt anfahren", fontWeight = FontWeight.Bold)
             }
-            commandMessage?.let { Text(it, color = Muted, fontSize = 13.sp) }
+            commandMessage?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp) }
         }
     }
     if (showMaintenanceConfirm) {
@@ -1932,7 +1932,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                     adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
                     else -> "Nicht verbunden"
                 },
-                color = if (connected && adapter && error == 0.0) text else Muted,
+                color = if (connected && adapter && error == 0.0) text else MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.SemiBold
             )
             Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp)
@@ -1980,7 +1980,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                             adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
                             else -> "Nicht verbunden"
                         },
-                        color = if (connected && adapter && error == 0.0) text else Muted,
+                        color = if (connected && adapter && error == 0.0) text else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
@@ -1988,10 +1988,10 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                 }
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }
-            if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = Muted, fontSize = 12.sp)
+            if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
         CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
-            if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = Muted)
+            if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             else {
                 rooms.chunked(3).forEach { roomRow ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -2015,7 +2015,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("start", "Reinigungsstart") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Start") }; OutlinedButton(onClick = { command("pause", "Pause") }, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Pause, null); Text("Pause") } }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) { OutlinedButton(onClick = { command("resume", "Fortsetzen") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.PlayArrow, null); Text("Weiter") }; OutlinedButton(onClick = { command("dock", "Rückkehrbefehl") }, enabled = adapter && !busy, modifier = Modifier.weight(1f).height(52.dp)) { Icon(Icons.Default.Home, null); Text("Laden") } }
-            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth()); message?.let { Text(it, color = Muted, fontSize = 13.sp) }
+            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth()); message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp) }
         }
         CardBlock(panel, text, "Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
             Text("Reinigungsart · " + (sweep?.let { roidmiSweepLabel(it.toInt()) } ?: "—"), color = text, fontWeight = FontWeight.SemiBold)
@@ -2043,7 +2043,7 @@ private fun HomeScreen(
         val roomItems = (devices + lights).filter {
             if (selectedRoom == "Nicht zugeordnet") it.room.isBlank() || it.room == "Nicht zugeordnet" else it.room == selectedRoom
         }.distinctBy { it.stateId ?: it.name }
-        if (roomItems.isEmpty()) Text("In diesem Raum sind noch keine Geräte zugeordnet.", color = Muted)
+        if (roomItems.isEmpty()) Text("In diesem Raum sind noch keine Geräte zugeordnet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         roomItems.forEach { item ->
             var expanded by remember(item.stateId) { mutableStateOf(false) }
             var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
@@ -2053,10 +2053,10 @@ private fun HomeScreen(
             CardBlock(panel, text, item.name, item.room + " · " + if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet",
                 if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                    Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     Switch(checked = item.initialOn, enabled = item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                 }
-                if (item.powerWatts != null) Text("Leistung: " + String.format(java.util.Locale.GERMANY, "%.1f W", item.powerWatts), color = Muted, fontSize = 12.sp)
+                if (item.powerWatts != null) Text("Leistung: " + String.format(java.util.Locale.GERMANY, "%.1f W", item.powerWatts), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 if (item.kind == "light" && (item.brightnessId != null || item.colorTempId != null || item.hueId != null)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = { expanded = !expanded }) {
@@ -2119,8 +2119,8 @@ private fun HomeScreen(
     CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
         if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
         else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
-        else Text("Status unbekannt – noch keine gültige Sensormeldung.", color = Muted, fontSize = 12.sp)
-        Text(if (floodBatteryKnown) "Batterie: ${floodBattery}%" else "Batteriestand unbekannt", color = Muted, fontSize = 11.sp)
+        else Text("Status unbekannt – noch keine gültige Sensormeldung.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Text(if (floodBatteryKnown) "Batterie: ${floodBattery}%" else "Batteriestand unbekannt", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
     }
     
 }
@@ -2131,12 +2131,12 @@ private fun FavoritesScreen(items: List<DeviceItem>, favoriteIds: Set<String>, f
     Text("Favoriten", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     val byId = items.filter { it.stateId != null && it.stateId in favoriteIds }.associateBy { it.stateId!! }
     val ids = favoriteOrder.filter { it in byId.keys } + (byId.keys - favoriteOrder.toSet()).sorted()
-    if (ids.isEmpty()) Text("Noch keine Favoriten. Öffne die Gerätebearbeitung und tippe auf den Stern.", color = Muted)
+    if (ids.isEmpty()) Text("Noch keine Favoriten. Öffne die Gerätebearbeitung und tippe auf den Stern.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     ids.forEachIndexed { index, id ->
         val item = byId[id] ?: return@forEachIndexed
         CardBlock(panel, text, item.name, item.room + " · " + item.detail, Icons.Default.Star, action = { onEdit(item) }, actionIcon = Icons.Default.Edit) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f), fontSize = 12.sp)
+                Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f), fontSize = 12.sp)
                 if (item.writable) Switch(checked = item.initialOn, onCheckedChange = { onSwitch(item, it) })
                 IconButton(onClick = { onMove(id, -1) }, enabled = index > 0) { Icon(Icons.Default.KeyboardArrowUp, "Nach oben") }
                 IconButton(onClick = { onMove(id, 1) }, enabled = index < ids.lastIndex) { Icon(Icons.Default.KeyboardArrowDown, "Nach unten") }
@@ -2153,9 +2153,9 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
     val watts = measured.sumOf { it.powerWatts ?: 0.0 }
     CardBlock(panel, text, "Aktuelle Gesamtleistung", "Verfügbare Messwerte", Icons.Default.Bolt) {
         Text(String.format(java.util.Locale.GERMANY, "%.1f W", watts), fontSize = 25.sp, fontWeight = FontWeight.Bold, color = Blue)
-        Text("${measured.size} Geräte mit aktuellem Leistungswert", color = Muted, fontSize = 12.sp)
+        Text("${measured.size} Geräte mit aktuellem Leistungswert", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
-    if (measured.isEmpty()) Text("Aktuell sind keine echten Leistungswerte verfügbar.", color = Muted)
+    if (measured.isEmpty()) Text("Aktuell sind keine echten Leistungswerte verfügbar.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     items.filter { it.powerId != null }.forEach { item ->
         CardBlock(panel, text, item.name, item.room, Icons.Default.Power) {
             Text(item.powerWatts?.let { String.format(java.util.Locale.GERMANY, "%.1f W", it) } ?: "Leistungswert nicht verfügbar", color = text, fontSize = 15.sp)
@@ -2164,8 +2164,8 @@ private fun EnergyScreen(items: List<DeviceItem>, price: String, onPrice: (Strin
                 val unit = item.energyUnit?.ifBlank { "Wh" } ?: "Wh"
                 val kwh = when (unit.lowercase()) { "kwh" -> energy; "wh" -> energy / 1000.0; else -> null }
                 val energyText = if (unit.equals("kWh", true)) String.format(java.util.Locale.GERMANY, "%.2f kWh", energy) else String.format(java.util.Locale.GERMANY, "%.0f %s", energy, unit)
-                Text("Gesamtverbrauch: " + energyText, color = Muted, fontSize = 12.sp)
-            } else Text("Gesamtverbrauch: kein Energiedatenpunkt verfügbar", color = Muted, fontSize = 11.sp)
+                Text("Gesamtverbrauch: " + energyText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            } else Text("Gesamtverbrauch: kein Energiedatenpunkt verfügbar", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
@@ -2176,7 +2176,7 @@ private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: 
         Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(accent), contentAlignment = Alignment.Center) {
             Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
         }
-        Text(title, fontSize = 12.sp, color = Muted)
+        Text(title, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = text)
     }
 }
@@ -2203,7 +2203,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(subtitle, color = Muted, fontSize = 10.sp)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             }
             if (action != null) IconButton(onClick = action, modifier = Modifier.size(32.dp)) { Icon(actionIcon, null, tint = Blue, modifier = Modifier.size(18.dp)) }
         }
@@ -2224,11 +2224,11 @@ private fun DeviceRow(item: DeviceItem, panel: Color, text: Color, compact: Bool
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(item.name, color = text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(item.subtitle, color = Muted, fontSize = 11.sp)
+            Text(item.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(if (item.initialOn) "Ein" else "Aus", color = if (item.initialOn) Green else Muted, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-            if (item.detail.isNotBlank()) Text(item.detail, color = Muted, fontSize = 10.sp)
+            Text(if (item.initialOn) "Ein" else "Aus", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            if (item.detail.isNotBlank()) Text(item.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
         }
         Switch(checked = item.initialOn, onCheckedChange = { onClick() })
     }
@@ -2246,8 +2246,8 @@ private fun LightsScreen(
 ) {
     Text("Licht", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
     RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
-    if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
-    else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe die Hue-Objekte unter hue.0.", color = Muted)
+    if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe die Hue-Objekte unter hue.0.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     val visibleLights = lights.filter { selectedRoom == null || it.room == selectedRoom }
     val grouped = visibleLights.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
     val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
@@ -2286,7 +2286,7 @@ private fun LightsScreen(
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = Muted, fontSize = 11.sp) }
+                        Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -2298,7 +2298,7 @@ private fun LightsScreen(
                     if (expanded) {
                     if (item.brightnessId != null) {
                         if (item.currentBrightness == null) {
-                            Text("Aktuelle Helligkeit wird geladen …", color = Muted, fontSize = 12.sp)
+                            Text("Aktuelle Helligkeit wird geladen …", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         } else {
                             Text("Aktuelle Helligkeit: ${brightnessPercent.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
                             Slider(value = brightnessPercent, onValueChange = { brightnessPercent = it }, valueRange = 1f..100f, enabled = connected,
@@ -2378,7 +2378,7 @@ private fun LightsScreen(
                         Text(
                             if (currentMired != null && currentMired > 0.0) "Aktuelle Farbtemperatur: ${(1_000_000.0 / currentMired).toInt()} K"
                             else "Aktuelle Farbtemperatur wird geladen …",
-                            color = if (currentMired != null && currentMired > 0.0) text else Muted,
+                            color = if (currentMired != null && currentMired > 0.0) text else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text("Farbtemperatur einstellen", color = text, fontWeight = FontWeight.SemiBold)
@@ -2399,11 +2399,11 @@ private fun LightsScreen(
                                 Box(Modifier.size(28.dp).clip(CircleShape).background(previewColor))
                                 Column {
                                     Text("Aktuelle Farbe", color = text, fontWeight = FontWeight.SemiBold)
-                                    Text("Farbton ${hue.toInt()}° · Sättigung ${saturation.toInt()}%", color = Muted, fontSize = 12.sp)
+                                    Text("Farbton ${hue.toInt()}° · Sättigung ${saturation.toInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                                 }
                             }
                         } else {
-                            Text("Aktuelle Farbe wird geladen …", color = Muted, fontSize = 12.sp)
+                            Text("Aktuelle Farbe wird geladen …", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                         }
                         Text("Farbton einstellen", color = text, fontWeight = FontWeight.SemiBold)
                         if (hueAvailable) {
@@ -2432,7 +2432,7 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
             if (unassigned.isEmpty()) {
                 Text("Alle Geräte haben bereits einen Raum.", color = Green, fontSize = 13.sp)
             } else {
-                Text("Diese Geräte brauchen noch einen Raum:", color = Muted, fontSize = 12.sp)
+                Text("Diese Geräte brauchen noch einen Raum:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 unassigned.forEach { item ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFFFFF1D6)).clickable { onEditDevice(item) }.padding(horizontal = 10.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.WarningAmber, null, tint = Color(0xFFB66A00))
@@ -2441,12 +2441,12 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
                         Icon(Icons.Default.Edit, null, tint = Color(0xFFB66A00))
                     }
                 }
-                Text("Tippe auf ein Gerät, um es zuzuweisen.", color = Muted, fontSize = 11.sp)
+                Text("Tippe auf ein Gerät, um es zuzuweisen.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
         }
     }
-    if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = Muted)
-    else if (devices.isEmpty()) Text("Noch keine Shelly-Geräte gefunden.", color = Muted)
+    if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    else if (devices.isEmpty()) Text("Noch keine Shelly-Geräte gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     val grouped = visibleDevices.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
     val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
     roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
@@ -2476,9 +2476,9 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Column(Modifier.weight(1f)) {
                             Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text, fontWeight = FontWeight.SemiBold)
-                            if (item.powerWatts != null) Text("Leistung: ${"%.1f".format(item.powerWatts)} W", color = Muted, fontSize = 12.sp)
-                            Text(item.stateId ?: "", color = Muted, fontSize = 9.sp)
-                            if (!item.writable) Text("Schalten aus Sicherheitsgründen gesperrt", color = Muted, fontSize = 10.sp)
+                            if (item.powerWatts != null) Text("Leistung: ${"%.1f".format(item.powerWatts)} W", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            Text(item.stateId ?: "", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp)
+                            if (!item.writable) Text("Schalten aus Sicherheitsgründen gesperrt", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                         }
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
@@ -2518,7 +2518,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
         val lamps = roomItems.filter { it.kind == "light" }
         val switches = roomItems.filter { it.kind in listOf("plug", "relay", "switch") }
         val otherItems = roomItems.filter { it.kind !in listOf("light", "plug", "relay", "switch") }
-        if (roomItems.isEmpty()) Text("Noch keine Geräte zugeordnet.", color = Muted)
+        if (roomItems.isEmpty()) Text("Noch keine Geräte zugeordnet.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (lamps.isNotEmpty()) {
             Text("Lampen", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = text)
             lamps.forEach { item ->
@@ -2534,7 +2534,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                        Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -2545,7 +2545,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                     }
                     if (expanded) {
                         if (item.brightnessId != null) {
-                            Text(if (item.currentBrightness != null) "Aktuelle Helligkeit: ${brightness.toInt()}%" else "Aktuelle Helligkeit wird geladen …", color = if (item.currentBrightness != null) text else Muted, fontWeight = FontWeight.SemiBold)
+                            Text(if (item.currentBrightness != null) "Aktuelle Helligkeit: ${brightness.toInt()}%" else "Aktuelle Helligkeit wird geladen …", color = if (item.currentBrightness != null) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                             if (item.currentBrightness != null) Slider(value = brightness, onValueChange = { brightness = it }, valueRange = 1f..100f, enabled = connected,
                                 onValueChangeFinished = { onSetNumeric(item, item.brightnessId, brightness.toDouble() * 2.54) })
                             Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
@@ -2575,7 +2575,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
             switches.forEach { item ->
                 CardBlock(panel, text, item.name, "", Icons.Default.Power, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else Muted, modifier = Modifier.weight(1f))
+                        Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                         Switch(
                             checked = item.initialOn,
                             enabled = connected && item.writable && item.stateId != null,
@@ -2585,7 +2585,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                     if (item.powerWatts != null) {
                         Text(
                             "Aktuelle Leistungsaufnahme: " + "%.1f".format(java.util.Locale.GERMANY, item.powerWatts) + " W",
-                            color = Muted,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 13.sp
                         )
                     }
@@ -2597,7 +2597,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
             otherItems.forEach { item ->
                 CardBlock(panel, text, item.name, "", Icons.Default.Devices, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(item.detail.ifBlank { item.kind }, color = Muted, modifier = Modifier.weight(1f))
+                        Text(item.detail.ifBlank { item.kind }, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -2702,7 +2702,7 @@ private fun DeviceHealthScreen(items: List<DeviceItem>, connected: Boolean, conn
     val hasAlerts = !connected || missingPower.isNotEmpty() || (floodBatteryKnown && floodBattery < 20)
     CardBlock(panel, text, if (hasAlerts) "Prüfung erforderlich" else "Keine bekannten Probleme", if (hasAlerts) "Es gibt Hinweise, die geprüft werden sollten." else "Verbindung und verfügbare Messwerte sehen unauffällig aus.", if (hasAlerts) Icons.Default.Warning else Icons.Default.CheckCircle) {
         Text(if (connected) "ioBroker-Verbindung: verbunden" else "ioBroker-Verbindung: fehlgeschlagen", color = if (connected) Green else Color(0xFFD62828), fontSize = 13.sp)
-        if (!connected && connectionStatus.isNotBlank()) Text(connectionStatus, color = Muted, fontSize = 12.sp)
+        if (!connected && connectionStatus.isNotBlank()) Text(connectionStatus, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
     if (!connected) CardBlock(panel, text, "Verbindung prüfen", "HomePilot kann derzeit keine Daten abrufen", Icons.Default.WifiOff) {
         Text("Prüfe die ioBroker-Adresse und die Netzwerkverbindung. Bei Fernzugriff WireGuard manuell aktivieren.", color = text, fontSize = 13.sp)
@@ -2714,9 +2714,9 @@ private fun DeviceHealthScreen(items: List<DeviceItem>, connected: Boolean, conn
         Text("Batterie des Shelly Flood zeitnah prüfen.", color = text, fontSize = 13.sp)
     }
     if (missingPower.isEmpty() && (connected || !connected) && !(floodBatteryKnown && floodBattery < 20)) CardBlock(panel, text, "Messwerte", "Keine fehlenden Leistungswerte erkannt", Icons.Default.CheckCircle) {
-        Text("Es werden nur Hinweise angezeigt, die aus den tatsächlich vorhandenen Datenpunkten abgeleitet werden können.", color = Muted, fontSize = 12.sp)
+        Text("Es werden nur Hinweise angezeigt, die aus den tatsächlich vorhandenen Datenpunkten abgeleitet werden können.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
     }
-    Text("Ein fehlender Messwert bedeutet nicht automatisch, dass ein Gerät offline oder defekt ist. Geräte ohne zuverlässigen Online-Datenpunkt werden nicht pauschal als offline markiert.", color = Muted, fontSize = 12.sp)
+    Text("Ein fehlender Messwert bedeutet nicht automatisch, dass ein Gerät offline oder defekt ist. Geräte ohne zuverlässigen Online-Datenpunkt werden nicht pauschal als offline markiert.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
 }
 
 @Composable
@@ -2728,8 +2728,8 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
         else Text("Status unbekannt – noch keine gültige Sensormeldung erhalten.", color = text)
         Text(if (batteryKnown) "Batterie: $battery%" else "Batteriestand noch nicht verfügbar", color = text)
         temperature?.let { Text("Temperatur: " + String.format(java.util.Locale.GERMANY, "%.1f °C", it), color = text) }
-        Text("Der Sensor meldet sich nur gelegentlich. Ein fehlendes Online-Signal wird daher nicht als Defekt gewertet.", color = Muted, fontSize = 12.sp)
-        if (alarm) Text("Die Android-Benachrichtigung wird beim Empfang des Alarms ausgelöst, solange HomePilot die Sensordaten abfragt.", color = Muted, fontSize = 11.sp)
+        Text("Der Sensor meldet sich nur gelegentlich. Ein fehlendes Online-Signal wird daher nicht als Defekt gewertet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        if (alarm) Text("Die Android-Benachrichtigung wird beim Empfang des Alarms ausgelöst, solange HomePilot die Sensordaten abfragt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
     }
 }
 
@@ -2834,7 +2834,7 @@ private fun SettingsMenuSection(
         Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(Blue), contentAlignment = Alignment.Center) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(21.dp)) }
             Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) { Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp); Text(subtitle, color = Muted, fontSize = 11.sp) }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) { Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp); Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
             Icon(if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore, contentDescription = if (expanded) "Einklappen" else "Ausklappen", tint = Blue)
         }
         if (expanded) Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp), content = content)
@@ -2934,7 +2934,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Column(verticalArrangement=Arrangement.spacedBy(2.dp)) { listOf(listOf(15,30),listOf(60,0)).forEach { rowOptions ->
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { rowOptions.forEach { minutes ->
                 Row(Modifier.weight(1f).height(34.dp).clickable { onInactivityMinutes(minutes) },verticalAlignment=Alignment.CenterVertically) {
-                    Icon(if(inactivityMinutes==minutes) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,contentDescription=null,tint=if(inactivityMinutes==minutes) Blue else Muted,modifier=Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if(minutes==0) "Nie trennen" else "$minutes Min.",color=text,fontSize=12.sp)
+                    Icon(if(inactivityMinutes==minutes) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,contentDescription=null,tint=if(inactivityMinutes==minutes) Blue else MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if(minutes==0) "Nie trennen" else "$minutes Min.",color=text,fontSize=12.sp)
                 }
             } }
         } }
