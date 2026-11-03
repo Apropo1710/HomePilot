@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.delay
@@ -610,6 +611,9 @@ private fun HomePilotApp() {
     var selectedTab by remember { mutableStateOf(Tab.HOME) }
     var displayedTab by remember { mutableStateOf(Tab.HOME) }
     var expandedSettingsSection by remember { mutableStateOf<String?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
+    var appFontScale by remember { mutableFloatStateOf(prefs.getFloat("appFontScale", 1.0f).coerceIn(0.85f, 1.5f)) }
     val pageAlpha = remember { Animatable(1f) }
     LaunchedEffect(selectedTab) {
         if (displayedTab != selectedTab) {
@@ -649,8 +653,6 @@ private fun HomePilotApp() {
     var floodBatteryKnown by remember { mutableStateOf(false) }
     var floodKnown by remember { mutableStateOf(false) }
     var floodTemperature by remember { mutableStateOf<Double?>(null) }
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     val appScope = rememberCoroutineScope()
     var inactivityMinutes by remember { mutableIntStateOf(prefs.getInt("disconnectAfterMinutes", 30).coerceIn(0, 60)) }
     val isFreshInstall = remember {
@@ -1059,6 +1061,7 @@ private fun HomePilotApp() {
     val text = if (dark) DarkText else LightText
     val scheme = if (dark) darkColorScheme(primary = Color(0xFF78B9F3), secondary = Color(0xFF67D4A5), background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFF293747), onSurfaceVariant = Color(0xFFB2C1D0)) else lightColorScheme(primary = Blue, secondary = Green, background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFFE6EDF5), onSurfaceVariant = Muted, outline = Color(0xFFCBD5E1))
 
+    CompositionLocalProvider(LocalDensity provides LocalDensity.current.copy(fontScale = LocalDensity.current.fontScale * appFontScale)) {
     MaterialTheme(colorScheme = scheme) {
         Surface(Modifier.fillMaxSize(), color = bg) {
             if (!loginAccepted) {
@@ -1241,7 +1244,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; prefs.edit().putFloat("appFontScale", it).apply() }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -2790,6 +2793,7 @@ private fun HomePilotAccountLoginScreen(
         }
 
     }
+    }
 }
 
 @Composable
@@ -2842,7 +2846,7 @@ private fun SettingsMenuSection(
 }
 
 @Composable
-private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color, onBack: () -> Unit,
+private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color, fontScale: Float, onFontScale: (Float) -> Unit, onBack: () -> Unit,
     serverUrl: String, onServerUrl: (String) -> Unit, weatherCity: String, onWeatherCity: (String) -> Unit,
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
@@ -2921,6 +2925,18 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest={deleteHomePilotUser=null},title={Text("Benutzer wirklich löschen?")},text={Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.")},confirmButton={TextButton(onClick={onDeleteHomePilotAccount(account.username);deleteHomePilotUser=null}) { Text("Löschen") }},dismissButton={TextButton(onClick={deleteHomePilotUser=null}) { Text("Abbrechen") }}) }
     resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest={resetHomePilotUser=null},title={Text("Passwort zurücksetzen")},text={Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value=resetHomePilotPasswordValue,onValueChange={resetHomePilotPasswordValue=it},label={Text("Neues Passwort (min. 8 Zeichen)")},visualTransformation=if(showResetPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showResetPassword=!showResetPassword}) { Icon(if(showResetPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showResetPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(account.username,resetHomePilotPasswordValue);resetHomePilotUser=null}) { Text("Speichern") }},dismissButton={TextButton(onClick={resetHomePilotUser=null}) { Text("Abbrechen") }}) }
     SettingsMenuSection(panel,text,"App-Einstellungen","ioBroker-Verbindung, Hintergrund, Energiesparen und Version",Icons.Default.Settings,expandedSetting=="App-Einstellungen",{toggle("App-Einstellungen")}) {
+        Text("Schriftgröße",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
+        Text("Passt die Schrift in der gesamten App an.",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=12.sp)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
+            listOf(0.85f to "Klein",1.0f to "Normal",1.15f to "Groß",1.30f to "Sehr groß",1.50f to "Max.").forEach { (scale,label) ->
+                val selected = kotlin.math.abs(fontScale-scale)<0.01f
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(8.dp)).background(if(selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant).clickable { onFontScale(scale) }.padding(vertical=8.dp,horizontal=2.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                    Text(label,fontSize=10.sp,fontWeight=if(selected) FontWeight.Bold else FontWeight.Normal,color=if(selected) MaterialTheme.colorScheme.onPrimaryContainer else text,textAlign=TextAlign.Center)
+                    Text("${(scale*100).toInt()}%",fontSize=11.sp,fontWeight=if(selected) FontWeight.Bold else FontWeight.Normal,color=if(selected) MaterialTheme.colorScheme.onPrimaryContainer else text)
+                }
+            }
+        }
+        Divider()
         Text("ioBroker-Verbindung",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
         OutlinedTextField(value=serverUrl,onValueChange=onServerUrl,label={Text("Serveradresse")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
         val statusHasError=listOf("fehlgeschlagen","timeout","nicht geantwortet","send failed","Fehler","disconnected").any { status.contains(it,ignoreCase=true) }
