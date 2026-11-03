@@ -2371,7 +2371,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Text(title, color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                if (subtitle.isNotBlank()) Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             }
             if (action != null) IconButton(onClick = action, modifier = Modifier.size(32.dp)) { Icon(actionIcon, null, tint = Blue, modifier = Modifier.size(18.dp)) }
         }
