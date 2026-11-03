@@ -609,6 +609,7 @@ private fun HomePilotApp() {
     var dark by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableStateOf(Tab.HOME) }
     var displayedTab by remember { mutableStateOf(Tab.HOME) }
+    var expandedSettingsSection by remember { mutableStateOf<String?>(null) }
     val pageAlpha = remember { Animatable(1f) }
     LaunchedEffect(selectedTab) {
         if (displayedTab != selectedTab) {
@@ -677,16 +678,12 @@ private fun HomePilotApp() {
     var confirmDeleteRoom by remember { mutableStateOf<String?>(null) }
     var showHiddenDevices by remember { mutableStateOf(false) }
     var selectedRoom by remember { mutableStateOf<String?>(null) }
-    BackHandler(enabled = selectedRoom != null || selectedTab != Tab.HOME || tabHistory.isNotEmpty()) {
-        if (selectedRoom != null) {
-            selectedRoom = null
-        } else if (tabHistory.isNotEmpty()) {
-            selectedTab = tabHistory.last()
-            tabHistory = tabHistory.dropLast(1)
-        } else {
-            selectedTab = Tab.HOME
-        }
+    fun navigateBack() {
+        if (selectedRoom != null) selectedRoom = null
+        else if (tabHistory.isNotEmpty()) { selectedTab = tabHistory.last(); tabHistory = tabHistory.dropLast(1) }
+        else selectedTab = Tab.HOME
     }
+    BackHandler(enabled = selectedRoom != null || selectedTab != Tab.HOME || tabHistory.isNotEmpty()) { navigateBack() }
     var showRoomDialog by remember { mutableStateOf(false) }
     var roomNameInput by remember { mutableStateOf("") }
     var editDevice by remember { mutableStateOf<DeviceItem?>(null) }
@@ -1127,7 +1124,7 @@ private fun HomePilotApp() {
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Header(dark = dark, text = text, connected = connected, status = connectionStatus)
+                    Header(dark = dark, text = text, connected = connected, status = connectionStatus, showBack = selectedTab != Tab.HOME || selectedRoom != null, onBack = { navigateBack() })
                     if (showDemoNotice) {
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -1244,7 +1241,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, onBack = { navigateTo(Tab.HOME) }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -1527,8 +1524,9 @@ private fun HomePilotApp() {
 }
 
 @Composable
-private fun Header(dark: Boolean, text: Color, connected: Boolean, status: String) {
+private fun Header(dark: Boolean, text: Color, connected: Boolean, status: String, showBack: Boolean = false, onBack: () -> Unit = {}) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        if (showBack) IconButton(onClick = onBack, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.ArrowBack, contentDescription = "Zurück", tint = Blue) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("HOMEPILOT", color = Blue, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
@@ -2850,11 +2848,10 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
     inactivityMinutes: Int, onInactivityMinutes: (Int) -> Unit, onBatterySettings: () -> Unit,
     rooms: List<String>, onChooseRoom: (String) -> Unit,
-    homePilotAccount: HomePilotAccount?, homePilotAccounts: List<HomePilotAccount>, onHomePilotSwitch: () -> Unit, onAddHomePilotAccount: (String, String, String, String) -> Unit, onResetHomePilotPassword: (String, String) -> Unit, onDeleteHomePilotAccount: (String) -> Unit) {
-    var expandedSetting by remember { mutableStateOf<String?>(null) }
-    fun toggle(setting: String) { expandedSetting = if (expandedSetting == setting) null else setting }
+    homePilotAccount: HomePilotAccount?, homePilotAccounts: List<HomePilotAccount>, onHomePilotSwitch: () -> Unit, onAddHomePilotAccount: (String, String, String, String) -> Unit, onResetHomePilotPassword: (String, String) -> Unit, onDeleteHomePilotAccount: (String) -> Unit,
+    expandedSetting: String?, onExpandedSettingChange: (String?) -> Unit) {
+    fun toggle(setting: String) { onExpandedSettingChange(if (expandedSetting == setting) null else setting) }
     Row(Modifier.fillMaxWidth().padding(top=4.dp,bottom=12.dp),verticalAlignment=Alignment.CenterVertically) {
-        IconButton(onClick=onBack) { Icon(Icons.Default.ArrowBack,contentDescription="Zurück",tint=Blue) }
         Text("Einstellungen",fontSize=22.sp,fontWeight=FontWeight.Bold,color=text,modifier=Modifier.weight(1f))
         Text("Dark Mode",fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=text)
         Spacer(Modifier.width(8.dp))
