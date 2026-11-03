@@ -2605,12 +2605,11 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
                                 val idx = ids.indexOf(itemId)
                                 val target = (idx + shift).coerceIn(0, ids.lastIndex)
                                 if (idx >= 0 && target != idx) {
-                                    val moved = deviceOrder.remove(itemId)
-                                    if (moved == null) {
-                                        deviceOrder.addAll(ids.filter { it !in deviceOrder })
-                                    }
+                                    ids.filter { it !in deviceOrder }.forEach { deviceOrder.add(it) }
                                     deviceOrder.remove(itemId)
-                                    deviceOrder.add(target.coerceIn(0, deviceOrder.size), itemId)
+                                    val targetId = ids[target]
+                                    val insertAt = deviceOrder.indexOf(targetId).coerceAtLeast(0)
+                                    deviceOrder.add(insertAt, itemId)
                                     context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
                                         .putString("deviceCardOrder", deviceOrder.joinToString("|")).apply()
                                     dragOffset -= shift * threshold
