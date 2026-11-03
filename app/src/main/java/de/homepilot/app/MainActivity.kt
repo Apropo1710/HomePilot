@@ -2746,9 +2746,6 @@ private fun HomePilotAccountLoginScreen(
 
 @Composable
 private fun HomePilotLoginScreen(
-    username: String, onUsername: (String) -> Unit,
-    password: String, onPassword: (String) -> Unit,
-    serverUrl: String, onServerUrl: (String) -> Unit,
     status: String, loading: Boolean, onLogin: () -> Unit
 ) {
     val statusError = status.contains("fehlgeschlagen", ignoreCase = true) ||
