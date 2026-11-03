@@ -766,9 +766,17 @@ private fun HomePilotApp() {
     var sharedConfigRevision by remember { mutableStateOf(0L) }
     var userProfileLoaded by remember { mutableStateOf(false) }
     var userProfileRevision by remember { mutableStateOf(0L) }
+    var userProfileSyncToken by remember { mutableIntStateOf(0) }
+    val tileOrderPreferenceKeys = listOf(
+        "homeCardOrder", "lightCardOrder", "deviceCardOrder", "roomMenuOrder",
+        "roomLampOrder", "roomSwitchOrder", "roomOtherOrder", "settingsSectionOrder"
+    )
+    fun readLocalTileOrders(): Map<String, List<String>> = tileOrderPreferenceKeys.associateWith { key ->
+        prefs.getString(key, "").orEmpty().split("|").filter(String::isNotBlank)
+    }
     fun saveUserProfile() {
         if (!userProfileLoaded || !connected) return
-        val username = (homePilotAccount?.username ?: credentialStore.username()).trim()
+        val username = homePilotAccount?.username?.trim().orEmpty()
         if (username.isBlank()) return
         val nextRevision = userProfileRevision + 1L
         val profile = HomePilotUserProfile(
@@ -776,7 +784,8 @@ private fun HomePilotApp() {
             updatedAt = System.currentTimeMillis(),
             favoriteIds = favoriteIds,
             favoriteOrder = favoriteOrder,
-            disconnectTimeoutMinutes = inactivityMinutes
+            disconnectTimeoutMinutes = inactivityMinutes,
+            tileOrders = readLocalTileOrders()
         )
         val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
         ioClient.getJsonState(profileId) { remote, readError ->
@@ -794,6 +803,13 @@ private fun HomePilotApp() {
                 else connectionStatus = "ioBroker verbunden · persönliches HomePilot-Profil konnte nicht gespeichert werden: $error"
             }
         }
+    }
+    DisposableEffect(userProfileLoaded, connected) {
+        val orderListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key in tileOrderPreferenceKeys) saveUserProfile()
+        }
+        prefs.registerOnSharedPreferenceChangeListener(orderListener)
+        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(orderListener) }
     }
     fun saveSharedConfiguration() {
         if (!sharedConfigLoaded || !connected) return
@@ -869,9 +885,9 @@ private fun HomePilotApp() {
             applyCustomConfig()
             sharedConfigLoaded = true
 
-            val username = credentialStore.username().trim()
+            val username = homePilotAccount?.username?.trim().orEmpty()
             if (username.isBlank()) {
-                connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; persönliches Profil benötigt einen ioBroker-Benutzer."
+                connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; bitte mit einem HomePilot-Konto anmelden, um persönliche Einstellungen zu synchronisieren."
                 return@ensureJsonState
             }
             val localProfile = HomePilotUserProfile(
@@ -879,7 +895,8 @@ private fun HomePilotApp() {
                 updatedAt = System.currentTimeMillis(),
                 favoriteIds = favoriteIds,
                 favoriteOrder = favoriteOrder,
-                disconnectTimeoutMinutes = inactivityMinutes
+                disconnectTimeoutMinutes = inactivityMinutes,
+                tileOrders = readLocalTileOrders()
             )
             val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
             ioClient.ensureJsonState(profileId, "HomePilot profile: $username", localProfile.toJson()) { profileJson, _, profileError ->
@@ -896,12 +913,30 @@ private fun HomePilotApp() {
                 favoriteIds = profile.favoriteIds
                 favoriteOrder = profile.favoriteOrder
                 inactivityMinutes = profile.disconnectTimeoutMinutes
-                prefs.edit()
-                    .putStringSet("favoriteDevices", profile.favoriteIds)
-                    .putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
-                    .putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
-                    .apply()
+                val localOrders = readLocalTileOrders()
+                val ordersToApply = profile.tileOrders.filterKeys { it in tileOrderPreferenceKeys }
+                prefs.edit().apply {
+                    putStringSet("favoriteDevices", profile.favoriteIds)
+                    putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
+                    putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
+                    ordersToApply.forEach { (key, order) -> putString(key, order.joinToString("|")) }
+                    apply()
+                }
                 userProfileLoaded = true
+                userProfileSyncToken++
+                // Older profiles have no tile-order data. Keep this device's existing
+                // order and immediately seed it into the HomePilot account profile.
+                if (profile.tileOrders.isEmpty()) saveUserProfile()
+                else if (ordersToApply.size < tileOrderPreferenceKeys.size) {
+                    val merged = localOrders + profile.tileOrders
+                    prefs.edit().apply {
+                        tileOrderPreferenceKeys.forEach { key ->
+                            if (key !in profile.tileOrders) putString(key, merged[key].orEmpty().joinToString("|"))
+                        }
+                        apply()
+                    }
+                    saveUserProfile()
+                }
                 connectionStatus = if (created) {
                     "ioBroker verbunden · HomePilot-Konfiguration und Profil erstmalig migriert."
                 } else {
@@ -1094,14 +1129,14 @@ private fun HomePilotApp() {
                             try {
                                 val next = registry.createInitialAdmin(homePilotUsername, homePilotDisplayName, homePilotPassword.toCharArray())
                                 saveHomePilotRegistry(registry.revision, next) { saved, error ->
-                                    if (saved) { homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; prefs.edit().putString("homePilotRememberedUsername", next.accounts.first().username).apply(); homePilotPassword = ""; homePilotPasswordConfirmation = ""; initializeHomePilotSync() }
+                                    if (saved) { userProfileLoaded = false; userProfileRevision = 0L; homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; prefs.edit().putString("homePilotRememberedUsername", next.accounts.first().username).apply(); homePilotPassword = ""; homePilotPasswordConfirmation = ""; initializeHomePilotSync() }
                                     else connectionStatus = "Admin konnte nicht angelegt werden: " + error
                                 }
                             } catch (e: Exception) { connectionStatus = e.message ?: "Admin-Einrichtung fehlgeschlagen." }
                         } else {
                             val account = registry.authenticate(homePilotUsername, homePilotPassword.toCharArray())
                             if (account == null) connectionStatus = "HomePilot-Benutzername oder Passwort falsch."
-                            else { homePilotAccount = account; homePilotAuthenticated = true; prefs.edit().putString("homePilotRememberedUsername", account.username).apply(); homePilotPassword = ""; connectionStatus = "HomePilot angemeldet: " + account.displayName; initializeHomePilotSync() }
+                            else { userProfileLoaded = false; userProfileRevision = 0L; homePilotAccount = account; homePilotAuthenticated = true; prefs.edit().putString("homePilotRememberedUsername", account.username).apply(); homePilotPassword = ""; connectionStatus = "HomePilot angemeldet: " + account.displayName; initializeHomePilotSync() }
                         }
                     }
                 )
@@ -1152,7 +1187,7 @@ private fun HomePilotApp() {
                         Modifier.fillMaxWidth().graphicsLayer { alpha = pageAlpha.value },
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                    key(displayedTab) {
+                    key(displayedTab, homePilotAccount?.username, userProfileSyncToken) {
                     when (displayedTab) {
                         Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
@@ -1248,7 +1283,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; check(prefs.edit().putFloat("appFontScale", it).commit()) }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; check(prefs.edit().putFloat("appFontScale", it).commit()) }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { userProfileLoaded = false; userProfileRevision = 0L; prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -1287,7 +1322,7 @@ private fun HomePilotApp() {
                             status = connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
-                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
+                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { userProfileLoaded = false; userProfileRevision = 0L; homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
                     }
                     }
                     }
