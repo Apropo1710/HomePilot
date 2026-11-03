@@ -33,6 +33,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.border
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -3251,31 +3253,59 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         }
     }
     settingsSectionOrder.forEach { sectionId ->
-        Box(Modifier.fillMaxWidth().pointerInput(sectionId, settingsSectionOrder.toList()) {
-            detectVerticalDragGestures(
-                onDragStart = { draggingSettingsSection = sectionId; settingsDragOffset = 0f },
-                onVerticalDrag = { change, amount ->
-                    change.consume()
-                    settingsDragOffset += amount
-                    val index = settingsSectionOrder.indexOf(sectionId)
-                    val threshold = 150.dp.toPx()
-                    val shift = (settingsDragOffset / threshold).toInt()
-                    val target = (index + shift).coerceIn(0, settingsSectionOrder.lastIndex)
-                    if (index >= 0 && target != index) {
-                        val moved = settingsSectionOrder.removeAt(index)
-                        settingsSectionOrder.add(target, moved)
-                        settingsDragOffset -= shift * threshold
-                    }
-                },
-                onDragEnd = {
-                    context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
-                        .putString("settingsSectionOrder", settingsSectionOrder.joinToString("|")).apply()
-                    draggingSettingsSection = null; settingsDragOffset = 0f
-                },
-                onDragCancel = { draggingSettingsSection = null; settingsDragOffset = 0f }
-            )
-        }) {
+        val isDragging = draggingSettingsSection == sectionId
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .then(
+                    if (isDragging) Modifier
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+                        .border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(18.dp))
+                    else Modifier
+                )
+                .pointerInput(sectionId, settingsSectionOrder.toList()) {
+                    detectDragGesturesAfterLongPress(
+                        onDragStart = {
+                            draggingSettingsSection = sectionId
+                            settingsDragOffset = 0f
+                        },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            settingsDragOffset += amount.y
+                            val index = settingsSectionOrder.indexOf(sectionId)
+                            val threshold = 120.dp.toPx()
+                            val shift = (settingsDragOffset / threshold).toInt()
+                            val target = (index + shift).coerceIn(0, settingsSectionOrder.lastIndex)
+                            if (index >= 0 && target != index) {
+                                val moved = settingsSectionOrder.removeAt(index)
+                                settingsSectionOrder.add(target, moved)
+                                settingsDragOffset -= shift * threshold
+                            }
+                        },
+                        onDragEnd = {
+                            context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
+                                .putString("settingsSectionOrder", settingsSectionOrder.joinToString("|")).apply()
+                            draggingSettingsSection = null
+                            settingsDragOffset = 0f
+                        },
+                        onDragCancel = {
+                            draggingSettingsSection = null
+                            settingsDragOffset = 0f
+                        }
+                    )
+                }
+        ) {
             renderSettingsSection(sectionId)
+            if (isDragging) {
+                Text(
+                    "Verschieben …",
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(top = 4.dp, end = 10.dp)
+                )
+            }
         }
     }
     if(showOwnPasswordDialog && homePilotAccount!=null) AlertDialog(onDismissRequest={showOwnPasswordDialog=false},title={Text("Eigenes HomePilot-Passwort ändern")},text={Column { Text("Neues Passwort (mindestens 8 Zeichen)"); OutlinedTextField(value=ownHomePilotPassword,onValueChange={ownHomePilotPassword=it},singleLine=true,visualTransformation=if(showOwnPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showOwnPassword=!showOwnPassword}) { Icon(if(showOwnPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showOwnPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(homePilotAccount.username,ownHomePilotPassword);showOwnPasswordDialog=false}) { Text("Speichern") }},dismissButton={TextButton(onClick={showOwnPasswordDialog=false}) { Text("Abbrechen") }})
