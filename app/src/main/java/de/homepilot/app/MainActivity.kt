@@ -2853,12 +2853,12 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     homePilotAccount: HomePilotAccount?, homePilotAccounts: List<HomePilotAccount>, onHomePilotSwitch: () -> Unit, onAddHomePilotAccount: (String, String, String, String) -> Unit, onResetHomePilotPassword: (String, String) -> Unit, onDeleteHomePilotAccount: (String) -> Unit) {
     var expandedSetting by remember { mutableStateOf<String?>(null) }
     fun toggle(setting: String) { expandedSetting = if (expandedSetting == setting) null else setting }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Zurück", tint = Blue) }
-        Text("Einstellungen", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    }
-    SettingsMenuSection(panel,text,"Darstellung","Design und Farben",Icons.Default.Palette,expandedSetting=="Darstellung",{toggle("Darstellung")}) {
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("Dunkles Design",color=text,fontWeight=FontWeight.SemiBold); Text("Kann jederzeit umgeschaltet werden",color=Muted,fontSize=12.sp) }; Switch(checked=dark,onCheckedChange=onDark) }
+    Row(Modifier.fillMaxWidth().padding(top=4.dp,bottom=12.dp),verticalAlignment=Alignment.CenterVertically) {
+        IconButton(onClick=onBack) { Icon(Icons.Default.ArrowBack,contentDescription="Zurück",tint=Blue) }
+        Text("Einstellungen",fontSize=22.sp,fontWeight=FontWeight.Bold,color=text,modifier=Modifier.weight(1f))
+        Text("Dark Mode",fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=text)
+        Spacer(Modifier.width(8.dp))
+        Switch(checked=dark,onCheckedChange=onDark)
     }
     SettingsMenuSection(panel,text,"Geräte-Einstellungen","Geräte suchen, verwalten und Probleme prüfen",Icons.Default.Tune,expandedSetting=="Geräte-Einstellungen",{toggle("Geräte-Einstellungen")}) {
         Button(onClick=onSearchDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Search,null); Spacer(Modifier.width(8.dp)); Text("Geräte suchen") }
@@ -2883,20 +2883,24 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     var resetHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
     var deleteHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
     var resetHomePilotPasswordValue by remember { mutableStateOf("") }
-    SettingsMenuSection(panel,text,"HomePilot-Konto",homePilotAccount?.let { "${it.displayName} · ${if(it.role==HomePilotAccount.ADMIN) "Administrator" else "Benutzer"}" } ?: "Nicht angemeldet",Icons.Default.AccountCircle,expandedSetting=="HomePilot-Konto",{toggle("HomePilot-Konto")}) {
+    SettingsMenuSection(panel,text,"Benutzereinstellungen","Eigene Kontoeinstellungen und Benutzerverwaltung",Icons.Default.ManageAccounts,expandedSetting=="Benutzereinstellungen",{toggle("Benutzereinstellungen")}) {
+        Text("Eigene Kontoeinstellungen",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
+        Text(homePilotAccount?.let { "${it.displayName} · ${if(it.role==HomePilotAccount.ADMIN) "Administrator" else "Benutzer"}" } ?: "Nicht angemeldet",color=Muted,fontSize=12.sp)
         Text("HomePilot-Anmeldung ist unabhängig von ioBroker.",color=Muted,fontSize=12.sp)
         TextButton(onClick={ownHomePilotPassword="";showOwnPassword=false;showOwnPasswordDialog=true},modifier=Modifier.fillMaxWidth()) { Text("Eigenes Passwort ändern") }
         TextButton(onClick=onHomePilotSwitch,modifier=Modifier.fillMaxWidth()) { Text("HomePilot-Benutzer wechseln") }
-    }
-    if(homePilotAccount?.role==HomePilotAccount.ADMIN) SettingsMenuSection(panel,text,"HomePilot-Benutzerverwaltung","${homePilotAccounts.size} Konten",Icons.Default.ManageAccounts,expandedSetting=="HomePilot-Benutzerverwaltung",{toggle("HomePilot-Benutzerverwaltung")}) {
-        homePilotAccounts.forEach { account ->
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text(account.displayName,color=text,fontWeight=FontWeight.SemiBold); Text("${account.username} · ${if(account.role==HomePilotAccount.ADMIN) "Admin" else "Benutzer"}",color=Muted,fontSize=11.sp) }
-                TextButton(onClick={resetHomePilotUser=account;resetHomePilotPasswordValue="";showResetPassword=false}) { Text("Passwort") }
-                if(account.username!=homePilotAccount.username) TextButton(onClick={deleteHomePilotUser=account}) { Text("Löschen") }
+        if(homePilotAccount?.role==HomePilotAccount.ADMIN) {
+            Divider()
+            Text("HomePilot-Benutzerverwaltung · ${homePilotAccounts.size} Konten",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
+            homePilotAccounts.forEach { account ->
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) { Text(account.displayName,color=text,fontWeight=FontWeight.SemiBold); Text("${account.username} · ${if(account.role==HomePilotAccount.ADMIN) "Admin" else "Benutzer"}",color=Muted,fontSize=11.sp) }
+                    TextButton(onClick={resetHomePilotUser=account;resetHomePilotPasswordValue="";showResetPassword=false}) { Text("Passwort") }
+                    if(account.username!=homePilotAccount.username) TextButton(onClick={deleteHomePilotUser=account}) { Text("Löschen") }
+                }
             }
+            Button(onClick={showNewHomePilotUser=true;newHomePilotUsername="";newHomePilotDisplayName="";newHomePilotPassword="";newHomePilotPasswordConfirmation="";newHomePilotRole=HomePilotAccount.USER},modifier=Modifier.fillMaxWidth()) { Text("Benutzer hinzufügen") }
         }
-        Button(onClick={showNewHomePilotUser=true;newHomePilotUsername="";newHomePilotDisplayName="";newHomePilotPassword="";newHomePilotPasswordConfirmation="";newHomePilotRole=HomePilotAccount.USER},modifier=Modifier.fillMaxWidth()) { Text("Benutzer hinzufügen") }
     }
     if(showOwnPasswordDialog && homePilotAccount!=null) AlertDialog(onDismissRequest={showOwnPasswordDialog=false},title={Text("Eigenes HomePilot-Passwort ändern")},text={Column { Text("Neues Passwort (mindestens 8 Zeichen)"); OutlinedTextField(value=ownHomePilotPassword,onValueChange={ownHomePilotPassword=it},singleLine=true,visualTransformation=if(showOwnPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showOwnPassword=!showOwnPassword}) { Icon(if(showOwnPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showOwnPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(homePilotAccount.username,ownHomePilotPassword);showOwnPasswordDialog=false}) { Text("Speichern") }},dismissButton={TextButton(onClick={showOwnPasswordDialog=false}) { Text("Abbrechen") }})
     if(showNewHomePilotUser) Dialog(onDismissRequest={showNewHomePilotUser=false},properties=androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth=false)) {
@@ -2919,27 +2923,30 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     }
     deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest={deleteHomePilotUser=null},title={Text("Benutzer wirklich löschen?")},text={Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.")},confirmButton={TextButton(onClick={onDeleteHomePilotAccount(account.username);deleteHomePilotUser=null}) { Text("Löschen") }},dismissButton={TextButton(onClick={deleteHomePilotUser=null}) { Text("Abbrechen") }}) }
     resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest={resetHomePilotUser=null},title={Text("Passwort zurücksetzen")},text={Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value=resetHomePilotPasswordValue,onValueChange={resetHomePilotPasswordValue=it},label={Text("Neues Passwort (min. 8 Zeichen)")},visualTransformation=if(showResetPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showResetPassword=!showResetPassword}) { Icon(if(showResetPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showResetPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(account.username,resetHomePilotPasswordValue);resetHomePilotUser=null}) { Text("Speichern") }},dismissButton={TextButton(onClick={resetHomePilotUser=null}) { Text("Abbrechen") }}) }
-    SettingsMenuSection(panel,text,"ioBroker-Verbindung",if(connected) "Verbunden" else "Nicht verbunden",Icons.Default.Cloud,expandedSetting=="ioBroker-Verbindung",{toggle("ioBroker-Verbindung")}) {
-        OutlinedTextField(value=serverUrl,onValueChange=onServerUrl,label={Text("Serveradresse")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
-        val statusHasError=listOf("fehlgeschlagen","timeout","nicht geantwortet","send failed","Fehler","disconnected").any { status.contains(it,ignoreCase=true) }
-        val statusColor=when { statusHasError -> Color(0xFFD32F2F); connected && !status.contains("prüfe",ignoreCase=true) -> Green; else -> Muted }
-        Text(status,color=statusColor,fontSize=12.sp)
-        if(!connected) Button(onClick=onConnect,modifier=Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
-        Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).",color=Muted,fontSize=11.sp)
-    }
-    SettingsMenuSection(panel,text,"Verbindung im Hintergrund","Automatische Trennung bei Nichtbenutzung",Icons.Default.Timer,expandedSetting=="Verbindung im Hintergrund",{toggle("Verbindung im Hintergrund")}) {
-        Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.",color=Muted,fontSize=10.sp)
-        Column(verticalArrangement=Arrangement.spacedBy(2.dp)) { listOf(listOf(15,30),listOf(60,0)).forEach { rowOptions ->
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { rowOptions.forEach { minutes ->
-                Row(Modifier.weight(1f).height(30.dp).clickable { onInactivityMinutes(minutes) },verticalAlignment=Alignment.CenterVertically) {
-                    Icon(if(inactivityMinutes==minutes) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,contentDescription=null,tint=if(inactivityMinutes==minutes) Blue else Muted,modifier=Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if(minutes==0) "Nie trennen" else "$minutes Min.",color=text,fontSize=12.sp)
-                }
+    SettingsMenuSection(panel,text,"App-Einstellungen","ioBroker, Verbindung, Energiesparen und App-Version",Icons.Default.Settings,expandedSetting=="App-Einstellungen",{toggle("App-Einstellungen")}) {
+            SettingsMenuSection(panel,text,"ioBroker-Verbindung",if(connected) "Verbunden" else "Nicht verbunden",Icons.Default.Cloud,expandedSetting=="ioBroker-Verbindung",{toggle("ioBroker-Verbindung")}) {
+            OutlinedTextField(value=serverUrl,onValueChange=onServerUrl,label={Text("Serveradresse")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
+            val statusHasError=listOf("fehlgeschlagen","timeout","nicht geantwortet","send failed","Fehler","disconnected").any { status.contains(it,ignoreCase=true) }
+            val statusColor=when { statusHasError -> Color(0xFFD32F2F); connected && !status.contains("prüfe",ignoreCase=true) -> Green; else -> Muted }
+            Text(status,color=statusColor,fontSize=12.sp)
+            if(!connected) Button(onClick=onConnect,modifier=Modifier.fillMaxWidth()) { Text("Verbindung herstellen") }
+            Text("Dauerhafte WebSocket-Verbindung über ioBroker ws.0 (Port 8084).",color=Muted,fontSize=11.sp)
+        }
+            SettingsMenuSection(panel,text,"Verbindung im Hintergrund","Automatische Trennung bei Nichtbenutzung",Icons.Default.Timer,expandedSetting=="Verbindung im Hintergrund",{toggle("Verbindung im Hintergrund")}) {
+            Text("Beim Zurückkehren verbindet sich HomePilot automatisch erneut.",color=Muted,fontSize=10.sp)
+            Column(verticalArrangement=Arrangement.spacedBy(2.dp)) { listOf(listOf(15,30),listOf(60,0)).forEach { rowOptions ->
+                Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { rowOptions.forEach { minutes ->
+                    Row(Modifier.weight(1f).height(30.dp).clickable { onInactivityMinutes(minutes) },verticalAlignment=Alignment.CenterVertically) {
+                        Icon(if(inactivityMinutes==minutes) Icons.Default.RadioButtonChecked else Icons.Default.RadioButtonUnchecked,contentDescription=null,tint=if(inactivityMinutes==minutes) Blue else Muted,modifier=Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text(if(minutes==0) "Nie trennen" else "$minutes Min.",color=text,fontSize=12.sp)
+                    }
+                } }
             } }
-        } }
-    }
-    SettingsMenuSection(panel,text,"Energiesparen für HomePilot ausschalten","Für stabile ioBroker-Verbindung",Icons.Default.BatteryFull,expandedSetting=="Energiesparen für HomePilot ausschalten",{toggle("Energiesparen für HomePilot ausschalten")}) {
-        Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst.",color=Muted,fontSize=11.sp)
-        Button(onClick=onBatterySettings,modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(vertical=8.dp)) { Text("Android-App-Einstellungen öffnen") }
+        }
+            SettingsMenuSection(panel,text,"Energiesparen für HomePilot ausschalten","Für stabile ioBroker-Verbindung",Icons.Default.BatteryFull,expandedSetting=="Energiesparen für HomePilot ausschalten",{toggle("Energiesparen für HomePilot ausschalten")}) {
+            Text("Android darf HomePilot nicht pausieren, wenn du kurz zu einer anderen App wechselst.",color=Muted,fontSize=11.sp)
+            Button(onClick=onBatterySettings,modifier=Modifier.fillMaxWidth(),contentPadding=PaddingValues(vertical=8.dp)) { Text("Android-App-Einstellungen öffnen") }
+        }
+    
     }
     SettingsMenuSection(panel,text,"Wetter","5-Tage-Prognose auf der Startseite",Icons.Default.WbSunny,expandedSetting=="Wetter",{toggle("Wetter")}) {
         OutlinedTextField(value=weatherCity,onValueChange=onWeatherCity,label={Text("Ort oder Postleitzahl")},singleLine=true,modifier=Modifier.fillMaxWidth(),trailingIcon={InputConfirmIcon()})
