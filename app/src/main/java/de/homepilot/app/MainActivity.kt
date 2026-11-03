@@ -32,6 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -1569,11 +1570,11 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
                             onClick = { if (draggingRoom == null) action() },
                             modifier = Modifier.weight(1f).then(
                                 if (label in orderedRooms) Modifier.pointerInput(label, orderedRooms.toList()) {
-                                    androidx.compose.foundation.gestures.detectDragGestures(
+                                    detectVerticalDragGestures(
                                         onDragStart = { draggingRoom = label; dragOffset = 0f },
-                                        onDrag = { change, amount ->
+                                        onVerticalDrag = { change, dragAmount ->
                                             change.consume()
-                                            dragOffset += amount.y
+                                            dragOffset += dragAmount
                                             val current = orderedRooms.indexOf(label)
                                             val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.8f
                                             val delta = (dragOffset / threshold).toInt()
