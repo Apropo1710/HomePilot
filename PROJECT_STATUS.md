@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 3d320d5742bd048c112d60a5db0fed714cc644e8
-- App-Version / versionCode: **1.29.67 / 125**
-- Build-Zeit: 2026-11-03 19:50:37 UTC
+- Quellcommit des APK-Builds: 42e1e4ba08e86382d8dc6ab344a2615aa701e585
+- App-Version / versionCode: **1.29.68 / 126**
+- Build-Zeit: 2026-11-03 21:03:46 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13264754747, 11931197 Bytes
-- APK-SHA-256: 0872463168558660ec98cde39cd0c9f1d50e41755df38df39f7f063417748f42
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13271016989, 11946963 Bytes
+- APK-SHA-256: d3791b899ed927d273db370fa7040daf7914480feacbe81bd0cbbab2654bdc4c
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -234,4 +234,4 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Bereiche: Darstellung, Geräte-Einstellungen, Raumauswahl, ausgeblendete Geräte, Geräteprobleme, HomePilot-Konto, HomePilot-Benutzerverwaltung (nur Admin), ioBroker-Verbindung, Verbindung im Hintergrund, Energiesparen, Wetter und App-Version.
 - Es bleibt jeweils höchstens ein Einstellungsbereich gleichzeitig geöffnet.
 - Bestehende Funktionen, Dialoge, Eingabefelder und Updateprüfung bleiben erhalten.
-- Zielversion: 1.29.57 (versionCode 115); Smartphone-Test nach Release erforderlich.\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+- Zielversion: 1.29.57 (versionCode 115); Smartphone-Test nach Release erforderlich.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
