@@ -1598,7 +1598,7 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
     var draggingRoom by remember { mutableStateOf<String?>(null) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     val entries = orderedRooms.map { room -> room to { onSelectRoom(room) } } + extraItems
-    CardBlock(panel, text, "Raumauswahl", "Räume auswählen · länger drücken zum Sortieren", Icons.Default.HomeWork) {
+    CardBlock(panel, text, "Raumauswahl", "", Icons.Default.HomeWork) {
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             entries.chunked(3).forEach { rowItems ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -1606,13 +1606,16 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
                         val selected = label == selectedRoom
                         Button(
                             onClick = { if (draggingRoom == null) action() },
-                            modifier = Modifier.weight(1f).then(
+                            modifier = Modifier.weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .then(if (draggingRoom == label) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)) else Modifier)
+                            .then(
                                 if (label in orderedRooms) Modifier.pointerInput(label, orderedRooms.toList()) {
-                                    detectVerticalDragGestures(
+                                    detectDragGesturesAfterLongPress(
                                         onDragStart = { draggingRoom = label; dragOffset = 0f },
-                                        onVerticalDrag = { change, dragAmount ->
+                                        onDrag = { change, dragAmount ->
                                             change.consume()
-                                            dragOffset += dragAmount
+                                            dragOffset += dragAmount.y
                                             val current = orderedRooms.indexOf(label)
                                             val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.8f
                                             val delta = (dragOffset / threshold).toInt()
