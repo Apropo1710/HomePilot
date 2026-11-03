@@ -2794,6 +2794,7 @@ private fun HomePilotAccountLoginScreen(
 
     }
     }
+    }
 }
 
 @Composable
