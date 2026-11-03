@@ -32,9 +32,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.consume
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -1571,7 +1569,7 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
                             onClick = { if (draggingRoom == null) action() },
                             modifier = Modifier.weight(1f).then(
                                 if (label in orderedRooms) Modifier.pointerInput(label, orderedRooms.toList()) {
-                                    androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress(
+                                    androidx.compose.foundation.gestures.detectDragGestures(
                                         onDragStart = { draggingRoom = label; dragOffset = 0f },
                                         onDrag = { change, amount ->
                                             change.consume()
