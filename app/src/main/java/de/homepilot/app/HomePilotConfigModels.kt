@@ -115,7 +115,7 @@ internal data class HomePilotSharedConfig(
 }
 
 /**
- * Per-ioBroker-user preferences. Never merge this document into shared config.
+ * Per-HomePilot-account preferences. Never merge this document into shared config.
  */
 internal data class HomePilotUserProfile(
     val schemaVersion: Int = HomePilotSharedConfig.CURRENT_SCHEMA_VERSION,
@@ -174,7 +174,7 @@ internal data class HomePilotUserProfile(
 /** Encode arbitrary ioBroker usernames safely as a state/object ID segment. */
 internal fun homePilotProfileIdSegment(username: String): String {
     val normalized = username.trim()
-    require(normalized.isNotBlank()) { "ioBroker-Benutzername darf nicht leer sein" }
+    require(normalized.isNotBlank()) { "HomePilot-Benutzername darf nicht leer sein" }
     return normalized.map { char ->
         if (char.isLetterOrDigit() || char == '_' || char == '-') char else '_'
     }.joinToString("").take(80).ifBlank { "user" }
