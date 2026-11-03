@@ -2293,7 +2293,7 @@ private fun SummaryCard(modifier: Modifier, title: String, value: String, icon: 
 }
 
 @Composable
-private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String, icon: ImageVector, action: (() -> Unit)? = null, actionIcon: ImageVector = Icons.Default.ChevronRight, content: @Composable ColumnScope.() -> Unit) {
+private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String, icon: ImageVector, action: (() -> Unit)? = null, actionIcon: ImageVector = Icons.Default.ChevronRight, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
     val accent = when (icon) {
         Icons.Default.WaterDrop -> Color(0xFF159A9C)
         Icons.Default.Lightbulb -> Color(0xFFE6A323)
@@ -2306,7 +2306,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.RoomPreferences -> Color(0xFFE29A25)
         else -> Blue
     }
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(horizontal = 9.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(accent.copy(alpha = if (panel == Color.White) 0.20f else 0.30f)).padding(horizontal = 9.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(31.dp).clip(RoundedCornerShape(10.dp)).background(accent), contentAlignment = Alignment.Center) {
                 Icon(icon, null, tint = Color.White, modifier = Modifier.size(18.dp))
@@ -2359,11 +2359,19 @@ private fun LightsScreen(
     RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe die Hue-Objekte unter hue.0.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val context = LocalContext.current
+    val lightOrder = remember { mutableStateListOf<String>().apply {
+        val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("lightCardOrder", null)
+        addAll(saved?.split("|").orEmpty())
+    } }
     val visibleLights = lights.filter { selectedRoom == null || it.room == selectedRoom }
     val grouped = visibleLights.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
     val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
     roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
-        val roomItems = grouped[room].orEmpty().sortedBy { it.name.lowercase() }
+        val rawRoomItems = grouped[room].orEmpty()
+        val roomIds = rawRoomItems.map { it.stateId ?: it.name }
+        val roomItems = lightOrder.filter { it in roomIds }.mapNotNull { id -> rawRoomItems.find { (it.stateId ?: it.name) == id } } +
+            rawRoomItems.filter { (it.stateId ?: it.name) !in lightOrder }.sortedBy { it.name.lowercase() }
         val accent = when (room.lowercase()) {
             "wohnzimmer" -> Color(0xFF6C63C7)
             "küche" -> Color(0xFFE09A22)
@@ -2385,6 +2393,8 @@ private fun LightsScreen(
                 }
             }
             roomItems.forEach { item ->
+                val itemId = item.stateId ?: item.name
+                var dragOffset by remember(itemId) { mutableFloatStateOf(0f) }
                 var expanded by remember(item.stateId) { mutableStateOf(false) }
                 var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
@@ -2395,7 +2405,34 @@ private fun LightsScreen(
                 LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
                 LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
-                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
+                CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(item.stateId, roomItems.size) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dragOffset = 0f },
+                        onVerticalDrag = { change, amount ->
+                            change.consume()
+                            dragOffset += amount
+                            val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                            val shift = (dragOffset / threshold).toInt()
+                            if (shift != 0) {
+                                val ids = roomItems.map { it.stateId ?: it.name }
+                                val idx = ids.indexOf(itemId)
+                                val target = (idx + shift).coerceIn(0, ids.lastIndex)
+                                if (idx >= 0 && target != idx) {
+                                    ids.filter { it !in lightOrder }.forEach { lightOrder.add(it) }
+                                    lightOrder.remove(itemId)
+                                    val targetId = ids[target]
+                                    val insertAt = lightOrder.indexOf(targetId).coerceAtLeast(0)
+                                    lightOrder.add(insertAt, itemId)
+                                    context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
+                                        .putString("lightCardOrder", lightOrder.joinToString("|")).apply()
+                                    dragOffset -= shift * threshold
+                                }
+                            }
+                        },
+                        onDragEnd = { dragOffset = 0f },
+                        onDragCancel = { dragOffset = 0f }
+                    )
+                }) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else text); Text(item.room, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
                         Switch(checked = item.initialOn, enabled = connected && item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
