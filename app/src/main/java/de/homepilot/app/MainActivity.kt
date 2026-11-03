@@ -2860,19 +2860,12 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     SettingsMenuSection(panel,text,"Darstellung","Design und Farben",Icons.Default.Palette,expandedSetting=="Darstellung",{toggle("Darstellung")}) {
         Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("Dunkles Design",color=text,fontWeight=FontWeight.SemiBold); Text("Kann jederzeit umgeschaltet werden",color=Muted,fontSize=12.sp) }; Switch(checked=dark,onCheckedChange=onDark) }
     }
-    SettingsMenuSection(panel,text,"Geräte-Einstellungen","Geräte suchen und Bedienseiten öffnen",Icons.Default.Tune,expandedSetting=="Geräte-Einstellungen",{toggle("Geräte-Einstellungen")}) {
+    SettingsMenuSection(panel,text,"Geräte-Einstellungen","Geräte suchen, verwalten und Probleme prüfen",Icons.Default.Tune,expandedSetting=="Geräte-Einstellungen",{toggle("Geräte-Einstellungen")}) {
         Button(onClick=onSearchDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Search,null); Spacer(Modifier.width(8.dp)); Text("Geräte suchen") }
         Button(onClick=onOpenLights,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Lightbulb,null); Spacer(Modifier.width(8.dp)); Text("Lichtseite") }
         Button(onClick=onOpenDevices,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.Devices,null); Spacer(Modifier.width(8.dp)); Text("Geräteseite") }
         Button(onClick=onOpenRooms,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HomeWork,null); Spacer(Modifier.width(8.dp)); Text("Raumseite") }
-    }
-    SettingsMenuSection(panel,text,"Raumauswahl","Direkt zu einem Raum wechseln",Icons.Default.HomeWork,expandedSetting=="Raumauswahl",{toggle("Raumauswahl")}) {
-        RoomMenu(rooms,null,panel,text,onChooseRoom,listOf("Ohne Raum" to { onChooseRoom("Nicht zugeordnet") }))
-    }
-    SettingsMenuSection(panel,text,"Ausgeblendete Geräte","Ausgeblendete Geräte verwalten",Icons.Default.VisibilityOff,expandedSetting=="Ausgeblendete Geräte",{toggle("Ausgeblendete Geräte")}) {
-        Button(onClick=onShowHidden,modifier=Modifier.fillMaxWidth()) { Text("Ausgeblendete Geräte verwalten") }
-    }
-    SettingsMenuSection(panel,text,"Geräteprobleme","Fehlende Messwerte und Warnungen",Icons.Default.HealthAndSafety,expandedSetting=="Geräteprobleme",{toggle("Geräteprobleme")}) {
+        Button(onClick=onShowHidden,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.VisibilityOff,null); Spacer(Modifier.width(8.dp)); Text("Ausgeblendete Geräte verwalten") }
         Button(onClick=onOpenHealth,modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.HealthAndSafety,null); Spacer(Modifier.width(8.dp)); Text("Problemübersicht öffnen") }
     }
     var showOwnPasswordDialog by remember { mutableStateOf(false) }
