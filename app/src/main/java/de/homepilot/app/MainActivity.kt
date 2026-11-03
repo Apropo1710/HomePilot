@@ -717,7 +717,7 @@ private fun HomePilotApp() {
     val ioClient = remember { IoBrokerClient(credentialStore) }
     var ioBrokerUsername by remember { mutableStateOf(credentialStore.username()) }
     var ioBrokerPassword by remember { mutableStateOf(credentialStore.password()) }
-    var loginAccepted by remember { mutableStateOf(false) }
+    var loginAccepted by remember { mutableStateOf(true) }
     var homePilotAuthenticated by remember { mutableStateOf(false) }
     var homePilotRegistry by remember { mutableStateOf<HomePilotAccountRegistry?>(null) }
     var homePilotAccount by remember { mutableStateOf<HomePilotAccount?>(null) }
@@ -992,6 +992,9 @@ private fun HomePilotApp() {
             }
         }
     }
+
+    // Anonymous ioBroker WebSocket: connect automatically on app startup.
+    LaunchedEffect(Unit) { connectToIoBroker() }
 
     val hostActivity = context as? ComponentActivity
     DisposableEffect(hostActivity, inactivityMinutes, serverUrl) {
