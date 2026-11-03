@@ -2852,15 +2852,35 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
         Button(onClick = { showNewHomePilotUser = true; newHomePilotUsername = ""; newHomePilotDisplayName = ""; newHomePilotPassword = ""; newHomePilotPasswordConfirmation = ""; newHomePilotRole = HomePilotAccount.USER }, modifier = Modifier.fillMaxWidth()) { Text("Benutzer hinzufügen") }
     }
     if (showOwnPasswordDialog && homePilotAccount != null) AlertDialog(onDismissRequest = { showOwnPasswordDialog = false }, title = { Text("Eigenes HomePilot-Passwort ändern") }, text = { Column { Text("Neues Passwort (mindestens 8 Zeichen)"); OutlinedTextField(value = ownHomePilotPassword, onValueChange = { ownHomePilotPassword = it }, singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()) } }, confirmButton = { TextButton(onClick = { onResetHomePilotPassword(homePilotAccount.username, ownHomePilotPassword); showOwnPasswordDialog = false }) { Text("Speichern") } }, dismissButton = { TextButton(onClick = { showOwnPasswordDialog = false }) { Text("Abbrechen") } })
-    if (showNewHomePilotUser) AlertDialog(onDismissRequest = { showNewHomePilotUser = false }, title = { Text("HomePilot-Benutzer anlegen") }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(value = newHomePilotUsername, onValueChange = { newHomePilotUsername = it }, label = { Text("Benutzername") }, singleLine = true)
-        OutlinedTextField(value = newHomePilotDisplayName, onValueChange = { newHomePilotDisplayName = it }, label = { Text("Anzeigename") }, singleLine = true)
-        OutlinedTextField(value = newHomePilotPassword, onValueChange = { newHomePilotPassword = it }, label = { Text("Passwort (min. 8 Zeichen)") }, singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
-        OutlinedTextField(value = newHomePilotPasswordConfirmation, onValueChange = { newHomePilotPasswordConfirmation = it }, label = { Text("Passwort wiederholen") }, singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation())
-        if (newHomePilotPasswordConfirmation.isNotEmpty() && newHomePilotPassword != newHomePilotPasswordConfirmation) Text("Die Passwörter stimmen nicht überein.", color = Color(0xFFD32F2F), fontSize = 12.sp)
-        Text("Rolle")
-        Row { TextButton(onClick = { newHomePilotRole = HomePilotAccount.USER }) { Text(if (newHomePilotRole == HomePilotAccount.USER) "✓ Benutzer" else "Benutzer") }; TextButton(onClick = { newHomePilotRole = HomePilotAccount.ADMIN }) { Text(if (newHomePilotRole == HomePilotAccount.ADMIN) "✓ Admin" else "Admin") } }
-    } }, confirmButton = { TextButton(onClick = { onAddHomePilotAccount(newHomePilotUsername, newHomePilotDisplayName, newHomePilotPassword, newHomePilotRole); showNewHomePilotUser = false }, enabled = newHomePilotUsername.isNotBlank() && newHomePilotPassword.length >= 8 && newHomePilotPasswordConfirmation.isNotBlank() && newHomePilotPassword == newHomePilotPasswordConfirmation) { Text("Anlegen") } }, dismissButton = { TextButton(onClick = { showNewHomePilotUser = false }) { Text("Abbrechen") } })
+    if (showNewHomePilotUser) Dialog(
+        onDismissRequest = { showNewHomePilotUser = false },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(0.92f).heightIn(max = 560.dp),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("HomePilot-Benutzer anlegen", style = MaterialTheme.typography.headlineSmall)
+                OutlinedTextField(value = newHomePilotUsername, onValueChange = { newHomePilotUsername = it }, label = { Text("Benutzername") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = newHomePilotDisplayName, onValueChange = { newHomePilotDisplayName = it }, label = { Text("Anzeigename") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = newHomePilotPassword, onValueChange = { newHomePilotPassword = it }, label = { Text("Passwort (min. 8 Zeichen)") }, singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = newHomePilotPasswordConfirmation, onValueChange = { newHomePilotPasswordConfirmation = it }, label = { Text("Passwort wiederholen") }, singleLine = true, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
+                if (newHomePilotPasswordConfirmation.isNotEmpty() && newHomePilotPassword != newHomePilotPasswordConfirmation) Text("Die Passwörter stimmen nicht überein.", color = Color(0xFFD32F2F), fontSize = 12.sp)
+                Text("Rolle")
+                Row { TextButton(onClick = { newHomePilotRole = HomePilotAccount.USER }) { Text(if (newHomePilotRole == HomePilotAccount.USER) "✓ Benutzer" else "Benutzer") }; TextButton(onClick = { newHomePilotRole = HomePilotAccount.ADMIN }) { Text(if (newHomePilotRole == HomePilotAccount.ADMIN) "✓ Admin" else "Admin") } }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { showNewHomePilotUser = false }) { Text("Abbrechen") }
+                    TextButton(onClick = { onAddHomePilotAccount(newHomePilotUsername, newHomePilotDisplayName, newHomePilotPassword, newHomePilotRole); showNewHomePilotUser = false }, enabled = newHomePilotUsername.isNotBlank() && newHomePilotPassword.length >= 8 && newHomePilotPasswordConfirmation.isNotBlank() && newHomePilotPassword == newHomePilotPasswordConfirmation) { Text("Anlegen") }
+                }
+            }
+        }
+    }
     deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest = { deleteHomePilotUser = null }, title = { Text("Benutzer wirklich löschen?") }, text = { Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.") }, confirmButton = { TextButton(onClick = { onDeleteHomePilotAccount(account.username); deleteHomePilotUser = null }) { Text("Löschen") } }, dismissButton = { TextButton(onClick = { deleteHomePilotUser = null }) { Text("Abbrechen") } }) }
     resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest = { resetHomePilotUser = null }, title = { Text("Passwort zurücksetzen") }, text = { Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value = resetHomePilotPasswordValue, onValueChange = { resetHomePilotPasswordValue = it }, label = { Text("Neues Passwort (min. 8 Zeichen)") }, visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation()) } }, confirmButton = { TextButton(onClick = { onResetHomePilotPassword(account.username, resetHomePilotPasswordValue); resetHomePilotUser = null }) { Text("Speichern") } }, dismissButton = { TextButton(onClick = { resetHomePilotUser = null }) { Text("Abbrechen") } }) }
     CardBlock(panel, text, "ioBroker-Verbindung", if (connected) "Verbunden" else "Nicht verbunden", Icons.Default.Cloud) {
