@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 87b3debcf338cc2cdc46824cc4d14ae44c9d14d8
-- App-Version / versionCode: **1.29.55 / 113**
-- Build-Zeit: 2026-11-03 02:35:51 UTC
+- Quellcommit des APK-Builds: b416838aa2c304376355adf068faf92f9b2fa033
+- App-Version / versionCode: **1.29.56 / 114**
+- Build-Zeit: 2026-11-03 03:08:05 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13198753479, 11917013 Bytes
-- APK-SHA-256: e49b8fe8651c7ce12ba6ce1bf2f67f6aaa8adc1d4da346b7f48480857eb0ef01
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13200234112, 11918627 Bytes
+- APK-SHA-256: 7a03b7d008e34ad122f25ce0e528a9cc250fb1f2a3da24f94558cf961f6b093d
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -227,4 +227,4 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Gemeinsame Raumauswahl wird in einer eigenen Kachel mit der Überschrift **Raumauswahl** dargestellt.
 - Die Kachel erscheint auf der Startseite sowie in den Licht-, Geräte- und Raumansichten.
 - In den Einstellungen kann ein Raum direkt gewählt werden; HomePilot öffnet anschließend die Raumansicht.
-- Version für diese Änderung: **1.29.56 (versionCode 114)**. Smartphone-Test steht nach dem CI-Build noch aus.
+- Version für diese Änderung: **1.29.56 (versionCode 114)**. Smartphone-Test steht nach dem CI-Build noch aus.\n
