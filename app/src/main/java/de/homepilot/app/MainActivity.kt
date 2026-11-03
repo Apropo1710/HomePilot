@@ -2016,18 +2016,6 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                 Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
             }
         }
-        CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoidmiActionButton("Start", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { command("start", "Reinigungsstart") }
-                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoidmiActionButton("Weiter", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("resume", "Fortsetzen") }
-                RoidmiActionButton("Laden", Icons.Default.Home, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("dock", "Rückkehrbefehl") }
-            }
-            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
-        }
         CardBlock(panel, text, "Saug/Wisch-Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
             Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -2058,6 +2046,18 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                     }
                 }
             }
+        }
+        CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RoidmiActionButton("Start", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { command("start", "Reinigungsstart") }
+                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RoidmiActionButton("Weiter", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("resume", "Fortsetzen") }
+                RoidmiActionButton("Laden", Icons.Default.Home, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("dock", "Rückkehrbefehl") }
+            }
+            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
         }
     }
 }
