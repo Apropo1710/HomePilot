@@ -1,6 +1,7 @@
 package de.homepilot.app
 
 import android.os.Bundle
+import android.view.WindowManager
 import android.content.Context
 import android.app.Notification
 import android.app.NotificationChannel
@@ -523,6 +524,7 @@ private class HomePilotAccountRepository(private val client: IoBrokerClient) {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         ensureWaterNotificationChannel()
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 7301)
@@ -2723,7 +2725,11 @@ private fun HomePilotAccountLoginScreen(
     loading: Boolean, status: String, onReload: () -> Unit, onLogin: () -> Unit
 ) {
     val setup = registry?.accounts?.isEmpty() == true
-    Column(Modifier.fillMaxSize().statusBarsPadding().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        Modifier.fillMaxSize().statusBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Icon(Icons.Default.Home, contentDescription = null, tint = Blue, modifier = Modifier.size(58.dp))
         Spacer(Modifier.height(12.dp))
         Text("HomePilot", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
