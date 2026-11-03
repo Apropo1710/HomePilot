@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -2185,14 +2186,52 @@ private fun HomeScreen(
         }
     }
     RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
-    WeatherForecastCard(city = weatherCity, panel = panel, text = text)
-    MovaHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenMova)
-    RoidmiHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenRoidmi)
-    CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
-        if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
-        else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
-        else Text("Status unbekannt – noch keine gültige Sensormeldung.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-        Text(if (floodBatteryKnown) "Batterie: ${floodBattery}%" else "Batteriestand unbekannt", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+    val context = LocalContext.current
+    val homeCardIds = listOf("weather", "mova", "roidmi", "safety")
+    val homeCardOrder = remember { mutableStateListOf<String>().apply {
+        val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("homeCardOrder", null)
+        val stored = saved?.split("|")?.filter { it in homeCardIds }.orEmpty()
+        addAll(stored + (homeCardIds - stored.toSet()))
+    } }
+    var draggingHomeCard by remember { mutableStateOf<String?>(null) }
+    var homeDragOffset by remember { mutableFloatStateOf(0f) }
+    homeCardOrder.forEach { cardId ->
+        Box(Modifier.fillMaxWidth().pointerInput(cardId, homeCardOrder.toList()) {
+            detectVerticalDragGestures(
+                onDragStart = { draggingHomeCard = cardId; homeDragOffset = 0f },
+                onVerticalDrag = { change, amount ->
+                    change.consume()
+                    homeDragOffset += amount
+                    val index = homeCardOrder.indexOf(cardId)
+                    val threshold = size.height.toFloat().coerceAtLeast(1f) * 0.75f
+                    val shift = (homeDragOffset / threshold).toInt()
+                    val targetIndex = (index + shift).coerceIn(0, homeCardOrder.lastIndex)
+                    if (index >= 0 && targetIndex != index) {
+                        val moved = homeCardOrder.removeAt(index)
+                        homeCardOrder.add(targetIndex, moved)
+                        homeDragOffset -= shift * threshold
+                    }
+                },
+                onDragEnd = {
+                    context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
+                        .putString("homeCardOrder", homeCardOrder.joinToString("|")).apply()
+                    draggingHomeCard = null; homeDragOffset = 0f
+                },
+                onDragCancel = { draggingHomeCard = null; homeDragOffset = 0f }
+            )
+        }) {
+            when (cardId) {
+                "weather" -> WeatherForecastCard(city = weatherCity, panel = panel, text = text)
+                "mova" -> MovaHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenMova)
+                "roidmi" -> RoidmiHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenRoidmi)
+                "safety" -> CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
+                    if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
+                    else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
+                    else Text("Status unbekannt – noch keine gültige Sensormeldung.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text(if (floodBatteryKnown) "Batterie: ${floodBattery}%" else "Batteriestand unbekannt", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
+            }
+        }
     }
     
 }
