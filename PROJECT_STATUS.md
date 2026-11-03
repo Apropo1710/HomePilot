@@ -228,3 +228,10 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Die Kachel erscheint auf der Startseite sowie in den Licht-, Geräte- und Raumansichten.
 - In den Einstellungen kann ein Raum direkt gewählt werden; HomePilot öffnet anschließend die Raumansicht.
 - Version für diese Änderung: **1.29.56 (versionCode 114)**. Smartphone-Test steht nach dem CI-Build noch aus.\n
+
+## Einstellungsseite – aufklappbare Menüpunkte (03.11.2026)
+- Alle bisherigen Einstellungen werden als kompakte, aufklappbare Menüpunkte angezeigt; beim Antippen öffnet sich jeweils der Inhalt, beim erneuten Antippen wird er geschlossen.
+- Bereiche: Darstellung, Geräte-Einstellungen, Raumauswahl, ausgeblendete Geräte, Geräteprobleme, HomePilot-Konto, HomePilot-Benutzerverwaltung (nur Admin), ioBroker-Verbindung, Verbindung im Hintergrund, Energiesparen, Wetter und App-Version.
+- Es bleibt jeweils höchstens ein Einstellungsbereich gleichzeitig geöffnet.
+- Bestehende Funktionen, Dialoge, Eingabefelder und Updateprüfung bleiben erhalten.
+- Zielversion: 1.29.57 (versionCode 115); Smartphone-Test nach Release erforderlich.
