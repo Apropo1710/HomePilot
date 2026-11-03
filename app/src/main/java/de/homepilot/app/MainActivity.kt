@@ -1875,11 +1875,11 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             zones.forEach { (id, info) ->
                 Row(Modifier.fillMaxWidth().clickable {
                     selectedZones = if (id in selectedZones) selectedZones - id else selectedZones + id
-                }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = id in selectedZones, onCheckedChange = { checked -> selectedZones = if (checked) selectedZones + id else selectedZones - id })
                     Column(Modifier.weight(1f)) {
-                        Text(info.first, color = text, fontWeight = FontWeight.SemiBold)
-                        Text("Zone $id · ${String.format(java.util.Locale.GERMANY, "%.1f", info.second)} m²", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                        Text(info.first, color = text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Zone $id · ${String.format(java.util.Locale.GERMANY, "%.1f", info.second)} m²", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
                 }
             }
