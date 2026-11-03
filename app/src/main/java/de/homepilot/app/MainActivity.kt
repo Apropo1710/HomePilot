@@ -1867,6 +1867,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
             }
         )
     }
+    }
 }
 
 private fun roidmiStateLabel(value: Int): String = when (value) {
@@ -2792,7 +2793,6 @@ private fun HomePilotAccountLoginScreen(
             }
         }
 
-    }
     }
     }
 }
