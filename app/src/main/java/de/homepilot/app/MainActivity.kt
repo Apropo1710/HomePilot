@@ -1599,6 +1599,7 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
     var dragOffset by remember { mutableFloatStateOf(0f) }
     val entries = orderedRooms.map { room -> room to { onSelectRoom(room) } } + extraItems
     CardBlock(panel, text, "Raumauswahl", "", Icons.Default.HomeWork) {
+        Spacer(Modifier.height(8.dp))
         Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
             entries.chunked(3).forEach { rowItems ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -1646,7 +1647,6 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
             }
         }
     }
-    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
