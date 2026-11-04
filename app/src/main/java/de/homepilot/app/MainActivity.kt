@@ -1951,9 +1951,9 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
 @Composable
 private fun robotBatteryColor(level: Double?, charging: Boolean): Color = when {
     level == null -> MaterialTheme.colorScheme.onSurface
+    level >= 100.0 -> Color(0xFF2E9B45)
     charging -> Color(0xFFFFB300)
     level <= 10.0 -> Color(0xFFD32F2F)
-    level >= 100.0 -> Color(0xFF2E9B45)
     else -> MaterialTheme.colorScheme.onSurface
 }
 
