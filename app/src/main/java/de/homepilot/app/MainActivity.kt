@@ -1646,6 +1646,7 @@ private fun RoomMenu(rooms: List<String>, selectedRoom: String?, panel: Color, t
             }
         }
     }
+    Spacer(Modifier.height(8.dp))
 }
 
 @Composable
@@ -1788,9 +1789,9 @@ private fun MovaHomeTile(serverUrl: String, connected: Boolean, client: IoBroker
             MovaIllustration(104.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(status, color = if (mowerStatus?.toInt() in listOf(1,3,12)) Green else text, fontWeight = FontWeight.SemiBold)
+                Text(status, color = if (mowerStatus?.toInt() in listOf(1,3,12)) Green else text, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 if (!connected) Text("Verbindung fehlt", color = Color(0xFFD62828), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                Text("Akku: ${battery?.let { "${it.toInt()} %" } ?: "—"}", color = text, fontSize = 13.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) { Text("Akku: ", color = text, fontSize = 13.sp); Text(battery?.let { "${it.toInt()} %" } ?: "—", color = robotBatteryColor(battery, mowerStatus?.toInt() == 6), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
                 Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             }
         }
@@ -1862,12 +1863,12 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
                 MovaIllustration(124.dp)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(statusLabel, color = if (mowing) Green else text, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                    Text(statusLabel, color = if (mowing) Green else text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     if (!connected) Text("Verbindung fehlt", color = Color(0xFFD62828), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Akku: ${battery?.let { "${it.toInt()} %" } ?: "—"}", color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) { Text("Akku: ", color = text, fontSize = 14.sp); Text(battery?.let { "${it.toInt()} %" } ?: "—", color = robotBatteryColor(battery, statusCode == 6), fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
                 }
             }
-            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }
+            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, statusCode == 6)) }
         }
         CardBlock(panel, text, "Mähzonen", "Eine oder mehrere Zonen auswählen und gezielt starten", Icons.Default.Map) {
             if (!connected) Text("Bitte zuerst die ioBroker-Verbindung herstellen.", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1947,6 +1948,15 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
     }
 }
 
+@Composable
+private fun robotBatteryColor(level: Double?, charging: Boolean): Color = when {
+    level == null -> MaterialTheme.colorScheme.onSurface
+    charging -> Color(0xFFFFB300)
+    level <= 10.0 -> Color(0xFFD32F2F)
+    level >= 100.0 -> Color(0xFF2E9B45)
+    else -> MaterialTheme.colorScheme.onSurface
+}
+
 private fun roidmiStateLabel(value: Int): String = when (value) {
     1 -> "Schläft"; 2 -> "Bereit"; 3 -> "Pausiert"; 4 -> "Reinigt"; 5 -> "Fährt zur Ladestation"
     6 -> "Lädt"; 7 -> "Fehler"; 8 -> "Fernsteuerung"; 9 -> "Vollständig geladen"
@@ -1989,7 +1999,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
 }
 @Composable private fun RoidmiHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }
+    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
             client.cachedNumber("roidmi.0.battery")?.let { battery = it }
@@ -1997,6 +2007,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             while (true) {
                 client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> if (v != null) adapter = v }
                 client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it ?: battery }
+                client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it ?: charging }
                 client.getNumericState(serverUrl, "roidmi.0.state") { state = it ?: state }
                 client.getNumericState(serverUrl, "roidmi.0.errorCode") { error = it ?: error }
                 delay(30_000)
@@ -2014,9 +2025,10 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                     else -> "Nicht verbunden"
                 },
                 color = if (connected && adapter && error == 0.0) text else MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
             )
-            Text("Akku: " + (battery?.let { it.toInt().toString() + " %" } ?: "—"), color = text, fontSize = 13.sp)
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("Akku: ", color = text, fontSize = 13.sp); Text(battery?.let { it.toInt().toString() + " %" } ?: "—", color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0), fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
             Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         } }
     }
@@ -2063,12 +2075,12 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                         },
                         color = if (connected && adapter && error == 0.0) text else MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+                        fontSize = 14.sp
                     )
-                    Text("Akku: " + batteryText, color = text, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Row(verticalAlignment = Alignment.CenterVertically) { Text("Akku: ", color = text, fontSize = 14.sp); Text(batteryText, color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0), fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
                 }
             }
-            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth()) }
+            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0)) }
             if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
         CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
