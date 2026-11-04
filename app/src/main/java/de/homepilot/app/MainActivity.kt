@@ -1177,7 +1177,7 @@ private fun HomePilotApp() {
                         ) {
                             Icon(Icons.Default.Info, null, tint = Color(0xFFB7791F), modifier = Modifier.size(19.dp))
                             Column(Modifier.weight(1f)) {
-                                Text("VORSCHAU-MODUS", fontWeight = FontWeight.Bold, fontSize = 11.sp, color = if (dark) Color(0xFFFFD78A) else Color(0xFF80520A))
+                                Text("VORSCHAU-MODUS", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = if (dark) Color(0xFFFFD78A) else Color(0xFF80520A))
                                 Text("Beispieldaten · Tippen zum Ausblenden", fontSize = 12.sp, color = if (dark) Color(0xFFFFE7B0) else Color(0xFF80520A))
                             }
                             Icon(Icons.Default.Close, null, tint = Color(0xFFB7791F), modifier = Modifier.size(18.dp))
@@ -1554,7 +1554,7 @@ private fun HomePilotApp() {
                                 } else navigateTo(tab)
                             },
                             icon = { Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp)) },
-                            label = { Text(tab.label, fontSize = 9.sp, maxLines = 1) },
+                            label = { Text(tab.label, fontSize = 11.sp, maxLines = 1) },
                             alwaysShowLabel = true
                         )
                     }
@@ -1745,7 +1745,7 @@ private fun WeatherForecastCard(city: String, panel: Color, text: Color) {
                     day.rain?.let { Text("$it%", color = Blue, fontSize = 11.sp, modifier = Modifier.width(30.dp), textAlign = TextAlign.End) }
                 }
             }
-            if (days.isNotEmpty()) Text("Regenwahrscheinlichkeit rechts · Quelle: Open-Meteo", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+            if (days.isNotEmpty()) Text("Regenwahrscheinlichkeit rechts · Quelle: Open-Meteo", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
         }
     }
 }
@@ -3415,6 +3415,6 @@ private fun RoidmiLevelChoice(label: String, selected: Boolean, enabled: Boolean
     val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     Column(modifier.heightIn(min = 43.dp).clip(RoundedCornerShape(9.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 2.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = fg.copy(alpha = if (enabled) 1f else 0.55f), modifier = Modifier.size(15.dp))
-        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 9.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 10.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
     }
 }
