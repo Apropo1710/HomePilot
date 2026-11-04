@@ -1835,7 +1835,7 @@ private fun MovaDetailScreen(serverUrl: String, connected: Boolean, client: IoBr
                 client.getNumericState(serverUrl, "dreame.0.-112285430.status.status") { mowerStatus = it }
                 client.getNumericState(serverUrl, "dreame.0.-112285430.status.blade-health") { bladeHealth = it }
                 client.getNumericState(serverUrl, "dreame.0.-112285430.status.robot-maintenance-health") { maintenanceHealth = it }
-                delay(30_000)
+                delay(5_000)
             }
         }
     }
@@ -2057,7 +2057,24 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     }
     val rooms = remember(roomsRaw) { runCatching { val j = org.json.JSONArray(roomsRaw ?: "[]"); (0 until j.length()).mapNotNull { i -> val o = j.optJSONObject(i) ?: return@mapNotNull null; val id = o.optInt("id", -1); val name = o.optString("name").trim(); if (id > 0 && name.isNotBlank()) id to name else null } }.getOrDefault(emptyList()) }
     fun command(id: String, label: String) { if (!connected || !adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
-    fun setting(id: String, value: Int, label: String) { if (!connected || !adapter) return; client.setNumericState(serverUrl, "roidmi.0." + id, value.toDouble()) { ok, msg -> message = if (ok) label + " gespeichert." else msg } }
+    fun setting(id: String, value: Int, label: String) {
+        if (!connected || !adapter) return
+        val oldValue = when (id) { "fanSpeed" -> fan; "sweepType" -> sweep; "waterLevel" -> water; else -> null }
+        // Optimistic UI: reflect the tap immediately while ioBroker processes the write.
+        when (id) { "fanSpeed" -> fan = value.toDouble(); "sweepType" -> sweep = value.toDouble(); "waterLevel" -> water = value.toDouble() }
+        client.setNumericState(serverUrl, "roidmi.0." + id, value.toDouble()) { ok, msg ->
+            if (ok) {
+                message = label + " gespeichert."
+                // Read back the adapter's authoritative value after the write acknowledgement.
+                client.getNumericState(serverUrl, "roidmi.0." + id) { actual ->
+                    if (actual != null) when (id) { "fanSpeed" -> fan = actual; "sweepType" -> sweep = actual; "waterLevel" -> water = actual }
+                }
+            } else {
+                when (id) { "fanSpeed" -> fan = oldValue ?: fan; "sweepType" -> sweep = oldValue ?: sweep; "waterLevel" -> water = oldValue ?: water }
+                message = msg
+            }
+        }
+    }
     val batteryText = battery?.let { it.toInt().toString() + " %" } ?: "—"
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }; Text("Roidmi EVE Plus", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text) }
