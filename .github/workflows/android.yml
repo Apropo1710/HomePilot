@@ -58,7 +58,7 @@ jobs:
           mkdir -p "$HOME/.android"
           printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > .github/debug-keystore
           cp .github/debug-keystore "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug-keystore" .github/debug-keystore
+          chmod 600 "$HOME/.android/debug.keystore" .github/debug-keystore
           sha256sum .github/debug-keystore
 
       - name: Installierbare Release APK bauen
