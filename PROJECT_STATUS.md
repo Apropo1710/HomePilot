@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 515bc73fc48c32e1174ded4d146a344806bdba61
+- Quellcommit des APK-Builds: 612b5480b83be8decf81da6b189b96035a779e57
 - App-Version / versionCode: **1.29.90 / 148**
-- Build-Zeit: 2026-11-05 17:19:56 UTC
+- Build-Zeit: 2026-11-05 17:30:00 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13436163475, 11968476 Bytes
-- APK-SHA-256: 63d48cbffe99f8f5ad1069539d682cc1c7470a3f4e144a9e563e7548f5872d1a
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13438240764, 11968470 Bytes
+- APK-SHA-256: 9daeefb26ccebe3093e0c139f97d74d3f8149b55d04e4b3056bec6dd37d394a7
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -292,5 +292,4 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - GitHub-Actions-Ergebnis und tatsächliche Verfügbarkeit des APK-Assets prüfen. APK-Link nur nach verifiziertem Release nennen.
 - Play Protect, Installationsdialog und In-App-Update auf einem Gerät nur dann als getestet oder funktionierend bezeichnen, wenn der Nutzer-/Gerätetest dies bestätigt hat. CI allein kann das nicht nachweisen.
 - Keine wiederholten Experimente mit Installer-Varianten, wenn bereits eine bekannte erfolgreiche Lösung existiert. Bestehende Fixes zuerst recherchieren und anwenden.
-- Änderungen an Installer oder Updateprozess müssen ausdrücklich darauf geprüft werden, dass die funktionierende Installation und In-App-Aktualisierung nicht regressieren.
-
+- Änderungen an Installer oder Updateprozess müssen ausdrücklich darauf geprüft werden, dass die funktionierende Installation und In-App-Aktualisierung nicht regressieren.\n
