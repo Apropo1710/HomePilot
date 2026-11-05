@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 95f25ded75f92efbe715ffed13a5e5e94f6f286f
+- Quellcommit des APK-Builds: 5d60629818a2abe6319b9f773a9aaa920773a89a
 - App-Version / versionCode: **1.29.92 / 150**
-- Build-Zeit: 2026-11-05 18:54:43 UTC
+- Build-Zeit: 2026-11-05 19:10:57 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13443324613, 11967640 Bytes
-- APK-SHA-256: a0abebb19de03019fb5c33b794fe84232a36a619ef04ada670bfd9128c7b9850
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13444119387, 11967529 Bytes
+- APK-SHA-256: 46823fb89069ddd0790a3b7d6f17382a5222aafc3bc9a2362bed010e56a11178
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -303,4 +303,4 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - In-App-Updater nutzt wieder `ACTION_INSTALL_PACKAGE` (bewährter Stand aus 1.29.86) statt `ACTION_VIEW`.
 - `REQUEST_INSTALL_PACKAGES` ist im Manifest wieder gesetzt. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, öffnet die App zuerst die zugehörige Android-Einstellung und zeigt eine klare Statusmeldung; danach muss Update laden erneut angetippt werden.
 - URI-Berechtigung und `ClipData` bleiben gesetzt; Download, Paketname-Prüfung, Signierung/Keystore und FileProvider wurden nicht verändert.
-- Version 1.29.92 / versionCode 150. Build und Smartphone-Test noch ausstehend.\n
+- Version 1.29.92 / versionCode 150. Build und Smartphone-Test noch ausstehend.\n\n
