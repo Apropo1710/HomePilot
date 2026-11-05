@@ -141,14 +141,24 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 }
                                 val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
                                 // Exact APK handoff from KlimaPilot 0.4.21.
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                if (!context.packageManager.canRequestPackageInstalls()) {
+                                    status = "Android erlaubt HomePilot derzeit keine APK-Installation. Bitte die Freigabe in den Android-Einstellungen aktivieren."
+                                    context.startActivity(
+                                        Intent(
+                                            Intent.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                            Uri.parse("package:" + context.packageName)
+                                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    )
+                                    return@launch
+                                }
+                                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
                                     setDataAndType(uri, "application/vnd.android.package-archive")
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                                     clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", uri)
                                 }
                                 status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
-                                context.startActivity(Intent.createChooser(intent, "HomePilot APK installieren"))
-                                status = "Android-Installationsdialog wurde über die Systemauswahl angefordert. Bitte die Installation dort bestätigen."
+                                context.startActivity(intent)
+                                status = "Android-Installationsdialog wurde angefordert. Bitte die Installation dort bestätigen."
                             } catch (error: Exception) {
                                 status = "Update fehlgeschlagen: " + (error.message ?: error.javaClass.simpleName)
                             } finally {
