@@ -2021,7 +2021,6 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             Text(
                 when {
                     !connected -> "Offline · letzter Stand"
-                    adapter && error == 0.0 -> "Bereit"
                     adapter && error != null && error != 0.0 -> roidmiErrorLabel(error!!.toInt())
                     adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
                     else -> "Nicht verbunden"
@@ -2058,6 +2057,10 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
         }
     }
     val rooms = remember(roomsRaw) { runCatching { val j = org.json.JSONArray(roomsRaw ?: "[]"); (0 until j.length()).mapNotNull { i -> val o = j.optJSONObject(i) ?: return@mapNotNull null; val id = o.optInt("id", -1); val name = o.optString("name").trim(); if (id > 0 && name.isNotBlank()) id to name else null } }.getOrDefault(emptyList()) }
+    // Clear the last room selection once the robot has docked/started charging.
+    LaunchedEffect(state, charging) {
+        if (state?.toInt() == 6 || state?.toInt() == 9) selected = emptySet()
+    }
     fun command(id: String, label: String) { if (!connected || !adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
     fun setting(id: String, value: Int, label: String) {
         if (!connected || !adapter) return
@@ -2087,7 +2090,6 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                     Text(
                         when {
                             !connected -> "Offline · letzter Stand"
-                            adapter && error == 0.0 -> "Bereit"
                             adapter && error != null && error != 0.0 -> roidmiErrorLabel(error!!.toInt())
                             adapter -> state?.let { roidmiStateLabel(it.toInt()) } ?: "Status wird geladen"
                             else -> "Nicht verbunden"
@@ -2101,28 +2103,6 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0)) }
             if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-        }
-        CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
-            if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            else {
-                rooms.chunked(2).forEach { roomRow ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        roomRow.forEach { (id, name) ->
-                            Row(
-                                Modifier.weight(1f).heightIn(min = 40.dp).clip(RoundedCornerShape(10.dp))
-                                    .clickable { selected = if (id in selected) selected - id else selected + id }
-                                    .padding(horizontal = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(checked = id in selected, onCheckedChange = { v -> selected = if (v) selected + id else selected - id }, modifier = Modifier.size(30.dp))
-                                Text(name, color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                        if (roomRow.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-                Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
-            }
         }
         CardBlock(panel, text, "Saug/Wisch-Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2167,6 +2147,28 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        }
+        CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
+            if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            else {
+                rooms.chunked(2).forEach { roomRow ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        roomRow.forEach { (id, name) ->
+                            Row(
+                                Modifier.weight(1f).heightIn(min = 40.dp).clip(RoundedCornerShape(10.dp))
+                                    .clickable { selected = if (id in selected) selected - id else selected + id }
+                                    .padding(horizontal = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(checked = id in selected, onCheckedChange = { v -> selected = if (v) selected + id else selected - id }, modifier = Modifier.size(30.dp))
+                                Text(name, color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (roomRow.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+                Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
+            }
         }
     }
 }
