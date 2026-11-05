@@ -147,8 +147,8 @@ internal fun GithubUpdateCard(appVersion: String) {
                                     clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", uri)
                                 }
                                 status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
-                                context.startActivity(intent)
-                                status = "Android-Installationsdialog wurde angefordert. Bitte die Installation dort bestätigen."
+                                context.startActivity(Intent.createChooser(intent, "HomePilot APK installieren"))
+                                status = "Android-Installationsdialog wurde über die Systemauswahl angefordert. Bitte die Installation dort bestätigen."
                             } catch (error: Exception) {
                                 status = "Update fehlgeschlagen: " + (error.message ?: error.javaClass.simpleName)
                             } finally {
