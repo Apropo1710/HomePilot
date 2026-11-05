@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: a1d42e15f29c15805e86811da78b1a70908a593b
-- App-Version / versionCode: **1.29.91 / 149**
-- Build-Zeit: 2026-11-05 18:51:03 UTC
+- Quellcommit des APK-Builds: 95f25ded75f92efbe715ffed13a5e5e94f6f286f
+- App-Version / versionCode: **1.29.92 / 150**
+- Build-Zeit: 2026-11-05 18:54:43 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13444710974, 11967652 Bytes
-- APK-SHA-256: 1005f0785a144197cc42be12523f8a7c1e8db6e0f927a23691f10745b3f0c20d
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13443324613, 11967640 Bytes
+- APK-SHA-256: a0abebb19de03019fb5c33b794fe84232a36a619ef04ada670bfd9128c7b9850
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -297,4 +297,10 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 ## Roidmi Eve Plus option wiring (05.11.2026)
 - HomePilot cleaning-option controls now use the confirmed ioBroker state IDs `roidmi.0.individual`, `roidmi.0.doubleClean`, and `roidmi.0.pathType` (instead of obsolete `customizeRooms` / `moppingPath`).
 - Y-Weg-Moppen is shown as a two-state toggle, matching the Original-App switch; `pathType` writes 1 for on and 0 for off. Double-clean remains a separate toggle.
-- Version: **1.29.91 (versionCode 149)**. Branch `feat/roidmi-eve-plus-options`; device/build validation pending.\n\n
+- Version: **1.29.91 (versionCode 149)**. Branch `feat/roidmi-eve-plus-options`; device/build validation pending.\n
+
+## Installer-Fix 1.29.92 (05.11.2026)
+- In-App-Updater nutzt wieder `ACTION_INSTALL_PACKAGE` (bewährter Stand aus 1.29.86) statt `ACTION_VIEW`.
+- `REQUEST_INSTALL_PACKAGES` ist im Manifest wieder gesetzt. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, öffnet die App zuerst die zugehörige Android-Einstellung und zeigt eine klare Statusmeldung; danach muss Update laden erneut angetippt werden.
+- URI-Berechtigung und `ClipData` bleiben gesetzt; Download, Paketname-Prüfung, Signierung/Keystore und FileProvider wurden nicht verändert.
+- Version 1.29.92 / versionCode 150. Build und Smartphone-Test noch ausstehend.\n
