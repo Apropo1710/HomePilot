@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 6c720ce8824657806e8dfdd8c03da0c0f659f7db
-- App-Version / versionCode: **1.29.95 / 153**
-- Build-Zeit: 2026-11-05 20:06:17 UTC
+- Quellcommit des APK-Builds: 2c9153c3d60d960a6f74ce61cf5f8a315ece21d7
+- App-Version / versionCode: **1.29.96 / 154**
+- Build-Zeit: 2026-11-05 20:13:39 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13448337534, 11967921 Bytes
-- APK-SHA-256: dee56491a7e712f7853b60d5bebb3ab3b8530478acd534512ecc10e13bc11bbb
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13448743152, 11968045 Bytes
+- APK-SHA-256: 1111849e44c4926d49a0fd47ec7bbf2008508d49b8bbbed9273e791ddb347d95
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -310,4 +310,4 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - Installations-Intent wird mit der MediaStore-Content-URI statt der privaten FileProvider-Cache-URI gestartet; damit soll MIUI/Android den Paketinstaller zuverlässig öffnen.
 - Fallback-Hinweis: Wenn kein Dialog automatisch aufpoppt, APK in Downloads/HomePilot manuell antippen.
 - Kein REQUEST_INSTALL_PACKAGES im Manifest, um den Play-Protect-Alarm aus 1.29.92 nicht wieder einzuführen.
-- Version 1.29.95 / versionCode 153. Build und Gerätetest ausstehend.\n
+- Version 1.29.95 / versionCode 153. Build und Gerätetest ausstehend.\n\n
