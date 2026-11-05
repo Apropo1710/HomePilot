@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 35b48c5f58e03b73a2b60cd7444640db9bf99153
-- App-Version / versionCode: **1.29.84 / 142**
-- Build-Zeit: 2026-11-05 15:16:38 UTC
+- Quellcommit des APK-Builds: 0f497958db4291510c7d7b4ef64c554e675f7b23
+- App-Version / versionCode: **1.29.85 / 143**
+- Build-Zeit: 2026-11-05 16:15:34 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13428705143, 11958096 Bytes
-- APK-SHA-256: f30059bea6f310f701b4538da6683a7375549d7ae6a6cf520b92e9c560e8f9f5
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13431554299, 11958924 Bytes
+- APK-SHA-256: 89d4d503271c7331c233ea8ed96488a616c244665f1a66ca984bc7c9dadca341
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -246,4 +246,4 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Beim App-Start wird bei vorhandener GitHub-Verbindung einmalig nach einer neueren Release-Version gesucht. Bei Verfügbarkeit erscheint ein Popup mit „Zu Einstellungen“ und „Später“; die Prüfung blockiert den App-Start nicht.
 - Der bestehende Download-/Updatebereich in den Einstellungen bleibt die einzige Update-Download- und Installationsoberfläche.
 - APK-Installation nutzt den Android-Standarddialog über `ACTION_VIEW` + APK-MIME-Type und FileProvider-URI. Die Berechtigung `REQUEST_INSTALL_PACKAGES` sowie der vorherige `ACTION_INSTALL_PACKAGE`-Pfad werden entfernt.
-- Version **1.29.84 / versionCode 142**. Play Protect muss auf dem Zielgerät erneut überprüft werden; CI kann diese Google-Prüfung nicht garantieren.\n
+- Version **1.29.84 / versionCode 142**. Play Protect muss auf dem Zielgerät erneut überprüft werden; CI kann diese Google-Prüfung nicht garantieren.\n\n
