@@ -304,3 +304,10 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - `REQUEST_INSTALL_PACKAGES` ist im Manifest wieder gesetzt. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, öffnet die App zuerst die zugehörige Android-Einstellung und zeigt eine klare Statusmeldung; danach muss Update laden erneut angetippt werden.
 - URI-Berechtigung und `ClipData` bleiben gesetzt; Download, Paketname-Prüfung, Signierung/Keystore und FileProvider wurden nicht verändert.
 - Version 1.29.92 / versionCode 150. Build und Smartphone-Test noch ausstehend.\n\n\n
+
+## Updater handoff 1.29.95 (05.11.2026)
+- APK wird nach Download und Paketnamenprüfung zusätzlich in den öffentlichen Android-Downloads (Downloads/HomePilot) geschrieben.
+- Installations-Intent wird mit der MediaStore-Content-URI statt der privaten FileProvider-Cache-URI gestartet; damit soll MIUI/Android den Paketinstaller zuverlässig öffnen.
+- Fallback-Hinweis: Wenn kein Dialog automatisch aufpoppt, APK in Downloads/HomePilot manuell antippen.
+- Kein REQUEST_INSTALL_PACKAGES im Manifest, um den Play-Protect-Alarm aus 1.29.92 nicht wieder einzuführen.
+- Version 1.29.95 / versionCode 153. Build und Gerätetest ausstehend.
