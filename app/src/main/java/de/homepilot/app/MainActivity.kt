@@ -2035,7 +2035,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     }
 }
 @Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.waterLevel")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.map.mapId")) }
+    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.waterLevel")) }; var customizeRooms by remember { mutableStateOf(client.cachedNumber("roidmi.0.customizeRooms")) }; var doubleClean by remember { mutableStateOf(client.cachedNumber("roidmi.0.doubleClean")) }; var moppingPath by remember { mutableStateOf(client.cachedNumber("roidmi.0.moppingPath")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.map.mapId")) }
     var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }; var showResumeConfirm by remember { mutableStateOf(false) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
@@ -2050,6 +2050,9 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                 client.getNumericState(serverUrl, "roidmi.0.fanSpeed") { fan = it ?: fan }
                 client.getNumericState(serverUrl, "roidmi.0.sweepType") { sweep = it ?: sweep }
                 client.getNumericState(serverUrl, "roidmi.0.waterLevel") { water = it ?: water }
+                client.getNumericState(serverUrl, "roidmi.0.customizeRooms") { customizeRooms = it ?: customizeRooms }
+                client.getNumericState(serverUrl, "roidmi.0.doubleClean") { doubleClean = it ?: doubleClean }
+                client.getNumericState(serverUrl, "roidmi.0.moppingPath") { moppingPath = it ?: moppingPath }
                 client.getTextState(serverUrl, "roidmi.0.map.roomsJson") { roomsRaw = it ?: roomsRaw }
                 client.getNumericState(serverUrl, "roidmi.0.map.mapId") { mapId = it ?: mapId }
                 delay(30_000)
@@ -2064,18 +2067,24 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     fun command(id: String, label: String) { if (!connected || !adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
     fun setting(id: String, value: Int, label: String) {
         if (!connected || !adapter) return
-        val oldValue = when (id) { "fanSpeed" -> fan; "waterLevel" -> water; else -> null }
-        // Optimistic UI: reflect the tap immediately while ioBroker processes the write.
-        when (id) { "fanSpeed" -> fan = value.toDouble(); "waterLevel" -> water = value.toDouble() }
+        val oldValue = when (id) {
+            "fanSpeed" -> fan; "waterLevel" -> water
+            "customizeRooms" -> customizeRooms; "doubleClean" -> doubleClean; "moppingPath" -> moppingPath
+            else -> null
+        }
+        fun update(v: Double) {
+            when (id) {
+                "fanSpeed" -> fan = v; "waterLevel" -> water = v
+                "customizeRooms" -> customizeRooms = v; "doubleClean" -> doubleClean = v; "moppingPath" -> moppingPath = v
+            }
+        }
+        update(value.toDouble())
         client.setNumericState(serverUrl, "roidmi.0." + id, value.toDouble()) { ok, msg ->
             if (ok) {
                 message = label + " gespeichert."
-                // Read back the adapter's authoritative value after the write acknowledgement.
-                client.getNumericState(serverUrl, "roidmi.0." + id) { actual ->
-                    if (actual != null) when (id) { "fanSpeed" -> fan = actual; "waterLevel" -> water = actual }
-                }
+                client.getNumericState(serverUrl, "roidmi.0." + id) { actual -> if (actual != null) update(actual) }
             } else {
-                when (id) { "fanSpeed" -> fan = oldValue ?: fan; "waterLevel" -> water = oldValue ?: water }
+                oldValue?.let { update(it) }
                 message = msg
             }
         }
@@ -2133,6 +2142,33 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                     RoidmiLevelChoice(label, selected = water?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.WaterDrop, modifier = Modifier.weight(1f), accent = Color(0xFF159A9C)) {
                         setting("waterLevel", level, "Wasserstufe")
                     }
+                }
+            }
+            Divider()
+            Text("Zusätzliche Reinigungsoptionen", color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Individuell anpassen", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text("Raumspezifische Einstellungen", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                }
+                Switch(checked = customizeRooms == 1.0, enabled = connected && adapter && customizeRooms != null, onCheckedChange = { setting("customizeRooms", if (it) 1 else 0, "Individuell anpassen") })
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Reinigungszeit ×2", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text("Doppelte Reinigung", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                }
+                Switch(checked = doubleClean == 1.0, enabled = connected && adapter && doubleClean != null, onCheckedChange = { setting("doubleClean", if (it) 1 else 0, "Reinigungszeit ×2") })
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Wischmuster", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text("Normal, Y-Weg oder Wiederholen", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                }
+                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    RoidmiLevelChoice("Normal", selected = moppingPath == 0.0, enabled = connected && adapter && moppingPath != null, icon = Icons.Default.WaterDrop, modifier = Modifier.weight(1f)) { setting("moppingPath", 0, "Wischmuster") }
+                    RoidmiLevelChoice("Y-Weg", selected = moppingPath == 1.0, enabled = connected && adapter && moppingPath != null, icon = Icons.Default.WaterDrop, modifier = Modifier.weight(1f), accent = Color(0xFF159A9C)) { setting("moppingPath", 1, "Y-Weg-Moppen") }
+                    RoidmiLevelChoice("2×", selected = moppingPath == 2.0, enabled = connected && adapter && moppingPath != null, icon = Icons.Default.WaterDrop, modifier = Modifier.weight(1f)) { setting("moppingPath", 2, "Wischmuster wiederholen") }
                 }
             }
         }
