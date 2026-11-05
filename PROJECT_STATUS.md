@@ -311,3 +311,9 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - Fallback-Hinweis: Wenn kein Dialog automatisch aufpoppt, APK in Downloads/HomePilot manuell antippen.
 - Kein REQUEST_INSTALL_PACKAGES im Manifest, um den Play-Protect-Alarm aus 1.29.92 nicht wieder einzuführen.
 - Version 1.29.95 / versionCode 153. Build und Gerätetest ausstehend.\n\n
+
+## Updater installer intent 1.29.97 (05.11.2026)
+- Git-Historie geprüft: KlimaPilot 0.4.19 hatte ACTION_INSTALL_PACKAGE mit FileProvider-URI und EXTRA_RETURN_RESULT.
+- HomePilot 1.29.97 stellt diesen Intent-Typ wieder her, inklusive URI-Leserechten, ClipData und NEW_TASK.
+- REQUEST_INSTALL_PACKAGES bleibt aus dem Manifest entfernt, um den Play-Protect-Alarm nicht erneut auszulösen.
+- Die nicht funktionierende ACTION_VIEW-/MediaStore-Variante wird verworfen. Gerätetest nach Build erforderlich.
