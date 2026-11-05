@@ -322,3 +322,20 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - APK-Übergabe exakt an KlimaPilot 0.4.21 angeglichen: ACTION_VIEW, application/vnd.android.package-archive, FileProvider, URI-Leserechte, NEW_TASK, ClipData.
 - ACTION_INSTALL_PACKAGE entfernt; REQUEST_INSTALL_PACKAGES bleibt nicht im Manifest (Play Protect).
 - Versionssprung 1.29.98 -> 1.29.99 (versionCode 156 -> 157) für erneuten Updatetest.\n\n\n\n\n\n
+
+## Verbindliche Updater-Arbeitsweise (05.11.2026)
+
+Der Nutzer hat die aktuellen In-App-Updates von HomePilot und KlimaPilot erfolgreich installiert. Die folgende Vorgehensweise ist künftig verbindlich, damit die Android-Installer-Übergabe nicht durch unkoordinierte Änderungen erneut regressiert:
+
+1. **Vor jeder Änderung zuerst den aktuellen Stand auf `main` lesen.** Betroffene Update-UI, Download-/Installationsfunktion, Manifest, FileProvider-Konfiguration, Gradle-Signierung und Workflow gemeinsam prüfen.
+2. **Historie prüfen, bevor etwas geändert wird.** Git-Historie und die bekannte funktionierende Umsetzung beider Apps vergleichen. Nicht aus dem Gedächtnis zwischen `ACTION_VIEW` und `ACTION_INSTALL_PACKAGE`, URI-Typen oder Permissions wechseln.
+3. **Keine parallelen/mehrfachen Installer-Experimente.** Nur eine gezielte Änderung pro Testschritt. Keine fremden Updater-Fixes übernehmen, ohne Unterschiede (Package-ID, FileProvider, Signing und App-spezifische Einstellungen) zu prüfen.
+4. **Signierung ist Update-kritisch.** Für installierbare Updates muss die APK mit demselben Zertifikat wie die bereits installierte App signiert sein. Keystore, Alias, Secrets und Signierkonfiguration niemals beiläufig ändern. Zertifikats-Fingerprint von Bestands- und Test-APK vergleichen, falls ein Update mit „App nicht installiert“ oder Signaturfehler scheitert.
+5. **Versionsprüfung:** Für jede installierbare Test-APK sowohl `versionName` als auch `versionCode` erhöhen. Der `versionCode` muss höher als der installierte sein. Nicht allein die Versionsanzeige in Release-Notes oder GitHub als Nachweis nehmen.
+6. **Workflow/Release-Notes:** Die vom In-App-Updater gelesene Version muss aus der tatsächlichen Gradle-Version stammen und darf nicht hartcodiert veraltet sein. APK-Asset und `latest` erst nach erfolgreichem Build/Prüfung aktualisieren.
+7. **CI-Prüfung:** GitHub Actions muss erfolgreich sein. Paketname/Application-ID, Version, Signatur, Manifest, APK-Artefakt und Release-Asset verifizieren. Fehlgeschlagene oder abgebrochene Builds dürfen nicht als bereitgestellte APK ausgegeben werden.
+8. **Gerätetest ist entscheidend:** In-App-Update auf dem Gerät starten, Android-System-Installer muss tatsächlich erscheinen und ein Update über die bestehende Installation durchführen. Download-Erfolg/Statusmeldung allein zählt nicht. Nach dem Test installierte Version prüfen.
+9. **Play Protect und Berechtigungen:** Nicht eigenmächtig `REQUEST_INSTALL_PACKAGES`, Unknown-Apps-Einstellungen oder andere Installer-Varianten hinzufügen/entfernen. Vorher Historie und Auswirkungen auf Play Protect prüfen; Änderungen ausdrücklich mit Nutzer abstimmen.
+10. Nach erfolgreichem Test kurz dokumentieren: Version/versionCode, Commit, Actions-Run, verwendete APK/Release und Nutzerbestätigung. Installer-/Updater-Code bei anderen Aufgaben nicht anfassen.
+
+**Ergebnis 05.11.2026:** Nutzer bestätigt, dass die Updates beider Apps erfolgreich installiert wurden. Dies bestätigt den Updateablauf in diesem Test, aber nicht automatisch jede Android-/Gerätevariante.
