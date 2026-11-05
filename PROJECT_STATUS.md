@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 612b5480b83be8decf81da6b189b96035a779e57
-- App-Version / versionCode: **1.29.90 / 148**
-- Build-Zeit: 2026-11-05 17:30:00 UTC
+- Quellcommit des APK-Builds: 4c3e89aa6ce67b3f62779dffe4c5f643dccc22ef
+- App-Version / versionCode: **1.29.91 / 149**
+- Build-Zeit: 2026-11-05 18:43:30 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13438240764, 11968470 Bytes
-- APK-SHA-256: 9daeefb26ccebe3093e0c139f97d74d3f8149b55d04e4b3056bec6dd37d394a7
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13443940673, 11967746 Bytes
+- APK-SHA-256: a9a4d0de1578298bec36ff13767e1bc57fe39c59f7a4d8ed2b355a8435b91ba2
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -297,4 +297,4 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 ## Roidmi Eve Plus option wiring (05.11.2026)
 - HomePilot cleaning-option controls now use the confirmed ioBroker state IDs `roidmi.0.individual`, `roidmi.0.doubleClean`, and `roidmi.0.pathType` (instead of obsolete `customizeRooms` / `moppingPath`).
 - Y-Weg-Moppen is shown as a two-state toggle, matching the Original-App switch; `pathType` writes 1 for on and 0 for off. Double-clean remains a separate toggle.
-- Version: **1.29.91 (versionCode 149)**. Branch `feat/roidmi-eve-plus-options`; device/build validation pending.
+- Version: **1.29.91 (versionCode 149)**. Branch `feat/roidmi-eve-plus-options`; device/build validation pending.\n
