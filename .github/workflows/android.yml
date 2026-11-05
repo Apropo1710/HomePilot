@@ -58,7 +58,7 @@ jobs:
           mkdir -p "$HOME/.android"
           printf '%s' "$DEBUG_KEYSTORE_BASE64" | base64 --decode > .github/debug-keystore
           cp .github/debug-keystore "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore" .github/debug-keystore
+          chmod 600 "$HOME/.android/debug-keystore" .github/debug-keystore
           sha256sum .github/debug-keystore
 
       - name: Installierbare Release APK bauen
@@ -84,7 +84,7 @@ jobs:
           name: HomePilot-release-apk
           path: app/build/outputs/apk/release/HomePilot.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 1
 
       - name: Projektstatus mit verifizierten Build-Daten aktualisieren
         env:
