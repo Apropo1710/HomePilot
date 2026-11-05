@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: d3090f5655d128e82621784374c25080d4cb7745
+- Quellcommit des APK-Builds: 75497130c20a2e8f92158108d2e2159f5e50e05f
 - App-Version / versionCode: **1.29.102 / 160**
-- Build-Zeit: 2026-11-05 21:40:36 UTC
+- Build-Zeit: 2026-11-05 22:00:03 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13456245085, 11967829 Bytes
-- APK-SHA-256: d102a1822a6ce01c46aae204ec6a5834fd1d939cb5bc785d4f4ee89973d63938
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13456552892, 11967875 Bytes
+- APK-SHA-256: f481d0d3065edfc6ee3215cbfe2c750b5d361e4157168f5de4b061c6c02083e3
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -321,4 +321,4 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 ## Updater 1.29.99 (05.11.2026)
 - APK-Übergabe exakt an KlimaPilot 0.4.21 angeglichen: ACTION_VIEW, application/vnd.android.package-archive, FileProvider, URI-Leserechte, NEW_TASK, ClipData.
 - ACTION_INSTALL_PACKAGE entfernt; REQUEST_INSTALL_PACKAGES bleibt nicht im Manifest (Play Protect).
-- Versionssprung 1.29.98 -> 1.29.99 (versionCode 156 -> 157) für erneuten Updatetest.\n\n\n\n
+- Versionssprung 1.29.98 -> 1.29.99 (versionCode 156 -> 157) für erneuten Updatetest.\n\n\n\n\n
