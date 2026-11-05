@@ -16,6 +16,12 @@
 
 # HomePilot – Projektstatus
 
+## Installer-Berechtigung (05.11.2026)
+- Der Installer verwendet `ACTION_INSTALL_PACKAGE`; im aktuellen Manifest fehlte die notwendige `REQUEST_INSTALL_PACKAGES`-Berechtigung, die im funktionierenden Stand 1.29.83 vorhanden war.
+- Berechtigung wieder ergänzt. Keine Play-Protect-Warnungslogik oder zusätzliche Play-Protect-Dialoge eingebaut.
+- Version 1.29.89 / versionCode 147 zur erneuten Geräteprüfung.
+
+
 ## Update-Installer Reparatur und Roidmi-Dock (05.11.2026)
 - APK-Installation in den Einstellungen auf den früheren, funktionierenden `ACTION_INSTALL_PACKAGE`-Ablauf mit FileProvider-URI zurückgesetzt. Startup-Update-Popup bleibt erhalten.
 - Keine zusätzliche Google-Play-Protect-Warnung oder eigene Play-Protect-Dialoglogik eingebaut. Die Android-Systemprüfung bleibt unverändert.
