@@ -2060,18 +2060,18 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     fun command(id: String, label: String) { if (!connected || !adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
     fun setting(id: String, value: Int, label: String) {
         if (!connected || !adapter) return
-        val oldValue = when (id) { "fanSpeed" -> fan; "sweepType" -> sweep; "waterLevel" -> water; else -> null }
+        val oldValue = when (id) { "fanSpeed" -> fan; "waterLevel" -> water; else -> null }
         // Optimistic UI: reflect the tap immediately while ioBroker processes the write.
-        when (id) { "fanSpeed" -> fan = value.toDouble(); "sweepType" -> sweep = value.toDouble(); "waterLevel" -> water = value.toDouble() }
+        when (id) { "fanSpeed" -> fan = value.toDouble(); "waterLevel" -> water = value.toDouble() }
         client.setNumericState(serverUrl, "roidmi.0." + id, value.toDouble()) { ok, msg ->
             if (ok) {
                 message = label + " gespeichert."
                 // Read back the adapter's authoritative value after the write acknowledgement.
                 client.getNumericState(serverUrl, "roidmi.0." + id) { actual ->
-                    if (actual != null) when (id) { "fanSpeed" -> fan = actual; "sweepType" -> sweep = actual; "waterLevel" -> water = actual }
+                    if (actual != null) when (id) { "fanSpeed" -> fan = actual; "waterLevel" -> water = actual }
                 }
             } else {
-                when (id) { "fanSpeed" -> fan = oldValue ?: fan; "sweepType" -> sweep = oldValue ?: sweep; "waterLevel" -> water = oldValue ?: water }
+                when (id) { "fanSpeed" -> fan = oldValue ?: fan; "waterLevel" -> water = oldValue ?: water }
                 message = msg
             }
         }
@@ -2124,11 +2124,12 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             }
         }
         CardBlock(panel, text, "Saug/Wisch-Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
-            Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                RoidmiModeChoice("Saugen", selected = sweep == 0.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 0, "Saugen") }
-                RoidmiModeChoice("Wischen", selected = sweep == 1.0, enabled = connected && adapter, modifier = Modifier.weight(1f)) { setting("sweepType", 1, "Wischen") }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text("Reinigungsmodus", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                Text(sweep?.let { roidmiSweepLabel(it.toInt()) } ?: "—", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
+            Text("Modus wird vom Adapter nur angezeigt; Saug- und Wasserstufe sind hier global einstellbar.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Saugstufe", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
@@ -2160,7 +2161,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                 RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoidmiActionButton("Weiter", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("resume", "Fortsetzen") }
+                RoidmiActionButton("Stop", Icons.Default.Stop, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("stop", "Stopp") }
                 RoidmiActionButton("Laden", Icons.Default.Home, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("dock", "Rückkehrbefehl") }
             }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())

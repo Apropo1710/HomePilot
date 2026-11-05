@@ -235,3 +235,9 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Es bleibt jeweils höchstens ein Einstellungsbereich gleichzeitig geöffnet.
 - Bestehende Funktionen, Dialoge, Eingabefelder und Updateprüfung bleiben erhalten.
 - Zielversion: 1.29.57 (versionCode 115); Smartphone-Test nach Release erforderlich.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+
+## Roidmi-Steuerung in HomePilot (05.11.2026)
+- Die bestehende Roidmi-Raum-/Zonenauswahl bleibt erhalten und lädt Räume dynamisch aus `roidmi.0.map.roomsJson`; Einzel- und Mehrraumreinigung wird weiterhin über `roidmi.0.control.cleanRooms` ausgelöst.
+- Die irreführende Schaltfläche „Weiter“ wurde durch „Stop“ ersetzt. `control.resume` wird nicht mehr angeboten, da der Adapter damit einen neuen Reinigungsstart auslöst und kein echtes Fortsetzen bestätigt ist.
+- `sweepType` wird nur noch als Status angezeigt, da der Adapter-Datenpunkt schreibgeschützt ist. Saugstufe (`fanSpeed`) und Wasserstufe (`waterLevel`) bleiben global steuerbar.
+- Produktionsversion: **1.29.83 (versionCode 141)**. Build und Smartphone-Test folgen nach GitHub Actions.
