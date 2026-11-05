@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 240988c4b90837c728c89076853dd38521b2bdbe
-- App-Version / versionCode: **1.29.97 / 155**
-- Build-Zeit: 2026-11-05 20:21:15 UTC
+- Quellcommit des APK-Builds: 397a33b8b57a430f290f5ee64c41d42e0cd59a50
+- App-Version / versionCode: **1.29.98 / 156**
+- Build-Zeit: 2026-11-05 20:39:18 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13450517130, 11967654 Bytes
-- APK-SHA-256: c7da6b2736ece327dc1600e7b23d6de979b4525f2dbc581d488fb9c6fba87ba6
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13450704047, 11967695 Bytes
+- APK-SHA-256: d1141130f3520311ecac11154553c2b6f6c6a9d610042b207c17f163bee61358
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -316,4 +316,4 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - Git-Historie geprüft: KlimaPilot 0.4.19 hatte ACTION_INSTALL_PACKAGE mit FileProvider-URI und EXTRA_RETURN_RESULT.
 - HomePilot 1.29.97 stellt diesen Intent-Typ wieder her, inklusive URI-Leserechten, ClipData und NEW_TASK.
 - REQUEST_INSTALL_PACKAGES bleibt aus dem Manifest entfernt, um den Play-Protect-Alarm nicht erneut auszulösen.
-- Die nicht funktionierende ACTION_VIEW-/MediaStore-Variante wird verworfen. Gerätetest nach Build erforderlich.\n
+- Die nicht funktionierende ACTION_VIEW-/MediaStore-Variante wird verworfen. Gerätetest nach Build erforderlich.\n\n
