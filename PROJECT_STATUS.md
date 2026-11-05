@@ -16,6 +16,13 @@
 
 # HomePilot – Projektstatus
 
+## Update-Installer Reparatur und Roidmi-Dock (05.11.2026)
+- APK-Installation in den Einstellungen auf den früheren, funktionierenden `ACTION_INSTALL_PACKAGE`-Ablauf mit FileProvider-URI zurückgesetzt. Startup-Update-Popup bleibt erhalten.
+- Keine zusätzliche Google-Play-Protect-Warnung oder eigene Play-Protect-Dialoglogik eingebaut. Die Android-Systemprüfung bleibt unverändert.
+- Roidmi-Steuerung enthält die Schaltfläche **Laden / Zur Station** (`roidmi.0.control.dock`); diese ist in Version 1.29.86 enthalten.
+- Installationsversion: **1.29.86 / versionCode 144**.
+
+
 Stand: 31.10.2026  
 Repository: [Apropo1710/HomePilot](https://github.com/Apropo1710/HomePilot)  
 Produktions- und Entwicklungsbranch: `main`
