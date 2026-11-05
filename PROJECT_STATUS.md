@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 75701c381a6492265e100eeb46b21faa968d9bd9
-- App-Version / versionCode: **1.29.82 / 140**
-- Build-Zeit: 2026-11-05 07:29:33 UTC
+- Quellcommit des APK-Builds: 711b93b93ea9107727906733540cd36cc37ff7ee
+- App-Version / versionCode: **1.29.83 / 141**
+- Build-Zeit: 2026-11-05 14:56:27 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13396602289, 11955947 Bytes
-- APK-SHA-256: 154247b78257498ce46d85fe5740a3ae5aab267c62f11847842654cc442af81d
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13426197264, 11954675 Bytes
+- APK-SHA-256: 3bab5a176bede18d869955a15130e784e90cdb69d0e18371422503c5d641e216
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -240,4 +240,4 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Die bestehende Roidmi-Raum-/Zonenauswahl bleibt erhalten und lädt Räume dynamisch aus `roidmi.0.map.roomsJson`; Einzel- und Mehrraumreinigung wird weiterhin über `roidmi.0.control.cleanRooms` ausgelöst.
 - Die irreführende Schaltfläche „Weiter“ wurde durch „Stop“ ersetzt. `control.resume` wird nicht mehr angeboten, da der Adapter damit einen neuen Reinigungsstart auslöst und kein echtes Fortsetzen bestätigt ist.
 - `sweepType` wird nur noch als Status angezeigt, da der Adapter-Datenpunkt schreibgeschützt ist. Saugstufe (`fanSpeed`) und Wasserstufe (`waterLevel`) bleiben global steuerbar.
-- Produktionsversion: **1.29.83 (versionCode 141)**. Build und Smartphone-Test folgen nach GitHub Actions.
+- Produktionsversion: **1.29.83 (versionCode 141)**. Build und Smartphone-Test folgen nach GitHub Actions.\n
