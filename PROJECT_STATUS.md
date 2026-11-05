@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: dce051c0e00b06667bd8de433b4544f34ea5e8c8
+- Quellcommit des APK-Builds: dde7874498e2eb5919095f6c8c09f55529220400
 - App-Version / versionCode: **1.29.103 / 161**
-- Build-Zeit: 2026-11-05 22:07:11 UTC
+- Build-Zeit: 2026-11-05 22:23:10 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13457980605, 11967777 Bytes
-- APK-SHA-256: b64ffb331cecf814dd63ff496774e53bf188d21c83739d3cd94a907fb6525839
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13459820470, 11967754 Bytes
+- APK-SHA-256: 17f8f1f56b3df7070ae6a18df2d9b02555597a929086c9341865378529a3f60c
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -338,4 +338,4 @@ Der Nutzer hat die aktuellen In-App-Updates von HomePilot und KlimaPilot erfolgr
 9. **Play Protect und Berechtigungen:** Nicht eigenmächtig `REQUEST_INSTALL_PACKAGES`, Unknown-Apps-Einstellungen oder andere Installer-Varianten hinzufügen/entfernen. Vorher Historie und Auswirkungen auf Play Protect prüfen; Änderungen ausdrücklich mit Nutzer abstimmen.
 10. Nach erfolgreichem Test kurz dokumentieren: Version/versionCode, Commit, Actions-Run, verwendete APK/Release und Nutzerbestätigung. Installer-/Updater-Code bei anderen Aufgaben nicht anfassen.
 
-**Ergebnis 05.11.2026:** Nutzer bestätigt, dass die Updates beider Apps erfolgreich installiert wurden. Dies bestätigt den Updateablauf in diesem Test, aber nicht automatisch jede Android-/Gerätevariante.
+**Ergebnis 05.11.2026:** Nutzer bestätigt, dass die Updates beider Apps erfolgreich installiert wurden. Dies bestätigt den Updateablauf in diesem Test, aber nicht automatisch jede Android-/Gerätevariante.\n
