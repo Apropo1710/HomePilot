@@ -2,6 +2,7 @@ package de.homepilot.app
 
 import android.content.Intent
 import android.net.Uri
+import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -139,15 +140,27 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 if (archive.packageName != context.packageName) {
                                     error("Die APK gehört zu einer anderen App: " + archive.packageName)
                                 }
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O &&
+                                    !context.packageManager.canRequestPackageInstalls()
+                                ) {
+                                    status = "Bitte erlaube HomePilot in Android, Apps zu installieren. Danach Update laden erneut antippen."
+                                    val settingsIntent = Intent(
+                                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                        Uri.parse("package:" + context.packageName)
+                                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    context.startActivity(settingsIntent)
+                                    return@launch
+                                }
                                 val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(uri, "application/vnd.android.package-archive")
+                                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+                                    data = uri
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                                     clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", uri)
+                                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
                                 }
                                 status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
                                 context.startActivity(intent)
-                                status = "Installationsdialog angefordert."
+                                status = "Android-Installer wurde gestartet."
                             } catch (error: Exception) {
                                 status = "Update fehlgeschlagen: " + (error.message ?: error.javaClass.simpleName)
                             } finally {
