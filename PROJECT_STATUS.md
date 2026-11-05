@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: c15989feaf3b569bc8c79ef8be3720f248fd91fd
+- Quellcommit des APK-Builds: c194d2907c64958264187d8946d33e796d391bd1
 - App-Version / versionCode: **1.29.94 / 152**
-- Build-Zeit: 2026-11-05 19:54:32 UTC
+- Build-Zeit: 2026-11-05 20:02:22 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
-- Build-Artefakt: **HomePilot-release-apk**, ID 13447613971, 11967492 Bytes
-- APK-SHA-256: 7f51bfec11562ddde096c6ab78183ad9d9580a4101f7b860962875a28caab47d
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- Build-Artefakt: **HomePilot-release-apk**, ID 13450030033, 11967887 Bytes
+- APK-SHA-256: 2a3a5b664b20729858649f8868984b648012ad9ca0fd4864aab2bd175bbb922e
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -303,11 +303,4 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - In-App-Updater nutzt wieder `ACTION_INSTALL_PACKAGE` (bewährter Stand aus 1.29.86) statt `ACTION_VIEW`.
 - `REQUEST_INSTALL_PACKAGES` ist im Manifest wieder gesetzt. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, öffnet die App zuerst die zugehörige Android-Einstellung und zeigt eine klare Statusmeldung; danach muss Update laden erneut angetippt werden.
 - URI-Berechtigung und `ClipData` bleiben gesetzt; Download, Paketname-Prüfung, Signierung/Keystore und FileProvider wurden nicht verändert.
-- Version 1.29.92 / versionCode 150. Build und Smartphone-Test noch ausstehend.\n\n\n
-
-## Updater handoff 1.29.95 (05.11.2026)
-- APK wird nach Download und Paketnamenprüfung zusätzlich in den öffentlichen Android-Downloads (Downloads/HomePilot) geschrieben.
-- Installations-Intent wird mit der MediaStore-Content-URI statt der privaten FileProvider-Cache-URI gestartet; damit soll MIUI/Android den Paketinstaller zuverlässig öffnen.
-- Fallback-Hinweis: Wenn kein Dialog automatisch aufpoppt, APK in Downloads/HomePilot manuell antippen.
-- Kein REQUEST_INSTALL_PACKAGES im Manifest, um den Play-Protect-Alarm aus 1.29.92 nicht wieder einzuführen.
-- Version 1.29.95 / versionCode 153. Build und Gerätetest ausstehend.
+- Version 1.29.92 / versionCode 150. Build und Smartphone-Test noch ausstehend.\n\n\n\n
