@@ -2036,7 +2036,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
 }
 @Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
     var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.waterLevel")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.map.mapId")) }
-    var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }
+    var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }; var showResumeConfirm by remember { mutableStateOf(false) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
             client.cachedText("roidmi.0.map.roomsJson")?.let { roomsRaw = it }
@@ -2138,8 +2138,25 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
         }
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoidmiActionButton("Start", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { command("start", "Reinigungsstart") }
-                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
+                if (state?.toInt() == 3) {
+                    RoidmiActionButton("Fortsetzen", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { showResumeConfirm = true }
+                } else {
+                    RoidmiActionButton("Start", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { command("start", "Reinigungsstart") }
+                }
+                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy && state?.toInt() != 3, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
+            }
+            if (showResumeConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showResumeConfirm = false },
+                    title = { Text("Reinigung fortsetzen?") },
+                    text = { Text("Die Reinigung wird für die ausgewählten Räume neu gestartet. Bereits gereinigte Bereiche können erneut gereinigt werden.") },
+                    confirmButton = {
+                        TextButton(onClick = { showResumeConfirm = false; command("resume", "Fortsetzen") }) { Text("Fortsetzen") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showResumeConfirm = false }) { Text("Abbrechen") }
+                    }
+                )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 RoidmiActionButton("Stop", Icons.Default.Stop, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("stop", "Stopp") }
