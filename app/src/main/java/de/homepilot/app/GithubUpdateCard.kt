@@ -140,17 +140,15 @@ internal fun GithubUpdateCard(appVersion: String) {
                                     error("Die APK gehört zu einer anderen App: " + archive.packageName)
                                 }
                                 val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
-                                // Restore the previously working ACTION_INSTALL_PACKAGE flow (KlimaPilot 0.4.19).
-                                // Keep REQUEST_INSTALL_PACKAGES out of the manifest to avoid Play Protect warnings.
-                                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-                                    data = uri
+                                // Exact APK handoff from KlimaPilot 0.4.21.
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, "application/vnd.android.package-archive")
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
                                     clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", uri)
-                                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
                                 }
                                 status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
                                 context.startActivity(intent)
-                                status = "Android-Installer angefordert. Bitte Installation bestätigen."
+                                status = "Android-Installationsdialog wurde angefordert. Bitte die Installation dort bestätigen."
                             } catch (error: Exception) {
                                 status = "Update fehlgeschlagen: " + (error.message ?: error.javaClass.simpleName)
                             } finally {

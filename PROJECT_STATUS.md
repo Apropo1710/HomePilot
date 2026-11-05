@@ -317,3 +317,8 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - HomePilot 1.29.97 stellt diesen Intent-Typ wieder her, inklusive URI-Leserechten, ClipData und NEW_TASK.
 - REQUEST_INSTALL_PACKAGES bleibt aus dem Manifest entfernt, um den Play-Protect-Alarm nicht erneut auszulösen.
 - Die nicht funktionierende ACTION_VIEW-/MediaStore-Variante wird verworfen. Gerätetest nach Build erforderlich.\n\n
+
+## Updater 1.29.99 (05.11.2026)
+- APK-Übergabe exakt an KlimaPilot 0.4.21 angeglichen: ACTION_VIEW, application/vnd.android.package-archive, FileProvider, URI-Leserechte, NEW_TASK, ClipData.
+- ACTION_INSTALL_PACKAGE entfernt; REQUEST_INSTALL_PACKAGES bleibt nicht im Manifest (Play Protect).
+- Versionssprung 1.29.98 -> 1.29.99 (versionCode 156 -> 157) für erneuten Updatetest.
