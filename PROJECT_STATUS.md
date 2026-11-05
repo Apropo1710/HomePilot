@@ -293,3 +293,8 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - Play Protect, Installationsdialog und In-App-Update auf einem Gerät nur dann als getestet oder funktionierend bezeichnen, wenn der Nutzer-/Gerätetest dies bestätigt hat. CI allein kann das nicht nachweisen.
 - Keine wiederholten Experimente mit Installer-Varianten, wenn bereits eine bekannte erfolgreiche Lösung existiert. Bestehende Fixes zuerst recherchieren und anwenden.
 - Änderungen an Installer oder Updateprozess müssen ausdrücklich darauf geprüft werden, dass die funktionierende Installation und In-App-Aktualisierung nicht regressieren.\n
+
+## Roidmi Eve Plus option wiring (05.11.2026)
+- HomePilot cleaning-option controls now use the confirmed ioBroker state IDs `roidmi.0.individual`, `roidmi.0.doubleClean`, and `roidmi.0.pathType` (instead of obsolete `customizeRooms` / `moppingPath`).
+- Y-Weg-Moppen is shown as a two-state toggle, matching the Original-App switch; `pathType` writes 1 for on and 0 for off. Double-clean remains a separate toggle.
+- Version: **1.29.91 (versionCode 149)**. Branch `feat/roidmi-eve-plus-options`; device/build validation pending.
