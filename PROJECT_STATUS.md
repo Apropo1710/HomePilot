@@ -267,3 +267,30 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Der bestehende Download-/Updatebereich in den Einstellungen bleibt die einzige Update-Download- und Installationsoberfläche.
 - APK-Installation nutzt den Android-Standarddialog über `ACTION_VIEW` + APK-MIME-Type und FileProvider-URI. Die Berechtigung `REQUEST_INSTALL_PACKAGES` sowie der vorherige `ACTION_INSTALL_PACKAGE`-Pfad werden entfernt.
 - Version **1.29.84 / versionCode 142**. Play Protect muss auf dem Zielgerät erneut überprüft werden; CI kann diese Google-Prüfung nicht garantieren.\n\n\n\n\n\n\n
+
+## Verbindliche Regeln: APK-Installer, In-App-Update und Play Protect (05.11.2026)
+
+Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geändert werden.
+
+### Referenzstand und Installer
+- Vor jeder Änderung am Installer zuerst den letzten nachweislich funktionierenden Stand, den aktuellen Code und frühere erfolgreiche Fixes vergleichen. Insbesondere den bewährten KlimaPilot-Fix prüfen und bei passender Android-Implementierung wiederverwenden.
+- Der derzeit bewährte APK-Übergabepfad ist: `ACTION_VIEW`, MIME-Type `application/vnd.android.package-archive`, FileProvider-URI, `FLAG_GRANT_READ_URI_PERMISSION`, `FLAG_ACTIVITY_NEW_TASK` und `ClipData.newUri(...)`.
+- Diesen Ablauf nicht eigenmächtig durch `ACTION_INSTALL_PACKAGE`, andere Intent-Varianten oder andere URI-/Berechtigungsübergaben ersetzen.
+- `REQUEST_INSTALL_PACKAGES` nicht ohne vorherigen Vergleich mit dem funktionierenden Referenzstand hinzufügen oder entfernen.
+- APK-Signierung, Zertifikat/Schlüssel, Build-Konfiguration, Manifest-Berechtigungen und Installer nur nach Prüfung der Auswirkungen auf Play Protect und Updatefähigkeit ändern.
+- Play-Protect-Warnungen nicht mit wahllosen Installer-Änderungen, neuen Intent-Varianten oder zusätzlichen Warnungsdialogen behandeln. Zuerst den letzten warnungsfreien Produktionsstand und bekannte erfolgreiche Fixes vergleichen.
+
+### In-App-Update vollständig prüfen
+- Bei Änderungen am Updateprozess den gesamten Ablauf berücksichtigen: Download, tatsächliche APK-Datei und Speicherort, FileProvider-URI, URI-Berechtigungen, Intent, ClipData und Übergabe an den Android-Systeminstaller.
+- Ein erfolgreicher Download ist **kein** Nachweis dafür, dass der Android-Installationsdialog gestartet wurde.
+- Statusmeldungen dürfen den Installationsstart nicht behaupten, solange die Übergabe nicht tatsächlich erfolgt ist. Download, Übergabe an den Systeminstaller und erfolgreiche Installation sind getrennte Zustände.
+- Den Installer nicht ändern, nur um ein anderes Problem (z. B. Startup-Update-Popup oder Updateprüfung) zu beheben.
+
+### Pflichtprüfung vor Änderung und Release
+- Vor dem Editieren aktuellen Branch, Code und letzten funktionierenden Referenzstand lesen; den Diff gezielt auf Änderungen an Installer, Manifest, Signierung und Updatepfad prüfen.
+- Nach dem Build Build-Ergebnis, APK-Version/versionCode, Signatur/Zertifikat, Manifest-Berechtigungen und Release-Datei kontrollieren.
+- GitHub-Actions-Ergebnis und tatsächliche Verfügbarkeit des APK-Assets prüfen. APK-Link nur nach verifiziertem Release nennen.
+- Play Protect, Installationsdialog und In-App-Update auf einem Gerät nur dann als getestet oder funktionierend bezeichnen, wenn der Nutzer-/Gerätetest dies bestätigt hat. CI allein kann das nicht nachweisen.
+- Keine wiederholten Experimente mit Installer-Varianten, wenn bereits eine bekannte erfolgreiche Lösung existiert. Bestehende Fixes zuerst recherchieren und anwenden.
+- Änderungen an Installer oder Updateprozess müssen ausdrücklich darauf geprüft werden, dass die funktionierende Installation und In-App-Aktualisierung nicht regressieren.
+
