@@ -241,3 +241,9 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - Die irreführende Schaltfläche „Weiter“ wurde durch „Stop“ ersetzt. `control.resume` wird nicht mehr angeboten, da der Adapter damit einen neuen Reinigungsstart auslöst und kein echtes Fortsetzen bestätigt ist.
 - `sweepType` wird nur noch als Status angezeigt, da der Adapter-Datenpunkt schreibgeschützt ist. Saugstufe (`fanSpeed`) und Wasserstufe (`waterLevel`) bleiben global steuerbar.
 - Produktionsversion: **1.29.83 (versionCode 141)**. Build und Smartphone-Test folgen nach GitHub Actions.\n
+
+## Startup-Updatehinweis und Installer-Anpassung (05.11.2026)
+- Beim App-Start wird bei vorhandener GitHub-Verbindung einmalig nach einer neueren Release-Version gesucht. Bei Verfügbarkeit erscheint ein Popup mit „Zu Einstellungen“ und „Später“; die Prüfung blockiert den App-Start nicht.
+- Der bestehende Download-/Updatebereich in den Einstellungen bleibt die einzige Update-Download- und Installationsoberfläche.
+- APK-Installation nutzt den Android-Standarddialog über `ACTION_VIEW` + APK-MIME-Type und FileProvider-URI. Die Berechtigung `REQUEST_INSTALL_PACKAGES` sowie der vorherige `ACTION_INSTALL_PACKAGE`-Pfad werden entfernt.
+- Version **1.29.84 / versionCode 142**. Play Protect muss auf dem Zielgerät erneut überprüft werden; CI kann diese Google-Prüfung nicht garantieren.

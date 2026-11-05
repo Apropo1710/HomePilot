@@ -617,6 +617,7 @@ private fun HomePilotApp() {
     var displayedTab by remember { mutableStateOf(Tab.HOME) }
     var expandedSettingsSection by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    StartupUpdateCheck(appVersion = BuildConfig.VERSION_NAME, onOpenSettings = { selectedTab = Tab.SETTINGS })
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     var appFontScale by remember { mutableFloatStateOf(prefs.getFloat("appFontScale", 1.0f).coerceIn(0.85f, 1.5f)) }
     val pageAlpha = remember { Animatable(1f) }
@@ -3147,6 +3148,42 @@ private fun HomePilotAccountLoginScreen(
             }
         }
 
+    }
+}
+
+
+@Composable
+private fun StartupUpdateCheck(appVersion: String, onOpenSettings: () -> Unit) {
+    val context = LocalContext.current
+    var availableVersion by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        if (!GithubPrivateUpdates.isConnected(context)) return@LaunchedEffect
+        try {
+            val release = GithubPrivateUpdates.latestRelease(context)
+            val installed = appVersion.split(".").map { it.toIntOrNull() ?: 0 }
+            val latest = release.version.split(".").map { it.toIntOrNull() ?: 0 }
+            var comparison = 0
+            for (i in 0 until maxOf(installed.size, latest.size)) {
+                val delta = latest.getOrElse(i) { 0 }.compareTo(installed.getOrElse(i) { 0 })
+                if (delta != 0) { comparison = delta; break }
+            }
+            if (comparison > 0) availableVersion = release.version
+        } catch (_: Exception) {
+            // Bei fehlender Verbindung oder nicht erreichbarem GitHub kein Popup.
+        }
+    }
+    availableVersion?.let { version ->
+        AlertDialog(
+            onDismissRequest = { availableVersion = null },
+            title = { Text("HomePilot-Update verfügbar") },
+            text = { Text("Version $version ist verfügbar. Du kannst das Update in den Einstellungen herunterladen.") },
+            confirmButton = {
+                TextButton(onClick = { availableVersion = null; onOpenSettings() }) { Text("Zu Einstellungen") }
+            },
+            dismissButton = {
+                TextButton(onClick = { availableVersion = null }) { Text("Später") }
+            }
+        )
     }
 }
 
