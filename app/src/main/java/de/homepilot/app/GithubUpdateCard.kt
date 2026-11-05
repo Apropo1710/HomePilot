@@ -140,10 +140,10 @@ internal fun GithubUpdateCard(appVersion: String) {
                                     error("Die APK gehört zu einer anderen App: " + archive.packageName)
                                 }
                                 val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
-                                val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-                                    data = uri
+                                val intent = Intent(Intent.ACTION_VIEW).apply {
+                                    setDataAndType(uri, "application/vnd.android.package-archive")
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    putExtra(Intent.EXTRA_RETURN_RESULT, true)
+                                    clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", uri)
                                 }
                                 status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
                                 context.startActivity(intent)

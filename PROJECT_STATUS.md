@@ -16,6 +16,13 @@
 
 # HomePilot – Projektstatus
 
+## Installer / Play Protect Rücknahme (05.11.2026)
+- Installer auf bewährten `ACTION_VIEW`-Übergabepfad zurückgestellt: APK MIME `application/vnd.android.package-archive`, FileProvider URI, Leserechte, `ClipData`.
+- `REQUEST_INSTALL_PACKAGES` entfernt. Keine `ACTION_INSTALL_PACKAGE`-Nutzung.
+- Startup-Update-Popup bleibt erhalten. Roidmi-Dock-Steuerung bleibt enthalten.
+- Version 1.29.90 / versionCode 148. Ansatz entspricht dem bereits erfolgreichen KlimaPilot-Fix (0.4.21).
+
+
 ## Installer-Berechtigung (05.11.2026)
 - Der Installer verwendet `ACTION_INSTALL_PACKAGE`; im aktuellen Manifest fehlte die notwendige `REQUEST_INSTALL_PACKAGES`-Berechtigung, die im funktionierenden Stand 1.29.83 vorhanden war.
 - Berechtigung wieder ergänzt. Keine Play-Protect-Warnungslogik oder zusätzliche Play-Protect-Dialoge eingebaut.
