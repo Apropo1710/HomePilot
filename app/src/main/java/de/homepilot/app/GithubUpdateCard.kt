@@ -139,18 +139,33 @@ internal fun GithubUpdateCard(appVersion: String) {
                                 if (archive.packageName != context.packageName) {
                                     error("Die APK gehört zu einer anderen App: " + archive.packageName)
                                 }
-                                val uri = FileProvider.getUriForFile(context, context.packageName + ".fileprovider", file)
+                                val values = android.content.ContentValues().apply {
+                                    put(android.provider.MediaStore.Downloads.DISPLAY_NAME, "HomePilot-update-${archive.versionName ?: "update"}.apk")
+                                    put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/vnd.android.package-archive")
+                                    put(android.provider.MediaStore.Downloads.RELATIVE_PATH, android.os.Environment.DIRECTORY_DOWNLOADS + "/HomePilot")
+                                    put(android.provider.MediaStore.Downloads.IS_PENDING, 1)
+                                }
+                                val apkUri = context.contentResolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                                    ?: error("APK konnte nicht in Downloads gespeichert werden.")
+                                try {
+                                    context.contentResolver.openOutputStream(apkUri, "w")?.use { output ->
+                                        file.inputStream().use { input -> input.copyTo(output) }
+                                    } ?: error("APK-Datei in Downloads konnte nicht geöffnet werden.")
+                                    values.clear()
+                                    values.put(android.provider.MediaStore.Downloads.IS_PENDING, 0)
+                                    context.contentResolver.update(apkUri, values, null, null)
+                                } catch (copyError: Exception) {
+                                    context.contentResolver.delete(apkUri, null, null)
+                                    throw copyError
+                                }
                                 val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(uri, "application/vnd.android.package-archive")
+                                    setDataAndType(apkUri, "application/vnd.android.package-archive")
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", uri)
+                                    clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", apkUri)
                                 }
-                                if (intent.resolveActivity(context.packageManager) == null) {
-                                    error("Android hat keinen Paketinstaller für APK-Dateien gefunden.")
-                                }
-                                status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
+                                status = "APK geprüft und in Downloads gespeichert. Android-Installer wird gestartet …"
                                 context.startActivity(intent)
-                                status = "Android-Installationsdialog wurde angefordert. Bitte die Installation dort bestätigen."
+                                status = "Installer angefordert. Falls kein Dialog erscheint, HomePilot-update in Downloads antippen."
                             } catch (error: Exception) {
                                 status = "Update fehlgeschlagen: " + (error.message ?: error.javaClass.simpleName)
                             } finally {
