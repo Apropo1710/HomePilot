@@ -2001,17 +2001,17 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
 }
 @Composable private fun RoidmiHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }
+    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.errorCode")) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
-            client.cachedNumber("roidmi.0.battery")?.let { battery = it }
-            client.cachedNumber("roidmi.0.state")?.let { state = it }
+            client.cachedNumber("roidmi.0.evePlus.status.battery")?.let { battery = it }
+            client.cachedNumber("roidmi.0.evePlus.status.state")?.let { state = it }
             while (true) {
-                client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> if (v != null) adapter = v }
-                client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it ?: battery }
-                client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it ?: charging }
-                client.getNumericState(serverUrl, "roidmi.0.state") { state = it ?: state }
-                client.getNumericState(serverUrl, "roidmi.0.errorCode") { error = it ?: error }
+                client.getState(serverUrl, "roidmi.0.evePlus.info.connection") { v, _ -> if (v != null) adapter = v }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.battery") { battery = it ?: battery }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.charging") { charging = it ?: charging }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.state") { state = it ?: state }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.errorCode") { error = it ?: error }
                 delay(30_000)
             }
         }
@@ -2035,26 +2035,26 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     }
 }
 @Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
-    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.waterLevel")) }; var customizeRooms by remember { mutableStateOf(client.cachedNumber("roidmi.0.individual")) }; var doubleClean by remember { mutableStateOf(client.cachedNumber("roidmi.0.doubleClean")) }; var moppingPath by remember { mutableStateOf(client.cachedNumber("roidmi.0.pathType")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.map.mapId")) }
+    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.waterLevel")) }; var customizeRooms by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.individual")) }; var doubleClean by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.doubleClean")) }; var moppingPath by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.pathType")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.map.mapId")) }
     var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }; var showResumeConfirm by remember { mutableStateOf(false) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
-            client.cachedText("roidmi.0.map.roomsJson")?.let { roomsRaw = it }
-            client.cachedNumber("roidmi.0.map.mapId")?.let { mapId = it }
+            client.cachedText("roidmi.0.evePlus.map.roomsJson")?.let { roomsRaw = it }
+            client.cachedNumber("roidmi.0.evePlus.map.mapId")?.let { mapId = it }
             while (true) {
-                client.getState(serverUrl, "roidmi.0.info.connection") { v, _ -> if (v != null) adapter = v }
-                client.getNumericState(serverUrl, "roidmi.0.battery") { battery = it ?: battery }
-                client.getNumericState(serverUrl, "roidmi.0.charging") { charging = it ?: charging }
-                client.getNumericState(serverUrl, "roidmi.0.state") { state = it ?: state }
-                client.getNumericState(serverUrl, "roidmi.0.errorCode") { error = it ?: error }
-                client.getNumericState(serverUrl, "roidmi.0.fanSpeed") { fan = it ?: fan }
-                client.getNumericState(serverUrl, "roidmi.0.sweepType") { sweep = it ?: sweep }
-                client.getNumericState(serverUrl, "roidmi.0.waterLevel") { water = it ?: water }
-                client.getNumericState(serverUrl, "roidmi.0.individual") { customizeRooms = it ?: customizeRooms }
-                client.getNumericState(serverUrl, "roidmi.0.doubleClean") { doubleClean = it ?: doubleClean }
-                client.getNumericState(serverUrl, "roidmi.0.pathType") { moppingPath = it ?: moppingPath }
-                client.getTextState(serverUrl, "roidmi.0.map.roomsJson") { roomsRaw = it ?: roomsRaw }
-                client.getNumericState(serverUrl, "roidmi.0.map.mapId") { mapId = it ?: mapId }
+                client.getState(serverUrl, "roidmi.0.evePlus.info.connection") { v, _ -> if (v != null) adapter = v }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.battery") { battery = it ?: battery }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.charging") { charging = it ?: charging }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.state") { state = it ?: state }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.errorCode") { error = it ?: error }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.fanSpeed") { fan = it ?: fan }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.sweepType") { sweep = it ?: sweep }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.waterLevel") { water = it ?: water }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.individual") { customizeRooms = it ?: customizeRooms }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.doubleClean") { doubleClean = it ?: doubleClean }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.pathType") { moppingPath = it ?: moppingPath }
+                client.getTextState(serverUrl, "roidmi.0.evePlus.map.roomsJson") { roomsRaw = it ?: roomsRaw }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.map.mapId") { mapId = it ?: mapId }
                 delay(30_000)
             }
         }
@@ -2064,7 +2064,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
     LaunchedEffect(state, charging) {
         if (state?.toInt() == 6 || state?.toInt() == 9) selected = emptySet()
     }
-    fun command(id: String, label: String) { if (!connected || !adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
+    fun command(id: String, label: String) { if (!connected || !adapter || busy) return; busy = true; message = null; client.setState(serverUrl, "roidmi.0.evePlus.control." + id, true) { ok, msg -> busy = false; message = if (ok) label + " an den Adapter übergeben." else msg } }
     fun setting(id: String, value: Int, label: String) {
         if (!connected || !adapter) return
         val oldValue = when (id) {
@@ -2079,10 +2079,10 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
             }
         }
         update(value.toDouble())
-        client.setNumericState(serverUrl, "roidmi.0." + id, value.toDouble()) { ok, msg ->
+        client.setNumericState(serverUrl, "roidmi.0.evePlus.status." + id, value.toDouble()) { ok, msg ->
             if (ok) {
                 message = label + " gespeichert."
-                client.getNumericState(serverUrl, "roidmi.0." + id) { actual -> if (actual != null) update(actual) }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status." + id) { actual -> if (actual != null) update(actual) }
             } else {
                 oldValue?.let { update(it) }
                 message = msg
@@ -2220,7 +2220,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
                         if (roomRow.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
-                Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
+                Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.evePlus.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
             }
         }
     }
