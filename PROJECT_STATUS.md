@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 8675a8f4a3d16200f7df163dd4fd5fad4425f5f1
+- Quellcommit des APK-Builds: 82fb7334d92eb875dbe29d70eea412ac8009f8a3
 - App-Version / versionCode: **1.29.104 / 162**
-- Build-Zeit: 2026-11-06 17:29:52 UTC
+- Build-Zeit: 2026-11-11 09:57:37 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 1ea69ff31108fb36f08dccd15ea30be8b63ae1907c2ed73bb2b062a5d8dfd5a1
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: ab984684ec37dedd22c1a73592cc1e299ac727d94752321628ca1b3ff52afe56
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -344,4 +344,4 @@ Der Nutzer hat die aktuellen In-App-Updates von HomePilot und KlimaPilot erfolgr
 
 **Erfolgreich auf dem Nutzergerät bestätigt:** HomePilot **1.29.103 / versionCode 161**. Der getestete Stand verwendet `ACTION_INSTALL_PACKAGE`, die Manifest-Berechtigung `REQUEST_INSTALL_PACKAGES` und prüft `canRequestPackageInstalls()`. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, wird die entsprechende Android-Einstellungsseite geöffnet; nach Freigabe muss der Nutzer den Updatevorgang erneut starten. URI-Leserecht, `ClipData` und `NEW_TASK` bleiben Teil der Installer-Übergabe. Der Nutzer bestätigte, dass das Update erfolgreich installiert wurde.
 
-Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a. `ACTION_VIEW`/MediaStore, 1.29.95 bis 1.29.99) nicht als erfolgreiche Lösung behandeln. Wegen der Play-Protect-/Berechtigungsauswirkungen diesen Ablauf künftig nicht ungeprüft verändern. Die Bestätigung gilt für den getesteten Stand und das Nutzergerät.\n\n\n
+Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a. `ACTION_VIEW`/MediaStore, 1.29.95 bis 1.29.99) nicht als erfolgreiche Lösung behandeln. Wegen der Play-Protect-/Berechtigungsauswirkungen diesen Ablauf künftig nicht ungeprüft verändern. Die Bestätigung gilt für den getesteten Stand und das Nutzergerät.\n\n\n\n
