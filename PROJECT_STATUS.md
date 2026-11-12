@@ -377,3 +377,11 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Die Feldzuordnung und Bearbeitung bestehender Zeitpläne ist damit im Zusammenspiel mit dem echten X20+ bestätigt.
 - Keine Zeitplan-Neuanlage oder -Löschung; bestehende Aktivieren/Deaktivieren-Funktion bleibt erhalten.
 - Weiterer Schritt: normale Alltagsbeobachtung. Keine zusätzlichen zyklischen Abfragen einführen.\n
+
+## Nächster Entwicklungsschritt: Roidmi Eve Plus Zeitplanbearbeitung (12.11.2026)
+- Geplant ist, die auf dem Xiaomi X20+ erfolgreich getestete bidirektionale Zeitplanbearbeitung auch für den **Roidmi Eve Plus** umzusetzen.
+- Eve Plus und X20+ sind unterschiedliche Geräte. Keine Übernahme von X20+-Feldcodierungen oder MIoT-Properties ohne Verifikation.
+- Zuerst Adapter-/MIoT-Bestand und Eve-Plus-Zeitplanformat untersuchen, dann einen gerätespezifischen Schreibpfad mit Readback/Verifikation umsetzen.
+- HomePilot soll danach die Bearbeitung für den Eve Plus passend zum Adapter-Datenpfad unterstützen. Zunächst nur bestehende Zeitpläne bearbeiten, keine Neuanlage/Löschung.
+- Bestehende X20+-Funktion nicht verändern. Last gering halten: keine unnötigen zyklischen Abfragen, Schreib-/Prüfoperationen nur bei manueller Nutzeraktion.
+- Status: geplant, noch nicht begonnen.
