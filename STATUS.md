@@ -78,3 +78,11 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Wichtig: Die UI-Reihenfolge ist von den Adapterwerten entkoppelt. Die Zuordnung bleibt unverändert: Saugen = 2, Saugen und Wischen = 0, Wischen = 1, Saugen vor Wischen = 3. Auswahl, Readback und angezeigter aktiver Modus bleiben dadurch korrekt.
 - Saugleistungs- und Wasserstufen bleiben unverändert.
 - Installationsversion: **1.29.109 / versionCode 167**. GitHub-Actions-Build und Smartphone-Prüfung stehen noch aus.
+
+
+## Xiaomi X20+ – Wartungsanzeige (12.11.2026)
+- In der X20+-Detailseite wurde eine Wartungskarte ergänzt: Hauptbürste, Seitenbürste, Filter und Wischmopps mit verbleibender Lebensdauer in Prozent und Reststunden.
+- Die Werte stammen aus den vorhandenen Adapterdatenpunkten unter roidmi.0.x20Plus.status.*; der Adapter fragt diese Verbrauchswerte im 5-Minuten-Zyklus ab. Die UI fragt die Werte ebenfalls nur alle fünf Minuten erneut ab.
+- Prozentwerte werden mit Fortschrittsbalken und dezenter Warnfarblogik angezeigt. Fehlende Daten bleiben als „—“ sichtbar; es werden keine Werte geschätzt.
+- Keine Reset-Schaltflächen, da im aktuellen Adapter keine bestätigten Reset-Aktionen für diese Verbrauchsteile bereitgestellt werden.
+- Installationsversion: **1.29.110 / versionCode 168**. GitHub-Actions-Build und Smartphone-Prüfung stehen noch aus.

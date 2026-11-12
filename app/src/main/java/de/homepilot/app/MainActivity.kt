@@ -2132,6 +2132,42 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
 }
 
 @Composable
+@Composable
+private fun X20PlusMaintenanceRow(label: String, percent: Double?, hours: Double?, text: Color) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(label, color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text(
+                if (percent != null) "${percent.toInt().coerceIn(0, 100)} %" else "—",
+                color = when {
+                    percent == null -> MaterialTheme.colorScheme.onSurfaceVariant
+                    percent <= 10.0 -> Color(0xFFD32F2F)
+                    percent <= 25.0 -> Color(0xFFE18A24)
+                    else -> Color(0xFF388E3C)
+                },
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        LinearProgressIndicator(
+            progress = { ((percent ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth(),
+            color = when {
+                percent == null -> MaterialTheme.colorScheme.surfaceVariant
+                percent <= 10.0 -> Color(0xFFD32F2F)
+                percent <= 25.0 -> Color(0xFFE18A24)
+                else -> Color(0xFF388E3C)
+            },
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+        Text(
+            if (hours != null) "Noch etwa ${hours.toInt().coerceAtLeast(0)} Stunden" else "Restlaufzeit wird geladen",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 10.sp
+        )
+    }
+}
+
 private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
     val prefix = "roidmi.0.x20Plus."
     var adapter by remember { mutableStateOf(client.cachedText(prefix + "info.connection") == "true") }
@@ -2145,6 +2181,14 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var suction by remember { mutableStateOf(client.cachedNumber(prefix + "control.suction") ?: client.cachedNumber(prefix + "status.suction")) }
     var water by remember { mutableStateOf(client.cachedNumber(prefix + "control.mopMode") ?: client.cachedNumber(prefix + "status.mopMode")) }
     var carpetBoost by remember { mutableStateOf(client.cachedText(prefix + "control.carpetBoost") == "true") }
+    var mainBrushPercent by remember { mutableStateOf(client.cachedNumber(prefix + "status.mainBrushLife")) }
+    var mainBrushHours by remember { mutableStateOf(client.cachedNumber(prefix + "status.mainBrushLeft")) }
+    var sideBrushPercent by remember { mutableStateOf(client.cachedNumber(prefix + "status.sideBrushLife")) }
+    var sideBrushHours by remember { mutableStateOf(client.cachedNumber(prefix + "status.sideBrushLeft")) }
+    var filterPercent by remember { mutableStateOf(client.cachedNumber(prefix + "status.filterLife")) }
+    var filterHours by remember { mutableStateOf(client.cachedNumber(prefix + "status.filterLeft")) }
+    var mopPercent by remember { mutableStateOf(client.cachedNumber(prefix + "status.mopLife")) }
+    var mopHours by remember { mutableStateOf(client.cachedNumber(prefix + "status.mopLeft")) }
     var roomsRaw by remember { mutableStateOf(client.cachedText(prefix + "rooms.roomsJson")) }
     var mapStatus by remember { mutableStateOf(client.cachedText(prefix + "rooms.mapStatus")) }
     var cleanStatus by remember { mutableStateOf(client.cachedText(prefix + "control.cleanRoomsStatus")) }
@@ -2170,6 +2214,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             adapter = false
         } else {
             loadRoomAndScheduleData()
+            var lastMaintenanceRefresh = 0L
             while (true) {
                 client.getState(serverUrl, prefix + "info.connection") { value, _ -> if (value != null) adapter = value }
                 client.getNumericState(serverUrl, prefix + "status.battery") { battery = it ?: battery }
@@ -2182,6 +2227,17 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 client.getNumericState(serverUrl, prefix + "control.suction") { suction = it ?: suction }
                 client.getNumericState(serverUrl, prefix + "control.mopMode") { water = it ?: water }
                 client.getTextState(serverUrl, prefix + "control.carpetBoost") { carpetBoost = it == "true" }
+                if (System.currentTimeMillis() - lastMaintenanceRefresh >= 300_000L) {
+                    client.getNumericState(serverUrl, prefix + "status.mainBrushLife") { mainBrushPercent = it ?: mainBrushPercent }
+                    client.getNumericState(serverUrl, prefix + "status.mainBrushLeft") { mainBrushHours = it ?: mainBrushHours }
+                    client.getNumericState(serverUrl, prefix + "status.sideBrushLife") { sideBrushPercent = it ?: sideBrushPercent }
+                    client.getNumericState(serverUrl, prefix + "status.sideBrushLeft") { sideBrushHours = it ?: sideBrushHours }
+                    client.getNumericState(serverUrl, prefix + "status.filterLife") { filterPercent = it ?: filterPercent }
+                    client.getNumericState(serverUrl, prefix + "status.filterLeft") { filterHours = it ?: filterHours }
+                    client.getNumericState(serverUrl, prefix + "status.mopLife") { mopPercent = it ?: mopPercent }
+                    client.getNumericState(serverUrl, prefix + "status.mopLeft") { mopHours = it ?: mopHours }
+                    lastMaintenanceRefresh = System.currentTimeMillis()
+                }
                 delay(30_000)
             }
         }
@@ -2478,6 +2534,21 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
             mapStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
             cleanStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        }
+
+        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
+            X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text)
+            Divider()
+            X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushHours, text)
+            Divider()
+            X20PlusMaintenanceRow("Filter", filterPercent, filterHours, text)
+            Divider()
+            X20PlusMaintenanceRow("Wischmopps", mopPercent, mopHours, text)
+            Text(
+                "Die Werte werden vom X20+-Adapter ungefähr alle fünf Minuten aktualisiert.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp
+            )
         }
 
         CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten aus Xiaomi Home", Icons.Default.Schedule) {
