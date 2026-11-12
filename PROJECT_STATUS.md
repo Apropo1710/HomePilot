@@ -366,3 +366,8 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Reinigungsmodi auf fünf Auswahlwerte aus Xiaomi Home angepasst: automatische Anpassung, nur Saugen, Saugen und Wischen, nur Wischen, Saugen vor Wischen.
 - Uhrzeit wird künftig über den Android-Uhrzeitdialog (Stunden/Minuten) gewählt, nicht mehr frei als Text eingegeben.
 - Version **1.29.119 / versionCode 177**. CI-Build und Release-Prüfung stehen noch aus.\n
+
+## Xiaomi X20+ Zeitplanfeld-Zuordnung (12.11.2026)
+- Xiaomi-Rohdatenvergleich zeigt: Feld 5 Wasserstufe (0 automatisch, 1 niedrig, 2 mittel, 3 hoch), Feld 6 Saugleistung, Feld 7 Reinigungsart (16 Saugen, 32 Saugen/Wischen, 48 Wischen, 64 Saugen vor Wischen).
+- Zeitplan-Editor und Anzeige verwenden die korrigierten Werte; Bitmap `1001011` entspricht So, Mi, Fr, Sa.
+- Version **1.29.120 / versionCode 178**. CI und Gerätetest noch ausstehend.
