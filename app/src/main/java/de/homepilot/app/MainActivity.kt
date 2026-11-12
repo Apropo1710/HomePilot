@@ -2897,15 +2897,28 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
         if (!connected || !adapter || eveScheduleBusy) return
         eveScheduleBusy = true
         eveScheduleMessage = "Zeitpläne werden direkt vom Roboter gelesen…"
+        val previousUpdate = eveScheduleLastUpdate
         client.setState(serverUrl, "roidmi.0.evePlus.control.refreshTiming", true) { ok, result ->
             if (!ok) {
                 eveScheduleBusy = false
                 eveScheduleMessage = result
             } else eveScheduleScope.launch {
                 delay(4500)
-                loadEveScheduleStates()
-                eveScheduleBusy = false
-                eveScheduleMessage = "Aktualisierung angefordert. Zeitstempel: " + (eveScheduleLastUpdate ?: "noch nicht bestätigt")
+                client.getTextState(serverUrl, "roidmi.0.evePlus.timing.lastUpdate") { latestUpdate ->
+                    if (!latestUpdate.isNullOrBlank()) {
+                        eveScheduleLastUpdate = latestUpdate
+                        eveScheduleMessage = if (latestUpdate != previousUpdate) {
+                            "Zeitpläne erfolgreich aktualisiert."
+                        } else {
+                            "Aktualisierung angefordert. Der Zeitstempel hat sich nicht geändert."
+                        }
+                    } else {
+                        eveScheduleMessage = "Aktualisierung angefordert – Rückmeldung steht noch aus."
+                    }
+                    client.getTextState(serverUrl, "roidmi.0.evePlus.timing.raw") { latestRaw -> eveSchedulesRaw = latestRaw ?: eveSchedulesRaw }
+                    client.getTextState(serverUrl, "roidmi.0.evePlus.timing.parsed") { latestParsed -> eveSchedulesParsed = latestParsed ?: eveSchedulesParsed }
+                    eveScheduleBusy = false
+                }
             }
         }
     }
@@ -3166,7 +3179,13 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(schedule.timeText + " · " + schedule.weekdaysText, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text(roidmiFanLabel(schedule.fanSpeed) + " · Wasser: " + roidmiWaterLabel(schedule.waterLevel), color = text, fontSize = 11.sp)
+                        val isMopping = schedule.waterLevel > 0
+                        Text(
+                            if (isMopping) "Wischen · Wasser: " + roidmiWaterLabel(schedule.waterLevel)
+                            else "Saugen · " + roidmiFanLabel(schedule.fanSpeed),
+                            color = text,
+                            fontSize = 11.sp
+                        )
                         Text("Räume: " + evePlusRoomNames(roomsRaw, schedule.roomIds), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                     }
                     Column(horizontalAlignment = Alignment.End) {
