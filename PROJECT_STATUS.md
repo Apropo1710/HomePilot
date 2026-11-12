@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: b963d66b03b04a02caeaa34494919dca29c78c6e
+- Quellcommit des APK-Builds: 81c3d986683b9b352b3048f00e7750f421303f7a
 - App-Version / versionCode: **1.29.118 / 176**
-- Build-Zeit: 2026-11-12 18:44:48 UTC
+- Build-Zeit: 2026-11-12 19:10:29 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 272c7771d2f26743feb796f10f595d16ea53a59863209bc1a931b3a799187645
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: 087500a1eca1bc88a093c642d41d45c9b9b5c26fb59bfe35657692dda6732c81
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -358,11 +358,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Einmalig/Wiederholen bleibt als Schalter; keine Neuanlage oder Löschung.
 - Fehlerursache des ersten Speicherversuchs: Adapter-State `x20Plus.control.updateSchedule` war nicht angelegt und nicht abonniert. Daher erreichte der Auftrag den Handler nicht; kein Roboter-Schreibversuch fand statt.
 - Adapter legt den Befehl jetzt an und abonniert ihn. Bestehender direkter Read/Write/Readback- und Verifikationspfad bleibt bestehen.
-- Version **1.29.118 / versionCode 176**. Build und Hardwaretest nach CI offen.\n\n
-
-## Xiaomi X20+ Zeitplaneditor – Korrekturen nach Praxistest (12.11.2026)
-- Wochentagsänderung wurde im ersten Praxistest nachweislich in Xiaomi Home übernommen. Der anschließende Adapter-Readback endete jedoch mit Timeout und HomePilot zeigte irrtümlich „fehlgeschlagen“.
-- Adapterstatus unterscheidet jetzt zwischen angenommener Änderung und abgeschlossener direkter Bestätigung; HomePilot akzeptiert den Status „von Xiaomi angenommen“ als erfolgreiche Übernahme mit noch ausstehendem Readback.
-- Reinigungsmodi auf fünf Auswahlwerte aus Xiaomi Home angepasst: automatische Anpassung, nur Saugen, Saugen und Wischen, nur Wischen, Saugen vor Wischen.
-- Uhrzeit wird künftig über den Android-Uhrzeitdialog (Stunden/Minuten) gewählt, nicht mehr frei als Text eingegeben.
-- Version **1.29.119 / versionCode 177**. CI-Build und Release-Prüfung stehen noch aus.
+- Version **1.29.118 / versionCode 176**. Build und Hardwaretest nach CI offen.\n\n\n
