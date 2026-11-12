@@ -563,7 +563,7 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     SETTINGS("Einstellungen", Icons.Default.Settings),
     MOVA("MOVA 1000", Icons.Default.Park),
     ROIDMI("Roidmi EVE Plus", Icons.Default.CleaningServices),
-    X20PLUS("Xiaomi X20+", Icons.Default.Schedule)
+    X20PLUS("Xiaomi X20+", Icons.Default.CleaningServices)
 }
 
 private data class DeviceItem(
@@ -1204,7 +1204,7 @@ private fun HomePilotApp() {
                         })
                         Tab.MOVA -> MovaDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.ROIDMI -> RoidmiDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
-                        Tab.X20PLUS -> X20PlusSchedulesScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
+                        Tab.X20PLUS -> X20PlusDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -2032,123 +2032,478 @@ private fun parseX20PlusScheduleUi(raw: String?): List<X20PlusScheduleUi> = runC
     }
 }.getOrDefault(emptyList())
 
+private const val X20PlusProductImage = "https://i02.appmifile.com/mi-com-product/fly-birds/xiaomi-robot-vacuum-x20-plus/PC/377e06499b45c223099fdf05748825bd.jpg"
+
+@Composable
+private fun X20PlusProductPhoto(size: androidx.compose.ui.unit.Dp) {
+    AsyncImage(
+        model = X20PlusProductImage,
+        contentDescription = "Xiaomi X20+ mit All-in-One-Reinigungsstation",
+        modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White),
+        contentScale = ContentScale.Fit
+    )
+}
+
+private fun x20PlusStatusLabel(value: Int?): String = when (value) {
+    1 -> "Saugt"
+    2 -> "Bereit"
+    3 -> "Pausiert"
+    4 -> "Störung"
+    5 -> "Fährt zur Station"
+    6 -> "Lädt"
+    7 -> "Wischt"
+    8 -> "Trocknet"
+    9 -> "Wischpads werden gereinigt"
+    10 -> "Fährt zum Waschen"
+    11 -> "Kartierung"
+    12 -> "Saugt und wischt"
+    13 -> "Vollständig geladen"
+    14 -> "Firmware-Update"
+    19 -> "Wasserprüfung"
+    21 -> "Waschen pausiert"
+    22 -> "Entleert Staubbehälter"
+    23 -> "Fernsteuerung"
+    null -> "Status wird geladen"
+    else -> "Unbekannter Status (" + value + ")"
+}
+
+private fun x20PlusCleaningModeLabel(value: Int?): String = when (value) {
+    0 -> "Saugen und Wischen"
+    1 -> "Wischen"
+    2 -> "Saugen"
+    3 -> "Saugen vor Wischen"
+    else -> "—"
+}
+
+private fun x20PlusSuctionLabel(value: Int?): String = when (value) {
+    0 -> "Leise"
+    1 -> "Standard"
+    2 -> "Stark"
+    3 -> "Turbo"
+    else -> "—"
+}
+
+private fun x20PlusWaterLabel(value: Int?): String = when (value) {
+    1 -> "Niedrig"
+    2 -> "Mittel"
+    3 -> "Hoch"
+    else -> "—"
+}
+
 @Composable
 private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
-    var scheduleCount by remember { mutableIntStateOf(0) }
+    var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.x20Plus.info.connection") == "true") }
+    var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.x20Plus.status.battery")) }
+    var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.x20Plus.status.vacuumState")) }
+    var fault by remember { mutableStateOf(client.cachedNumber("roidmi.0.x20Plus.status.fault")) }
     LaunchedEffect(serverUrl, connected) {
-        if (connected) client.getTextState(serverUrl, "roidmi.0.x20Plus.timing.parsed") { scheduleCount = parseX20PlusScheduleUi(it).size }
+        if (!connected) {
+            adapter = false
+        } else {
+            while (true) {
+                client.getState(serverUrl, "roidmi.0.x20Plus.info.connection") { value, _ -> if (value != null) adapter = value }
+                client.getNumericState(serverUrl, "roidmi.0.x20Plus.status.battery") { battery = it ?: battery }
+                client.getNumericState(serverUrl, "roidmi.0.x20Plus.status.vacuumState") { state = it ?: state }
+                client.getNumericState(serverUrl, "roidmi.0.x20Plus.status.fault") { fault = it ?: fault }
+                delay(30_000)
+            }
+        }
     }
-    CardBlock(panel, text, "Xiaomi X20+", "Gespeicherte Reinigungszeitpläne", Icons.Default.Schedule, action = onOpen) {
-        Text(if (connected) "$scheduleCount Zeitplan(e) aus Xiaomi Home" else "ioBroker nicht verbunden", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-        Text("Zeitpläne ansehen und aktivieren/deaktivieren  ›", color = Blue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    val status = when {
+        !connected -> "Offline · letzter Stand"
+        !adapter -> "Nicht verbunden"
+        fault != null && fault != 0.0 -> "Störung · Fehlercode " + fault!!.toInt()
+        else -> x20PlusStatusLabel(state?.toInt())
+    }
+    CardBlock(panel, text, "Xiaomi X20+", "Saugroboter · Status und Steuerung öffnen", Icons.Default.CleaningServices, action = onOpen) {
+        Row(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            X20PlusProductPhoto(104.dp)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(status, color = if (connected && adapter && (fault == null || fault == 0.0)) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Akku: ", color = text, fontSize = 13.sp)
+                    Text(battery?.let { it.toInt().toString() + " %" } ?: "—", color = robotBatteryColor(battery, state?.toInt() == 6), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Text("Zur Robotersteuerung  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
 @Composable
-private fun X20PlusSchedulesScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
-    val scheduleStateId = "roidmi.0.x20Plus.timing.parsed"
-    val statusStateId = "roidmi.0.x20Plus.timing.status"
-    var raw by remember { mutableStateOf(client.cachedText(scheduleStateId)) }
-    var status by remember { mutableStateOf(client.cachedText(statusStateId)) }
-    var busyId by remember { mutableStateOf<String?>(null) }
+private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
+    val prefix = "roidmi.0.x20Plus."
+    var adapter by remember { mutableStateOf(client.cachedText(prefix + "info.connection") == "true") }
+    var battery by remember { mutableStateOf(client.cachedNumber(prefix + "status.battery")) }
+    var state by remember { mutableStateOf(client.cachedNumber(prefix + "status.vacuumState")) }
+    var fault by remember { mutableStateOf(client.cachedNumber(prefix + "status.fault")) }
+    var charging by remember { mutableStateOf(client.cachedNumber(prefix + "status.chargingState")) }
+    var cleaningTime by remember { mutableStateOf(client.cachedNumber(prefix + "status.cleaningTime")) }
+    var cleaningArea by remember { mutableStateOf(client.cachedNumber(prefix + "status.cleaningArea")) }
+    var cleaningMode by remember { mutableStateOf(client.cachedNumber(prefix + "control.cleaningMode") ?: client.cachedNumber(prefix + "status.cleaningMode")) }
+    var suction by remember { mutableStateOf(client.cachedNumber(prefix + "control.suction") ?: client.cachedNumber(prefix + "status.suction")) }
+    var water by remember { mutableStateOf(client.cachedNumber(prefix + "control.mopMode") ?: client.cachedNumber(prefix + "status.mopMode")) }
+    var carpetBoost by remember { mutableStateOf(client.cachedText(prefix + "control.carpetBoost") == "true") }
+    var roomsRaw by remember { mutableStateOf(client.cachedText(prefix + "rooms.roomsJson")) }
+    var mapStatus by remember { mutableStateOf(client.cachedText(prefix + "rooms.mapStatus")) }
+    var cleanStatus by remember { mutableStateOf(client.cachedText(prefix + "control.cleanRoomsStatus")) }
+    var schedulesRaw by remember { mutableStateOf(client.cachedText(prefix + "timing.parsed")) }
+    var scheduleStatus by remember { mutableStateOf(client.cachedText(prefix + "timing.status")) }
+    var selectedRooms by remember { mutableStateOf(setOf<Int>()) }
+    var busy by remember { mutableStateOf(false) }
+    var busyLabel by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
+    var scheduleBusyId by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    fun loadStates() {
-        client.getTextState(serverUrl, scheduleStateId) { value -> raw = value }
-        client.getTextState(serverUrl, statusStateId) { value -> status = value }
+
+    fun loadRoomAndScheduleData() {
+        client.getTextState(serverUrl, prefix + "rooms.roomsJson") { roomsRaw = it ?: roomsRaw }
+        client.getTextState(serverUrl, prefix + "rooms.mapStatus") { mapStatus = it ?: mapStatus }
+        client.getTextState(serverUrl, prefix + "control.cleanRoomsStatus") { cleanStatus = it ?: cleanStatus }
+        client.getTextState(serverUrl, prefix + "timing.parsed") { schedulesRaw = it ?: schedulesRaw }
+        client.getTextState(serverUrl, prefix + "timing.status") { scheduleStatus = it ?: scheduleStatus }
     }
+
     LaunchedEffect(serverUrl, connected) {
-        if (connected) loadStates()
-    }
-    val schedules = remember(raw) { parseX20PlusScheduleUi(raw) }
-    fun waitForScheduleWrite() {
-        scope.launch {
-            repeat(12) {
-                delay(1000)
-                client.getTextState(serverUrl, statusStateId) { latest ->
-                    if (latest != null) {
-                        status = latest
-                        if (latest.contains("per Readback bestätigt") || latest.contains("Zeitplanänderung fehlgeschlagen")) {
-                            client.getTextState(serverUrl, scheduleStateId) { value -> raw = value }
-                            busyId = null
-                            message = latest
-                        }
-                    }
-                }
-            }
-            if (busyId != null) {
-                busyId = null
-                message = "Noch keine abschließende Rückmeldung vom Adapter. Bitte Status prüfen oder Zeitpläne aktualisieren."
+        if (!connected) {
+            adapter = false
+        } else {
+            loadRoomAndScheduleData()
+            while (true) {
+                client.getState(serverUrl, prefix + "info.connection") { value, _ -> if (value != null) adapter = value }
+                client.getNumericState(serverUrl, prefix + "status.battery") { battery = it ?: battery }
+                client.getNumericState(serverUrl, prefix + "status.vacuumState") { state = it ?: state }
+                client.getNumericState(serverUrl, prefix + "status.fault") { fault = it ?: fault }
+                client.getNumericState(serverUrl, prefix + "status.chargingState") { charging = it ?: charging }
+                client.getNumericState(serverUrl, prefix + "status.cleaningTime") { cleaningTime = it ?: cleaningTime }
+                client.getNumericState(serverUrl, prefix + "status.cleaningArea") { cleaningArea = it ?: cleaningArea }
+                client.getNumericState(serverUrl, prefix + "control.cleaningMode") { cleaningMode = it ?: cleaningMode }
+                client.getNumericState(serverUrl, prefix + "control.suction") { suction = it ?: suction }
+                client.getNumericState(serverUrl, prefix + "control.mopMode") { water = it ?: water }
+                client.getTextState(serverUrl, prefix + "control.carpetBoost") { carpetBoost = it == "true" }
+                delay(30_000)
             }
         }
     }
+
+    val rooms = remember(roomsRaw) {
+        runCatching {
+            val json = org.json.JSONArray(roomsRaw ?: "[]")
+            (0 until json.length()).mapNotNull { index ->
+                val item = json.optJSONObject(index) ?: return@mapNotNull null
+                val id = item.optInt("segmentId", -1)
+                val name = item.optString("name").trim()
+                if (id > 0 && name.isNotBlank()) id to name else null
+            }
+        }.getOrDefault(emptyList())
+    }
+    val schedules = remember(schedulesRaw) { parseX20PlusScheduleUi(schedulesRaw) }
+    val stateCode = state?.toInt()
+    val batteryCharging = stateCode == 6 || charging == 1.0
+    val statusLabel = when {
+        !connected -> "Offline · letzter Stand"
+        !adapter -> "Nicht verbunden"
+        fault != null && fault != 0.0 -> "Störung · Fehlercode " + fault!!.toInt()
+        else -> x20PlusStatusLabel(stateCode)
+    }
+
+    fun command(id: String, label: String) {
+        if (!connected || !adapter || busy) return
+        busy = true
+        busyLabel = label
+        message = null
+        client.setState(serverUrl, prefix + "control." + id, true) { ok, result ->
+            busy = false
+            busyLabel = null
+            message = if (ok) label + " an den X20+ übergeben." else result
+        }
+    }
+
+    fun updateSetting(id: String, value: Int, label: String) {
+        if (!connected || !adapter) return
+        val oldValue = when (id) {
+            "cleaningMode" -> cleaningMode
+            "suction" -> suction
+            "mopMode" -> water
+            else -> null
+        }
+        fun update(v: Double) {
+            when (id) {
+                "cleaningMode" -> cleaningMode = v
+                "suction" -> suction = v
+                "mopMode" -> water = v
+            }
+        }
+        update(value.toDouble())
+        client.setNumericState(serverUrl, prefix + "control." + id, value.toDouble()) { ok, result ->
+            if (ok) {
+                message = label + " an den Adapter übergeben."
+                client.getNumericState(serverUrl, prefix + "control." + id) { actual -> if (actual != null) update(actual) }
+            } else {
+                oldValue?.let { update(it) }
+                message = result
+            }
+        }
+    }
+
+    fun refreshRooms() {
+        if (!connected || !adapter || busy) return
+        busy = true
+        busyLabel = "Raumkarte wird aktualisiert"
+        client.setState(serverUrl, prefix + "control.refreshRooms", true) { ok, result ->
+            if (!ok) {
+                busy = false
+                busyLabel = null
+                message = result
+            } else scope.launch {
+                delay(2500)
+                loadRoomAndScheduleData()
+                busy = false
+                busyLabel = null
+                message = mapStatus ?: "Raumkarten-Aktualisierung angefordert."
+            }
+        }
+    }
+
+    fun cleanSelectedRooms() {
+        if (!connected || !adapter || busy || selectedRooms.isEmpty()) return
+        val payload = org.json.JSONObject().put("rooms", org.json.JSONArray().apply {
+            selectedRooms.sorted().forEach { id ->
+                put(org.json.JSONObject()
+                    .put("segmentId", id)
+                    .put("repeat", 1)
+                    .put("suction", suction?.toInt() ?: 1)
+                    .put("water", water?.toInt() ?: 2))
+            }
+        }).toString()
+        busy = true
+        busyLabel = "Raumreinigung wird gestartet"
+        client.setTextState(serverUrl, prefix + "control.cleanRooms", payload) { ok, result ->
+            if (!ok) {
+                busy = false
+                busyLabel = null
+                message = result
+            } else scope.launch {
+                delay(1800)
+                client.getTextState(serverUrl, prefix + "control.cleanRoomsStatus") { cleanStatus = it ?: cleanStatus }
+                busy = false
+                busyLabel = null
+                message = cleanStatus ?: "Raumreinigungsauftrag an den Adapter übergeben."
+            }
+        }
+    }
+
+    fun refreshSchedules() {
+        if (!connected || !adapter || scheduleBusyId != null) return
+        scheduleBusyId = "refresh"
+        client.setState(serverUrl, prefix + "control.refreshSchedules", true) { ok, result ->
+            if (!ok) {
+                scheduleBusyId = null
+                message = result
+            } else scope.launch {
+                delay(2200)
+                loadRoomAndScheduleData()
+                scheduleBusyId = null
+                message = scheduleStatus ?: "Zeitpläne aktualisiert."
+            }
+        }
+    }
+
+    fun setScheduleEnabled(schedule: X20PlusScheduleUi, enabled: Boolean) {
+        if (!connected || !adapter || scheduleBusyId != null || schedule.parseError != null) return
+        scheduleBusyId = schedule.id
+        message = "Änderung wird an Xiaomi Home übertragen…"
+        val payload = org.json.JSONObject().put("id", schedule.id).put("enabled", enabled).toString()
+        client.setTextState(serverUrl, prefix + "control.setScheduleEnabled", payload) { ok, result ->
+            if (!ok) {
+                scheduleBusyId = null
+                message = result
+            } else {
+                scope.launch {
+                    var confirmed = false
+                    repeat(12) {
+                        if (!confirmed) {
+                            delay(1000)
+                            client.getTextState(serverUrl, prefix + "timing.status") { latest ->
+                                if (latest != null) {
+                                    scheduleStatus = latest
+                                    if (latest.contains("per Readback bestätigt") || latest.contains("Zeitplanänderung fehlgeschlagen")) {
+                                        confirmed = true
+                                        client.getTextState(serverUrl, prefix + "timing.parsed") { schedulesRaw = it ?: schedulesRaw }
+                                        scheduleBusyId = null
+                                        message = latest
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (!confirmed) {
+                        scheduleBusyId = null
+                        message = "Noch keine abschließende Rückmeldung vom Adapter. Bitte Zeitpläne aktualisieren."
+                    }
+                }
+            }
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }
             Column {
                 Text("Xiaomi X20+", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-                Text("Zeitpläne aus Xiaomi Home", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Saugroboter · Steuerung und Status", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        CardBlock(panel, text, "Gespeicherte Zeitpläne", "Änderungen werden dauerhaft in Xiaomi Home gespeichert", Icons.Default.Schedule) {
-            if (schedules.isEmpty()) {
-                Text(if (raw == null) "Zeitpläne werden geladen. Falls nichts erscheint, bitte aktualisieren." else "Keine gespeicherten Zeitpläne gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-            }
-            schedules.forEach { schedule ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text("${schedule.time}  ·  ${schedule.weekdaysText}", color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Text(schedule.cleaningModeText + " · " + schedule.fanSpeedText, color = text, fontSize = 12.sp)
-                        Text("Wasser: ${schedule.waterLevelText} · Räume: ${schedule.roomsText}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-                        schedule.parseError?.let { Text("Nicht vollständig lesbar: $it", color = Color(0xFFD97706), fontSize = 11.sp) }
+
+        CardBlock(panel, text, "Gerätestatus", "Daten aus dem Xiaomi-X20+-Adapter", Icons.Default.CleaningServices) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                X20PlusProductPhoto(124.dp)
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(statusLabel, color = if (connected && adapter && (fault == null || fault == 0.0)) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Akku: ", color = text, fontSize = 14.sp)
+                        Text(battery?.let { it.toInt().toString() + " %" } ?: "—", color = robotBatteryColor(battery, batteryCharging), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    Switch(
-                        checked = schedule.enabled,
-                        enabled = connected && busyId == null && schedule.parseError == null,
-                        onCheckedChange = { enabled ->
-                            busyId = schedule.id
-                            message = "Änderung wird an Xiaomi Home übertragen…"
-                            val payload = org.json.JSONObject().put("id", schedule.id).put("enabled", enabled).toString()
-                            client.setTextState(serverUrl, "roidmi.0.x20Plus.control.setScheduleEnabled", payload) { ok, result ->
-                                if (!ok) {
-                                    busyId = null
-                                    message = result
-                                } else {
-                                    message = "Xiaomi Home bestätigt die Änderung…"
-                                    waitForScheduleWrite()
-                                }
+                    Text("Reinigungsart: " + x20PlusCleaningModeLabel(cleaningMode?.toInt()), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                }
+            }
+            battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, batteryCharging)) }
+            if (fault != null && fault != 0.0) Text("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
+            if (cleaningTime != null || cleaningArea != null) {
+                Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " Flächenwert", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            }
+        }
+
+        CardBlock(panel, text, "Steuerung", "Reinigung starten, pausieren oder beenden", Icons.Default.Gamepad) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RoidmiActionButton(if (stateCode == 3) "Fortsetzen" else "Reinigung starten", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1.4f)) {
+                    command("start", if (stateCode == 3) "Fortsetzen" else "Reinigungsstart")
+                }
+                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy && stateCode != 3, modifier = Modifier.weight(1f)) {
+                    command("pause", "Pause")
+                }
+                RoidmiActionButton("Zur Station", Icons.Default.Home, enabled = connected && adapter && !busy && stateCode != 5 && stateCode != 6 && stateCode != 13, modifier = Modifier.weight(1.2f)) {
+                    command("returnToDock", "Rückkehr zur Station")
+                }
+            }
+            if (busy) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                busyLabel?.let { Text(it + " …", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+            }
+            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+        }
+
+        CardBlock(panel, text, "Reinigungseinstellungen", "Reinigungsart, Saugleistung und Wasserfluss", Icons.Default.Settings) {
+            Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("S+W", "Wischen", "Saugen", "Vorher").forEachIndexed { level, label ->
+                    RoidmiLevelChoice(label, selected = cleaningMode?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.CleaningServices, modifier = Modifier.weight(1f)) {
+                        updateSetting("cleaningMode", level, "Reinigungsart")
+                    }
+                }
+            }
+            Text(x20PlusCleaningModeLabel(cleaningMode?.toInt()), color = Blue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            Divider()
+            Text("Saugleistung", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("Leise", "Standard", "Stark", "Turbo").forEachIndexed { level, label ->
+                    RoidmiLevelChoice(label, selected = suction?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.Air, modifier = Modifier.weight(1f)) {
+                        updateSetting("suction", level, "Saugleistung")
+                    }
+                }
+            }
+            Divider()
+            Text("Wassermenge", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("Niedrig", "Mittel", "Hoch").forEachIndexed { index, label ->
+                    val level = index + 1
+                    RoidmiLevelChoice(label, selected = water?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.WaterDrop, modifier = Modifier.weight(1f), accent = Color(0xFF159A9C)) {
+                        updateSetting("mopMode", level, "Wassermenge")
+                    }
+                }
+            }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Teppich-Boost", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Text("Saugleistung auf Teppichen erhöhen", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                }
+                Switch(checked = carpetBoost, enabled = connected && adapter && !busy, onCheckedChange = { enabled ->
+                    carpetBoost = enabled
+                    client.setState(serverUrl, prefix + "control.carpetBoost", enabled) { ok, result ->
+                        if (!ok) {
+                            carpetBoost = !enabled
+                            message = result
+                        } else message = "Teppich-Boost an den Adapter übergeben."
+                    }
+                })
+            }
+        }
+
+        CardBlock(panel, text, "Reinigungsbereiche", "Alle Bereiche oder einzelne Räume reinigen", Icons.Default.Map) {
+            if (rooms.isEmpty()) {
+                Text("Noch keine Raumkarte geladen. Die Xiaomi-Raumkarte kann hier aktualisiert werden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { selectedRooms = if (selectedRooms.size == rooms.size) emptySet() else rooms.map { it.first }.toSet() }) {
+                        Text(if (selectedRooms.size == rooms.size) "Auswahl aufheben" else "Alle Räume auswählen")
+                    }
+                }
+                rooms.chunked(2).forEach { roomRow ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        roomRow.forEach { (id, name) ->
+                            Row(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { selectedRooms = if (id in selectedRooms) selectedRooms - id else selectedRooms + id }.padding(horizontal = 3.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = id in selectedRooms, onCheckedChange = { checked -> selectedRooms = if (checked) selectedRooms + id else selectedRooms - id }, modifier = Modifier.size(30.dp))
+                                Text(name, color = text, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
-                    )
+                        if (roomRow.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+                Button(onClick = { cleanSelectedRooms() }, enabled = connected && adapter && selectedRooms.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.PlayArrow, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ausgewählte Räume reinigen")
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { refreshRooms() }, enabled = connected && adapter && !busy) {
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Raumkarte aktualisieren")
+                }
+            }
+            mapStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+            cleanStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        }
+
+        CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten aus Xiaomi Home", Icons.Default.Schedule) {
+            if (schedules.isEmpty()) {
+                Text(if (schedulesRaw == null) "Zeitpläne werden geladen oder wurden noch nicht synchronisiert." else "Keine gespeicherten Zeitpläne gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            }
+            schedules.forEach { schedule ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(schedule.time + "  ·  " + schedule.weekdaysText, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(schedule.cleaningModeText + " · " + schedule.fanSpeedText, color = text, fontSize = 11.sp)
+                        Text("Wasser: " + schedule.waterLevelText + " · Räume: " + schedule.roomsText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        schedule.parseError?.let { Text("Nicht vollständig lesbar: " + it, color = Color(0xFFD97706), fontSize = 10.sp) }
+                    }
+                    Switch(checked = schedule.enabled, enabled = connected && adapter && scheduleBusyId == null && schedule.parseError == null, onCheckedChange = { enabled -> setScheduleEnabled(schedule, enabled) })
                 }
                 Divider()
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                if (busyId != null) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                OutlinedButton(
-                    onClick = {
-                        if (connected && busyId == null) {
-                            busyId = "refresh"
-                            client.setState(serverUrl, "roidmi.0.x20Plus.control.refreshSchedules", true) { ok, result ->
-                                if (!ok) { busyId = null; message = result }
-                                else scope.launch {
-                                    delay(1800)
-                                    loadStates()
-                                    busyId = null
-                                    message = "Zeitplanliste aktualisiert."
-                                }
-                            }
-                        }
-                    },
-                    enabled = connected && busyId == null
-                ) {
+                if (scheduleBusyId != null) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                OutlinedButton(onClick = { refreshSchedules() }, enabled = connected && adapter && scheduleBusyId == null) {
                     Icon(Icons.Default.Refresh, null)
                     Spacer(Modifier.width(6.dp))
                     Text("Aktualisieren")
                 }
             }
-            status?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
-            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+            scheduleStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
         }
     }
 }
@@ -2480,7 +2835,7 @@ private fun HomeScreen(
         Box(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp))
                 .then(if (isDraggingHomeCard) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(20.dp)) else Modifier)
-                .pointerInput(cardId, homeCardOrder.toList()) {
+                .pointerInput(cardId) {
                     detectDragGesturesAfterLongPress(
                         onDragStart = { draggingHomeCard = cardId; homeDragOffset = 0f },
                         onDrag = { change, amount ->
@@ -2501,7 +2856,11 @@ private fun HomeScreen(
                                 .putString("homeCardOrder", homeCardOrder.joinToString("|")).apply()
                             draggingHomeCard = null; homeDragOffset = 0f
                         },
-                        onDragCancel = { draggingHomeCard = null; homeDragOffset = 0f }
+                        onDragCancel = {
+                            context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).edit()
+                                .putString("homeCardOrder", homeCardOrder.joinToString("|")).apply()
+                            draggingHomeCard = null; homeDragOffset = 0f
+                        }
                     )
                 }
         ) {
