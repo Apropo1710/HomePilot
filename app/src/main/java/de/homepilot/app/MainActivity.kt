@@ -2007,6 +2007,47 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
 @Composable private fun RoidmiProductPhoto(size: androidx.compose.ui.unit.Dp) {
     AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
 }
+private data class EvePlusScheduleUi(
+    val index: Int,
+    val enabled: Boolean,
+    val timeSeconds: Int,
+    val timeText: String,
+    val fanSpeed: Int,
+    val fanSpeedText: String,
+    val cleaningMode: Int,
+    val weekdays: List<Int>,
+    val weekdaysText: String,
+    val waterLevel: Int,
+    val waterLevelText: String,
+    val roomIds: List<Int>
+)
+
+private fun parseEvePlusScheduleUi(raw: String?): List<EvePlusScheduleUi> = runCatching {
+    val array = org.json.JSONArray(raw ?: "[]")
+    (0 until array.length()).mapNotNull { index ->
+        val item = array.optJSONObject(index) ?: return@mapNotNull null
+        val seconds = item.optInt("timeSeconds", -1)
+        val hour = if (seconds >= 0) seconds / 3600 else 0
+        val minute = if (seconds >= 0) (seconds % 3600) / 60 else 0
+        val weekdays = item.optJSONArray("weekdays")?.let { days -> (0 until days.length()).map { days.optInt(it) } } ?: emptyList()
+        val rooms = item.optJSONArray("roomIds")?.let { ids -> (0 until ids.length()).map { ids.optInt(it) } } ?: emptyList()
+        EvePlusScheduleUi(
+            index = index,
+            enabled = item.optBoolean("enabled", false),
+            timeSeconds = seconds,
+            timeText = if (seconds >= 0) "%02d:%02d".format(hour, minute) else "—",
+            fanSpeed = item.optInt("fanSpeed", -1),
+            fanSpeedText = item.optString("fanSpeedText", "Unbekannt"),
+            cleaningMode = item.optInt("cleaningMode", -1),
+            weekdays = weekdays,
+            weekdaysText = item.optString("weekdaysText").ifBlank { "Keine Wochentage" },
+            waterLevel = item.optInt("waterLevel", -1),
+            waterLevelText = item.optString("waterLevelText", "Unbekannt"),
+            roomIds = rooms
+        )
+    }
+}.getOrDefault(emptyList())
+
 private data class X20PlusScheduleUi(
     val id: String,
     val enabled: Boolean,
@@ -2785,6 +2826,19 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var sensorPercent by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sensorDirtyLife")) }
     var sensorMinutes by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sensorDirtyLeftMinutes")) }
     var pendingReset by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var eveSchedulesParsed by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.timing.parsed")) }
+    var eveSchedulesRaw by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.timing.raw")) }
+    var eveScheduleLastUpdate by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.timing.lastUpdate")) }
+    var eveScheduleBusy by remember { mutableStateOf(false) }
+    var eveScheduleMessage by remember { mutableStateOf<String?>(null) }
+    var editingEveSchedule by remember { mutableStateOf<EvePlusScheduleUi?>(null) }
+    var eveEditTime by remember { mutableStateOf("09:00") }
+    var eveEditEnabled by remember { mutableStateOf(false) }
+    var eveEditDays by remember { mutableStateOf(setOf<Int>()) }
+    var eveEditFan by remember { mutableStateOf("2") }
+    var eveEditWater by remember { mutableStateOf("0") }
+    var eveEditRooms by remember { mutableStateOf(setOf<Int>()) }
+    val eveScheduleScope = rememberCoroutineScope()
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
             client.cachedText("roidmi.0.evePlus.map.roomsJson")?.let { roomsRaw = it }
@@ -2816,6 +2870,98 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
         }
     }
     val rooms = remember(roomsRaw) { runCatching { val j = org.json.JSONArray(roomsRaw ?: "[]"); (0 until j.length()).mapNotNull { i -> val o = j.optJSONObject(i) ?: return@mapNotNull null; val id = o.optInt("id", -1); val name = o.optString("name").trim(); if (id > 0 && name.isNotBlank()) id to name else null } }.getOrDefault(emptyList()) }
+    val eveSchedules = remember(eveSchedulesParsed) { parseEvePlusScheduleUi(eveSchedulesParsed) }
+    fun loadEveScheduleStates() {
+        client.getTextState(serverUrl, "roidmi.0.evePlus.timing.raw") { eveSchedulesRaw = it ?: eveSchedulesRaw }
+        client.getTextState(serverUrl, "roidmi.0.evePlus.timing.parsed") { eveSchedulesParsed = it ?: eveSchedulesParsed }
+        client.getTextState(serverUrl, "roidmi.0.evePlus.timing.lastUpdate") { eveScheduleLastUpdate = it ?: eveScheduleLastUpdate }
+    }
+    fun refreshEveSchedules() {
+        if (!connected || !adapter || eveScheduleBusy) return
+        eveScheduleBusy = true
+        eveScheduleMessage = "Zeitpläne werden direkt vom Roboter gelesen…"
+        client.setState(serverUrl, "roidmi.0.evePlus.control.refreshTiming", true) { ok, result ->
+            if (!ok) {
+                eveScheduleBusy = false
+                eveScheduleMessage = result
+            } else eveScheduleScope.launch {
+                delay(2200)
+                loadEveScheduleStates()
+                eveScheduleBusy = false
+                eveScheduleMessage = "Aktualisierung angefordert. Zeitstempel: " + (eveScheduleLastUpdate ?: "noch nicht bestätigt")
+            }
+        }
+    }
+    fun openEveScheduleEditor(schedule: EvePlusScheduleUi) {
+        editingEveSchedule = schedule
+        eveEditTime = schedule.timeText
+        eveEditEnabled = schedule.enabled
+        eveEditDays = schedule.weekdays.toSet()
+        eveEditFan = schedule.fanSpeed.toString()
+        eveEditWater = schedule.waterLevel.toString()
+        eveEditRooms = schedule.roomIds.toSet()
+    }
+    fun saveEveScheduleEdit(schedule: EvePlusScheduleUi) {
+        if (!connected || !adapter || eveScheduleBusy) return
+        val snapshot = eveSchedulesRaw
+        if (snapshot.isNullOrBlank()) {
+            eveScheduleMessage = "Bitte zuerst die Zeitpläne aktualisieren."
+            return
+        }
+        val parts = eveEditTime.split(":")
+        val hour = parts.getOrNull(0)?.toIntOrNull()
+        val minute = parts.getOrNull(1)?.toIntOrNull()
+        if (hour == null || minute == null || hour !in 0..23 || minute !in 0..59 || parts.size != 2) {
+            eveScheduleMessage = "Bitte eine gültige Uhrzeit auswählen."
+            return
+        }
+        if (eveEditDays.isEmpty()) {
+            eveScheduleMessage = "Bitte mindestens einen Wochentag auswählen."
+            return
+        }
+        if (rooms.isNotEmpty() && eveEditRooms.isEmpty()) {
+            eveScheduleMessage = "Bitte mindestens einen Raum auswählen."
+            return
+        }
+        val update = org.json.JSONObject()
+        val timeSeconds = hour * 3600 + minute * 60
+        if (timeSeconds != schedule.timeSeconds) update.put("timeSeconds", timeSeconds)
+        if (eveEditEnabled != schedule.enabled) update.put("enabled", eveEditEnabled)
+        if (eveEditDays != schedule.weekdays.toSet()) update.put("weekdays", org.json.JSONArray(eveEditDays.sorted()))
+        val fanValue = eveEditFan.toIntOrNull()
+        if (fanValue != null && fanValue != schedule.fanSpeed) update.put("fanSpeed", fanValue)
+        val waterValue = eveEditWater.toIntOrNull()
+        if (waterValue != null && waterValue != schedule.waterLevel) update.put("waterLevel", waterValue)
+        if (rooms.isNotEmpty() && eveEditRooms != schedule.roomIds.toSet()) update.put("roomIds", org.json.JSONArray(eveEditRooms.sorted()))
+        if (update.length() == 0) {
+            editingEveSchedule = null
+            eveScheduleMessage = "Keine Änderungen vorgenommen."
+            return
+        }
+        val payload = org.json.JSONObject()
+            .put("index", schedule.index)
+            .put("expectedRaw", snapshot)
+            .put("update", update)
+            .toString()
+        eveScheduleBusy = true
+        editingEveSchedule = null
+        eveScheduleMessage = "Zeitplan wird gespeichert und am Roboter geprüft…"
+        client.setTextState(serverUrl, "roidmi.0.evePlus.control.updateSchedule", payload) { ok, result ->
+            if (!ok) {
+                eveScheduleBusy = false
+                eveScheduleMessage = result
+            } else eveScheduleScope.launch {
+                delay(4500)
+                loadEveScheduleStates()
+                client.getTextState(serverUrl, "roidmi.0.evePlus.control.lastCommandStatus") { status ->
+                    eveScheduleMessage = status ?: "Schreibauftrag übergeben. Bitte Readback/Status prüfen."
+                    if (status?.contains("verified", true) == true) eveScheduleMessage = "Zeitplanänderung vom Roboter bestätigt."
+                }
+                eveScheduleBusy = false
+            }
+        }
+    }
+
     // Clear the last room selection once the robot has docked/started charging.
     LaunchedEffect(state, charging) {
         if (state?.toInt() == 6 || state?.toInt() == 9) selected = emptySet()
@@ -2979,6 +3125,43 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.evePlus.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
             }
         }
+        CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten des Roidmi EVE Plus", Icons.Default.Schedule) {
+            if (eveSchedules.isEmpty()) {
+                Text(if (eveSchedulesParsed == null) "Zeitpläne wurden noch nicht geladen." else "Keine lesbaren Zeitpläne gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            }
+            eveSchedules.forEach { schedule ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(schedule.timeText + " · " + schedule.weekdaysText, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(roidmiFanLabel(schedule.fanSpeed) + " · Modus " + schedule.cleaningMode, color = text, fontSize = 11.sp)
+                        Text("Wasser: " + roidmiWaterLabel(schedule.waterLevel) + " · Raum-IDs: " + schedule.roomIds.joinToString(", "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Switch(checked = schedule.enabled, enabled = connected && adapter && !eveScheduleBusy && eveSchedulesRaw != null, onCheckedChange = { enabled ->
+                            eveEditEnabled = enabled
+                            openEveScheduleEditor(schedule)
+                            eveEditEnabled = enabled
+                            saveEveScheduleEdit(schedule)
+                        })
+                        TextButton(onClick = { openEveScheduleEditor(schedule) }, enabled = connected && adapter && !eveScheduleBusy && eveSchedulesRaw != null) {
+                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
+                            Text("Bearbeiten", fontSize = 10.sp)
+                        }
+                    }
+                }
+                Divider()
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                if (eveScheduleBusy) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                OutlinedButton(onClick = { refreshEveSchedules() }, enabled = connected && adapter && !eveScheduleBusy) {
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Aktualisieren")
+                }
+            }
+            DiagnosticText(eveScheduleMessage)
+            DiagnosticText("Letzte Aktualisierung: " + (eveScheduleLastUpdate ?: "unbekannt"))
+        }
         CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
             Divider()
@@ -2988,6 +3171,56 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             Divider()
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Sensoren", sensorPercent, sensorMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSensors" to "Sensoren" }) { Text("Reset", fontSize = 10.sp) } }
             DiagnosticText("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.")
+        }
+        editingEveSchedule?.let { schedule ->
+            AlertDialog(
+                onDismissRequest = { if (!eveScheduleBusy) editingEveSchedule = null },
+                title = { Text("Zeitplan #" + (schedule.index + 1) + " bearbeiten") },
+                text = {
+                    Column(Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            val parts = eveEditTime.split(":")
+                            val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 9
+                            val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0
+                            android.app.TimePickerDialog(schedulePickerContext = LocalContext.current, { _, h, m -> eveEditTime = "%02d:%02d".format(h, m) }, hour, minute, true).show()
+                        }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Uhrzeit: " + eveEditTime, modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+                            Icon(Icons.Default.Schedule, contentDescription = "Uhrzeit auswählen")
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = eveEditEnabled, onCheckedChange = { eveEditEnabled = it })
+                            Text("Zeitplan aktiv")
+                        }
+                        Text("Wochentage", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        listOf(listOf(1 to "Mo", 2 to "Di", 3 to "Mi", 4 to "Do"), listOf(5 to "Fr", 6 to "Sa", 0 to "So")).forEach { dayRow ->
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                dayRow.forEach { (day, label) ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Checkbox(checked = day in eveEditDays, onCheckedChange = { checked -> eveEditDays = if (checked) eveEditDays + day else eveEditDays - day })
+                                        Text(label, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                        ScheduleChoice("Saugstufe", eveEditFan, listOf("0" to "Aus", "1" to "Leise", "2" to "Standard", "3" to "Stark", "4" to "Maximal")) { eveEditFan = it }
+                        ScheduleChoice("Wasserstufe", eveEditWater, listOf("0" to "Aus / kein Wasser", "1" to "Niedrig", "2" to "Mittel", "3" to "Hoch", "4" to "Zusatzstufe")) { eveEditWater = it }
+                        if (rooms.isNotEmpty()) {
+                            Text("Räume", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            rooms.forEach { (id, name) ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Checkbox(checked = id in eveEditRooms, onCheckedChange = { checked -> eveEditRooms = if (checked) eveEditRooms + id else eveEditRooms - id })
+                                    Text(name, fontSize = 13.sp)
+                                }
+                            }
+                        } else {
+                            Text("Raumkarte nicht verfügbar. Die vorhandenen Raum-IDs bleiben unverändert.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Text("Der Reinigungsmodus wird unverändert übernommen, da seine Zahlenwerte noch nicht eindeutig zugeordnet sind. Andere Zeitpläne bleiben unverändert.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                confirmButton = { TextButton(onClick = { saveEveScheduleEdit(schedule) }, enabled = !eveScheduleBusy) { Text("Speichern") } },
+                dismissButton = { TextButton(onClick = { editingEveSchedule = null }, enabled = !eveScheduleBusy) { Text("Abbrechen") } }
+            )
         }
         pendingReset?.let { (id, label) ->
             AlertDialog(
