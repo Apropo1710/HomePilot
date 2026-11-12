@@ -2376,9 +2376,9 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
         }
 
-        CardBlock(panel, text, "Steuerung", "Reinigung starten, pausieren oder beenden", Icons.Default.Gamepad) {
+        CardBlock(panel, text, "Steuerung", "Reinigung starten, fortsetzen oder pausieren", Icons.Default.Gamepad) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoidmiActionButton("Start / Fortsetzen", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1.4f)) {
+                RoidmiActionButton("Start / Fortsetzen", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1.4f), maxLines = 2) {
                     command("start", "Start / Fortsetzen")
                 }
                 RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) {
@@ -2398,8 +2398,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
         CardBlock(panel, text, "Reinigungseinstellungen", "Reinigungsart, Saugleistung und Wasserfluss", Icons.Default.Settings) {
             Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("S+W", "Wischen", "Saugen", "Saugen vor Wischen").forEachIndexed { level, label ->
-                    RoidmiLevelChoice(label, selected = cleaningMode?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.CleaningServices, modifier = Modifier.weight(1f), maxLines = if (level == 3) 2 else 1) {
+                listOf("Saugen und Wischen", "Wischen", "Saugen", "Saugen vor Wischen").forEachIndexed { level, label ->
+                    RoidmiLevelChoice(label, selected = cleaningMode?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.CleaningServices, modifier = Modifier.weight(1f), maxLines = if (level == 0 || level == 3) 2 else 1) {
                         updateSetting("cleaningMode", level, "Reinigungsart")
                     }
                 }
@@ -4026,13 +4026,13 @@ private fun openBatterySettings(context: Context) {
 
 
 @Composable
-private fun RoidmiActionButton(label: String, icon: ImageVector, enabled: Boolean, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
+private fun RoidmiActionButton(label: String, icon: ImageVector, enabled: Boolean, modifier: Modifier = Modifier, primary: Boolean = false, maxLines: Int = 1, onClick: () -> Unit) {
     val bg = if (primary) Blue else MaterialTheme.colorScheme.surfaceVariant
     val fg = if (primary) Color.White else Blue
-    Row(modifier.height(39.dp).clip(RoundedCornerShape(11.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+    Row(modifier.heightIn(min = if (maxLines > 1) 48.dp else 39.dp).clip(RoundedCornerShape(11.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = fg.copy(alpha = if (enabled) 1f else 0.55f), modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(4.dp))
-        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 11.sp, lineHeight = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = maxLines, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
     }
 }
 
