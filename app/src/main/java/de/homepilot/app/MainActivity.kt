@@ -2219,12 +2219,12 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var scheduleBusyId by remember { mutableStateOf<String?>(null) }
     var editingSchedule by remember { mutableStateOf<X20PlusScheduleUi?>(null) }
     var editTime by remember { mutableStateOf("") }
-    var editDays by remember { mutableStateOf("") }
+    var editDays by remember { mutableStateOf(setOf<Int>()) }
     var editRepeat by remember { mutableStateOf(true) }
     var editMode by remember { mutableStateOf("1") }
     var editFan by remember { mutableStateOf("1") }
     var editWater by remember { mutableStateOf("64") }
-    var editRooms by remember { mutableStateOf("") }
+    var editRooms by remember { mutableStateOf(setOf<Int>()) }
     val scope = rememberCoroutineScope()
 
     fun loadRoomAndScheduleData() {
@@ -2395,29 +2395,33 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     fun openScheduleEditor(schedule: X20PlusScheduleUi) {
         editingSchedule = schedule
         editTime = schedule.time
-        editDays = schedule.weekdays.joinToString(",")
+        editDays = schedule.weekdays.toSet()
         editRepeat = schedule.repeat
         editMode = schedule.cleaningMode.toString()
         editFan = schedule.fanSpeed.toString()
         editWater = schedule.waterLevel.toString()
-        editRooms = schedule.roomIds.joinToString(",")
+        editRooms = schedule.roomIds.toSet()
     }
 
     fun saveScheduleEdit(schedule: X20PlusScheduleUi) {
         if (!connected || !adapter || scheduleBusyId != null) return
-        val days = if (editDays.isBlank()) emptyList() else editDays.split(",").mapNotNull { it.trim().toIntOrNull() }
-        val roomIds = editRooms.split(",").mapNotNull { it.trim().toIntOrNull() }
-        if (days.size != editDays.split(",").filter { it.isNotBlank() }.size || roomIds.size != editRooms.split(",").filter { it.isNotBlank() }.size) {
-            message = "Bitte Wochentage und Raum-IDs als Zahlen eingeben."
+        val days = editDays.sorted()
+        val roomIds = editRooms.sorted()
+        if (editRepeat && days.isEmpty()) {
+            message = "Bitte mindestens einen Wochentag auswählen oder Wiederholen ausschalten."
+            return
+        }
+        if (roomIds.isEmpty()) {
+            message = "Bitte mindestens einen Bereich auswählen."
             return
         }
         val update = JSONObject()
             .put("time", editTime.trim())
-            .put("weekdays", JSONArray(days))
+            .put("weekdays", JSONArray(if (editRepeat) days else emptyList<Int>()))
             .put("repeat", editRepeat)
-            .put("cleaningMode", editMode.toIntOrNull() ?: -1)
-            .put("fanSpeed", editFan.toIntOrNull() ?: -1)
-            .put("waterLevel", editWater.toIntOrNull() ?: -1)
+            .put("cleaningMode", editMode.toInt())
+            .put("fanSpeed", editFan.toInt())
+            .put("waterLevel", editWater.toInt())
             .put("roomIds", JSONArray(roomIds))
         val payload = JSONObject().put("id", schedule.id).put("update", update).toString()
         scheduleBusyId = schedule.id
@@ -2677,16 +2681,28 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 text = {
                     Column(Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(value = editTime, onValueChange = { editTime = it }, label = { Text("Uhrzeit (HH:mm)") }, singleLine = true)
-                        Text("Wochentage: 0=Mo, 1=Di, 2=Mi, 3=Do, 4=Fr, 5=Sa, 6=So", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        OutlinedTextField(value = editDays, onValueChange = { editDays = it }, label = { Text("Wochentage, kommasepariert") }, placeholder = { Text("z. B. 0,1,2,3,4") }, singleLine = true)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Checkbox(checked = editRepeat, onCheckedChange = { editRepeat = it; if (!it) editDays = "" })
-                            Text("Wiederholen (aus = einmalig)")
+                            Checkbox(checked = editRepeat, onCheckedChange = { editRepeat = it; if (!it) editDays = emptySet() })
+                            Text("Wiederholen")
                         }
-                        OutlinedTextField(value = editMode, onValueChange = { editMode = it }, label = { Text("Reinigungsmodus: 0 Saugen, 1 Saugen/Wischen, 2 Wischen, 3 Individuell") }, singleLine = true)
-                        OutlinedTextField(value = editFan, onValueChange = { editFan = it }, label = { Text("Saugleistung: 0 Leise, 1 Standard, 2 Mittel, 3 Turbo") }, singleLine = true)
-                        OutlinedTextField(value = editWater, onValueChange = { editWater = it }, label = { Text("Wasser: 0 Auto, 32 Niedrig, 64 Mittel, 96 Hoch") }, singleLine = true)
-                        OutlinedTextField(value = editRooms, onValueChange = { editRooms = it }, label = { Text("Raum-IDs, kommasepariert (0 = alle)") }, singleLine = true)
+                        if (editRepeat) {
+                            Text("Wochentage auswählen", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            listOf(listOf(0 to "Mo", 1 to "Di", 2 to "Mi", 3 to "Do"), listOf(4 to "Fr", 5 to "Sa", 6 to "So")).forEach { row ->
+                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    row.forEach { (day, label) ->
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            Checkbox(checked = day in editDays, onCheckedChange = { checked -> editDays = if (checked) editDays + day else editDays - day })
+                                            Text(label, fontSize = 13.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        } else Text("Einmaliger Zeitplan", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        ScheduleChoice("Reinigungsmodus", editMode, listOf("0" to "Nur Saugen", "1" to "Saugen und Wischen", "2" to "Nur Wischen", "3" to "Individuell")) { editMode = it }
+                        ScheduleChoice("Saugleistung", editFan, listOf("0" to "Leise", "1" to "Standard", "2" to "Mittel", "3" to "Turbo")) { editFan = it }
+                        ScheduleChoice("Wasserstufe", editWater, listOf("0" to "Automatisch", "32" to "Niedrig", "64" to "Mittel", "96" to "Hoch")) { editWater = it }
+                        Text("Bereiche", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        ScheduleRoomPicker(roomsRaw, editRooms) { editRooms = it }
                         Text("Die Eingaben werden vor dem Schreiben geprüft. Andere Zeitpläne bleiben unverändert.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
@@ -4300,5 +4316,45 @@ private fun RoidmiLevelChoice(label: String, selected: Boolean, enabled: Boolean
     Column(modifier.heightIn(min = 43.dp).clip(RoundedCornerShape(9.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 2.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = fg.copy(alpha = if (enabled) 1f else 0.55f), modifier = Modifier.size(15.dp))
         Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 10.sp, lineHeight = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = maxLines, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ScheduleChoice(label: String, value: String, options: List<Pair<String, String>>, onSelected: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = options.firstOrNull { it.first == value }?.second ?: "Bitte auswählen"
+    Column {
+        Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Box {
+            OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
+                Text(selected, modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { (key, title) -> DropdownMenuItem(text = { Text(title) }, onClick = { onSelected(key); expanded = false }) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ScheduleRoomPicker(raw: String?, selected: Set<Int>, onChange: (Set<Int>) -> Unit) {
+    val rooms = remember(raw) {
+        runCatching {
+            val array = JSONArray(raw ?: "[]")
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val id = item.optInt("segmentId", -1)
+                if (id < 0) null else id to item.optString("name", "Bereich $id")
+            }
+        }.getOrDefault(emptyList())
+    }
+    (listOf(0 to "Alle Bereiche") + rooms).forEach { (id, name) ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = if (id == 0) selected == setOf(0) else id in selected, onCheckedChange = { checked ->
+                onChange(when { id == 0 && checked -> setOf(0); id == 0 -> emptySet(); checked -> (selected - 0) + id; else -> selected - id })
+            })
+            Text(name, fontSize = 13.sp)
+        }
     }
 }
