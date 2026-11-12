@@ -371,3 +371,9 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Xiaomi-Rohdatenvergleich zeigt: Feld 5 Wasserstufe (0 automatisch, 1 niedrig, 2 mittel, 3 hoch), Feld 6 Saugleistung, Feld 7 Reinigungsart (16 Saugen, 32 Saugen/Wischen, 48 Wischen, 64 Saugen vor Wischen).
 - Zeitplan-Editor und Anzeige verwenden die korrigierten Werte; Bitmap `1001011` entspricht So, Mi, Fr, Sa.
 - Version **1.29.120 / versionCode 178**. CI und Gerätetest noch ausstehend.\n
+
+## Xiaomi X20+ Zeitplanbearbeitung – Synchronisation beidseitig bestätigt (12.11.2026)
+- Nutzer bestätigt nach Installation von HomePilot **1.29.120 / versionCode 178** und Adapter **0.1.63**, dass die Synchronisation der Zeitpläne jetzt in beide Richtungen funktioniert.
+- Die Feldzuordnung und Bearbeitung bestehender Zeitpläne ist damit im Zusammenspiel mit dem echten X20+ bestätigt.
+- Keine Zeitplan-Neuanlage oder -Löschung; bestehende Aktivieren/Deaktivieren-Funktion bleibt erhalten.
+- Weiterer Schritt: normale Alltagsbeobachtung. Keine zusätzlichen zyklischen Abfragen einführen.
