@@ -2839,6 +2839,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var eveEditWater by remember { mutableStateOf("0") }
     var eveEditRooms by remember { mutableStateOf(setOf<Int>()) }
     val eveScheduleScope = rememberCoroutineScope()
+    val eveSchedulePickerContext = LocalContext.current
+    var eveLastCommandTime by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.control.lastCommandTime")) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
             client.cachedText("roidmi.0.evePlus.map.roomsJson")?.let { roomsRaw = it }
@@ -2875,6 +2877,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
         client.getTextState(serverUrl, "roidmi.0.evePlus.timing.raw") { eveSchedulesRaw = it ?: eveSchedulesRaw }
         client.getTextState(serverUrl, "roidmi.0.evePlus.timing.parsed") { eveSchedulesParsed = it ?: eveSchedulesParsed }
         client.getTextState(serverUrl, "roidmi.0.evePlus.timing.lastUpdate") { eveScheduleLastUpdate = it ?: eveScheduleLastUpdate }
+        client.getTextState(serverUrl, "roidmi.0.evePlus.control.lastCommandTime") { eveLastCommandTime = it ?: eveLastCommandTime }
     }
     fun refreshEveSchedules() {
         if (!connected || !adapter || eveScheduleBusy) return
@@ -2943,6 +2946,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             .put("expectedRaw", snapshot)
             .put("update", update)
             .toString()
+        val previousCommandTime = eveLastCommandTime
         eveScheduleBusy = true
         editingEveSchedule = null
         eveScheduleMessage = "Zeitplan wird gespeichert und am Roboter geprüft…"
@@ -2951,13 +2955,28 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 eveScheduleBusy = false
                 eveScheduleMessage = result
             } else eveScheduleScope.launch {
-                delay(4500)
-                loadEveScheduleStates()
-                client.getTextState(serverUrl, "roidmi.0.evePlus.control.lastCommandStatus") { status ->
-                    eveScheduleMessage = status ?: "Schreibauftrag übergeben. Bitte Readback/Status prüfen."
-                    if (status?.contains("verified", true) == true) eveScheduleMessage = "Zeitplanänderung vom Roboter bestätigt."
+                var finished = false
+                repeat(20) {
+                    if (!finished) {
+                        delay(1000)
+                        client.getTextState(serverUrl, "roidmi.0.evePlus.control.lastCommandTime") { latestTime ->
+                            if (!latestTime.isNullOrBlank() && latestTime != previousCommandTime) {
+                                finished = true
+                                eveLastCommandTime = latestTime
+                                loadEveScheduleStates()
+                                client.getTextState(serverUrl, "roidmi.0.evePlus.control.lastCommandStatus") { status ->
+                                    eveScheduleMessage = status ?: "Schreibauftrag abgeschlossen; Status nicht verfügbar."
+                                    if (status?.contains("verified", true) == true) eveScheduleMessage = "Zeitplanänderung vom Roboter bestätigt."
+                                }
+                                eveScheduleBusy = false
+                            }
+                        }
+                    }
                 }
-                eveScheduleBusy = false
+                if (!finished) {
+                    eveScheduleBusy = false
+                    eveScheduleMessage = "Keine abschließende Rückmeldung. Bitte Zeitpläne aktualisieren und den Gerätestand prüfen."
+                }
             }
         }
     }
@@ -3182,7 +3201,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                             val parts = eveEditTime.split(":")
                             val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 9
                             val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0
-                            android.app.TimePickerDialog(schedulePickerContext = LocalContext.current, { _, h, m -> eveEditTime = "%02d:%02d".format(h, m) }, hour, minute, true).show()
+                            android.app.TimePickerDialog(eveSchedulePickerContext, { _, h, m -> eveEditTime = "%02d:%02d".format(h, m) }, hour, minute, true).show()
                         }, modifier = Modifier.fillMaxWidth()) {
                             Text("Uhrzeit: " + eveEditTime, modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
                             Icon(Icons.Default.Schedule, contentDescription = "Uhrzeit auswählen")
