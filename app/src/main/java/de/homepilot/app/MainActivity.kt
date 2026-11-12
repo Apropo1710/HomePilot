@@ -562,7 +562,8 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     SAFETY("Sicherheit", Icons.Default.Shield),
     SETTINGS("Einstellungen", Icons.Default.Settings),
     MOVA("MOVA 1000", Icons.Default.Park),
-    ROIDMI("Roidmi EVE Plus", Icons.Default.CleaningServices)
+    ROIDMI("Roidmi EVE Plus", Icons.Default.CleaningServices),
+    X20PLUS("Xiaomi X20+", Icons.Default.Schedule)
 }
 
 private data class DeviceItem(
@@ -1191,7 +1192,7 @@ private fun HomePilotApp() {
                     ) {
                     key(displayedTab, homePilotAccount?.username, userProfileSyncToken) {
                     when (displayedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onOpenX20Plus = { selectedTab = Tab.X20PLUS }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -1203,6 +1204,7 @@ private fun HomePilotApp() {
                         })
                         Tab.MOVA -> MovaDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.ROIDMI -> RoidmiDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
+                        Tab.X20PLUS -> X20PlusSchedulesScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -2000,6 +2002,157 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
 @Composable private fun RoidmiProductPhoto(size: androidx.compose.ui.unit.Dp) {
     AsyncImage(model = RoidmiProductImage, contentDescription = "Roidmi EVE Plus mit Absaugstation", modifier = Modifier.size(size).clip(RoundedCornerShape(16.dp)).background(Color.White), contentScale = ContentScale.Fit)
 }
+private data class X20PlusScheduleUi(
+    val id: String,
+    val enabled: Boolean,
+    val time: String,
+    val weekdaysText: String,
+    val cleaningModeText: String,
+    val fanSpeedText: String,
+    val waterLevelText: String,
+    val roomsText: String,
+    val parseError: String?
+)
+
+private fun parseX20PlusScheduleUi(raw: String?): List<X20PlusScheduleUi> = runCatching {
+    val json = org.json.JSONArray(raw ?: "[]")
+    (0 until json.length()).mapNotNull { index ->
+        val item = json.optJSONObject(index) ?: return@mapNotNull null
+        X20PlusScheduleUi(
+            id = item.optString("id"),
+            enabled = item.optBoolean("enabled", false),
+            time = item.optString("time"),
+            weekdaysText = item.optString("weekdaysText"),
+            cleaningModeText = item.optString("cleaningModeText"),
+            fanSpeedText = item.optString("fanSpeedText"),
+            waterLevelText = item.optString("waterLevelText"),
+            roomsText = item.optString("roomsText"),
+            parseError = item.optString("parseError").takeIf { it.isNotBlank() && it != "null" }
+        )
+    }
+}.getOrDefault(emptyList())
+
+@Composable
+private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
+    var scheduleCount by remember { mutableIntStateOf(0) }
+    LaunchedEffect(serverUrl, connected) {
+        if (connected) client.getTextState(serverUrl, "roidmi.0.x20Plus.timing.parsed") { scheduleCount = parseX20PlusScheduleUi(it).size }
+    }
+    CardBlock(panel, text, "Xiaomi X20+", "Gespeicherte Reinigungszeitpläne", Icons.Default.Schedule, action = onOpen) {
+        Text(if (connected) "$scheduleCount Zeitplan(e) aus Xiaomi Home" else "ioBroker nicht verbunden", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        Text("Zeitpläne ansehen und aktivieren/deaktivieren  ›", color = Blue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun X20PlusSchedulesScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
+    val scheduleStateId = "roidmi.0.x20Plus.timing.parsed"
+    val statusStateId = "roidmi.0.x20Plus.timing.status"
+    var raw by remember { mutableStateOf(client.cachedText(scheduleStateId)) }
+    var status by remember { mutableStateOf(client.cachedText(statusStateId)) }
+    var busyId by remember { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    fun loadStates() {
+        client.getTextState(serverUrl, scheduleStateId) { value -> raw = value }
+        client.getTextState(serverUrl, statusStateId) { value -> status = value }
+    }
+    LaunchedEffect(serverUrl, connected) {
+        if (connected) loadStates()
+    }
+    val schedules = remember(raw) { parseX20PlusScheduleUi(raw) }
+    fun waitForScheduleWrite() {
+        scope.launch {
+            repeat(12) {
+                delay(1000)
+                client.getTextState(serverUrl, statusStateId) { latest ->
+                    if (latest != null) {
+                        status = latest
+                        if (latest.contains("per Readback bestätigt") || latest.contains("Zeitplanänderung fehlgeschlagen")) {
+                            client.getTextState(serverUrl, scheduleStateId) { value -> raw = value }
+                            busyId = null
+                            message = latest
+                        }
+                    }
+                }
+            }
+            if (busyId != null) {
+                busyId = null
+                message = "Noch keine abschließende Rückmeldung vom Adapter. Bitte Status prüfen oder Zeitpläne aktualisieren."
+            }
+        }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }
+            Column {
+                Text("Xiaomi X20+", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+                Text("Zeitpläne aus Xiaomi Home", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        CardBlock(panel, text, "Gespeicherte Zeitpläne", "Änderungen werden dauerhaft in Xiaomi Home gespeichert", Icons.Default.Schedule) {
+            if (schedules.isEmpty()) {
+                Text(if (raw == null) "Zeitpläne werden geladen. Falls nichts erscheint, bitte aktualisieren." else "Keine gespeicherten Zeitpläne gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            }
+            schedules.forEach { schedule ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("${schedule.time}  ·  ${schedule.weekdaysText}", color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Text(schedule.cleaningModeText + " · " + schedule.fanSpeedText, color = text, fontSize = 12.sp)
+                        Text("Wasser: ${schedule.waterLevelText} · Räume: ${schedule.roomsText}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        schedule.parseError?.let { Text("Nicht vollständig lesbar: $it", color = Color(0xFFD97706), fontSize = 11.sp) }
+                    }
+                    Switch(
+                        checked = schedule.enabled,
+                        enabled = connected && busyId == null && schedule.parseError == null,
+                        onCheckedChange = { enabled ->
+                            busyId = schedule.id
+                            message = "Änderung wird an Xiaomi Home übertragen…"
+                            val payload = org.json.JSONObject().put("id", schedule.id).put("enabled", enabled).toString()
+                            client.setTextState(serverUrl, "roidmi.0.x20Plus.control.setScheduleEnabled", payload) { ok, result ->
+                                if (!ok) {
+                                    busyId = null
+                                    message = result
+                                } else {
+                                    message = "Xiaomi Home bestätigt die Änderung…"
+                                    waitForScheduleWrite()
+                                }
+                            }
+                        }
+                    )
+                }
+                Divider()
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                if (busyId != null) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                OutlinedButton(
+                    onClick = {
+                        if (connected && busyId == null) {
+                            busyId = "refresh"
+                            client.setState(serverUrl, "roidmi.0.x20Plus.control.refreshSchedules", true) { ok, result ->
+                                if (!ok) { busyId = null; message = result }
+                                else scope.launch {
+                                    delay(1800)
+                                    loadStates()
+                                    busyId = null
+                                    message = "Zeitplanliste aktualisiert."
+                                }
+                            }
+                        }
+                    },
+                    enabled = connected && busyId == null
+                ) {
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Aktualisieren")
+                }
+            }
+            status?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+        }
+    }
+}
+
 @Composable private fun RoidmiHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
     var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.errorCode")) }
     LaunchedEffect(serverUrl, connected) {
@@ -2228,7 +2381,7 @@ private const val RoidmiProductImage = "https://storage.googleapis.com/bucket-tw
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit, onOpenRoidmi: () -> Unit,
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit, onOpenRoidmi: () -> Unit, onOpenX20Plus: () -> Unit,
     onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
 ) {
     if (selectedRoom != null) {
@@ -2314,7 +2467,7 @@ private fun HomeScreen(
     }
     RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
     val context = LocalContext.current
-    val homeCardIds = listOf("weather", "mova", "roidmi", "safety")
+    val homeCardIds = listOf("weather", "mova", "roidmi", "x20plus", "safety")
     val homeCardOrder = remember { mutableStateListOf<String>().apply {
         val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("homeCardOrder", null)
         val stored = saved?.split("|")?.filter { it in homeCardIds }.orEmpty()
@@ -2356,6 +2509,7 @@ private fun HomeScreen(
                 "weather" -> WeatherForecastCard(city = weatherCity, panel = panel, text = text)
                 "mova" -> MovaHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenMova)
                 "roidmi" -> RoidmiHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenRoidmi)
+                "x20plus" -> X20PlusHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenX20Plus)
                 "safety" -> CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
                     if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
                     else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)

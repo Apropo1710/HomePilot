@@ -345,3 +345,10 @@ Der Nutzer hat die aktuellen In-App-Updates von HomePilot und KlimaPilot erfolgr
 **Erfolgreich auf dem Nutzergerät bestätigt:** HomePilot **1.29.103 / versionCode 161**. Der getestete Stand verwendet `ACTION_INSTALL_PACKAGE`, die Manifest-Berechtigung `REQUEST_INSTALL_PACKAGES` und prüft `canRequestPackageInstalls()`. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, wird die entsprechende Android-Einstellungsseite geöffnet; nach Freigabe muss der Nutzer den Updatevorgang erneut starten. URI-Leserecht, `ClipData` und `NEW_TASK` bleiben Teil der Installer-Übergabe. Der Nutzer bestätigte, dass das Update erfolgreich installiert wurde.
 
 Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a. `ACTION_VIEW`/MediaStore, 1.29.95 bis 1.29.99) nicht als erfolgreiche Lösung behandeln. Wegen der Play-Protect-/Berechtigungsauswirkungen diesen Ablauf künftig nicht ungeprüft verändern. Die Bestätigung gilt für den getesteten Stand und das Nutzergerät.\n\n\n\n
+
+## Xiaomi X20+ Zeitpläne in HomePilot (12.11.2026)
+- Eigener HomePilot-Einstieg **Xiaomi X20+** als separate Kachel und eigener Bildschirm. Der vorhandene Roidmi-EVE-Plus-Bereich bleibt unverändert; die beiden Geräte werden nicht vermischt.
+- HomePilot liest die bestehenden ioBroker-Datenpunkte `roidmi.0.x20Plus.timing.parsed` und `roidmi.0.x20Plus.timing.status`. Es werden keine zusätzlichen Roboter- oder Xiaomi-Abfragen im App-Hintergrund eingerichtet.
+- Anzeige pro Zeitplan: Uhrzeit, Wochentage, Reinigungsmodus, Saugstufe, Wasserstufe, Räume und Aktivierungsstatus.
+- Ein/Aus-Schalter sendet `{id, enabled}` an `roidmi.0.x20Plus.control.setScheduleEnabled`. Der Schalter wird erst nach Adapter-Readback als abgeschlossen angezeigt. Eine manuelle Aktualisieren-Schaltfläche nutzt `roidmi.0.x20Plus.control.refreshSchedules`.
+- Version **1.29.105 / versionCode 163**. Build und APK-Veröffentlichung noch ausstehend; Smartphone-Test ebenfalls offen.
