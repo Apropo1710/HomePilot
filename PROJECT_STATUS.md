@@ -16,6 +16,14 @@
 
 # HomePilot – Projektstatus
 
+## Aktueller Stand Eve Plus Zeitpläne (12.11.2026)
+- Zeitpläne werden beim Öffnen der Eve-Plus-Ansicht aus den vorhandenen ioBroker-Datenpunkten geladen. Dabei wird kein zusätzlicher Roboter-Refresh ausgelöst.
+- Manuelles Aktualisieren fragt die Zeitpläne gezielt über den Adapter ab; die Rückmeldung wartet auf den tatsächlichen Zeitstempel.
+- Zeitpläne können in HomePilot bearbeitet werden: Uhrzeit, Aktivierung, Wochentage, Saug-/Wasserstufe und Räume. Unbekannte Rohdaten bleiben beim Schreiben erhalten.
+- Die irreführende Erklärung zum unbekannten numerischen Reinigungsmodus wurde aus dem Bearbeitungsdialog entfernt. Der Modus selbst wird weiterhin nicht verändert.
+- Der Nutzer hat die bidirektionale Synchronisation zwischen HomePilot und Original-App ausdrücklich als funktionierend bestätigt.
+- Praktischer Gerätetest der Zeitplanänderung am Eve Plus bleibt separat zu bestätigen.
+
 ## Installer / Play Protect Rücknahme (05.11.2026)
 - Installer auf bewährten `ACTION_VIEW`-Übergabepfad zurückgestellt: APK MIME `application/vnd.android.package-archive`, FileProvider URI, Leserechte, `ClipData`.
 - `REQUEST_INSTALL_PACKAGES` entfernt. Keine `ACTION_INSTALL_PACKAGE`-Nutzung.

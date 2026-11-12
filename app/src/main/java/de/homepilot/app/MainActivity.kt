@@ -3272,7 +3272,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                         } else {
                             Text("Raumkarte nicht verfügbar. Die vorhandenen Raum-IDs bleiben unverändert.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        Text("Der Reinigungsmodus wird unverändert übernommen, da seine Zahlenwerte noch nicht eindeutig zugeordnet sind. Andere Zeitpläne bleiben unverändert.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 confirmButton = { TextButton(onClick = { saveEveScheduleEdit(schedule) }, enabled = !eveScheduleBusy) { Text("Speichern") } },
