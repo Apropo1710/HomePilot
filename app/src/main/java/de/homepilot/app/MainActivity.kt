@@ -2167,6 +2167,7 @@ private fun X20PlusMaintenanceRow(label: String, percent: Double?, hours: Double
     }
 }
 
+@Composable
 private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
     val prefix = "roidmi.0.x20Plus."
     var adapter by remember { mutableStateOf(client.cachedText(prefix + "info.connection") == "true") }
