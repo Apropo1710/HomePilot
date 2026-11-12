@@ -359,3 +359,10 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Fehlerursache des ersten Speicherversuchs: Adapter-State `x20Plus.control.updateSchedule` war nicht angelegt und nicht abonniert. Daher erreichte der Auftrag den Handler nicht; kein Roboter-Schreibversuch fand statt.
 - Adapter legt den Befehl jetzt an und abonniert ihn. Bestehender direkter Read/Write/Readback- und Verifikationspfad bleibt bestehen.
 - Version **1.29.118 / versionCode 176**. Build und Hardwaretest nach CI offen.\n\n
+
+## Xiaomi X20+ Zeitplaneditor – Korrekturen nach Praxistest (12.11.2026)
+- Wochentagsänderung wurde im ersten Praxistest nachweislich in Xiaomi Home übernommen. Der anschließende Adapter-Readback endete jedoch mit Timeout und HomePilot zeigte irrtümlich „fehlgeschlagen“.
+- Adapterstatus unterscheidet jetzt zwischen angenommener Änderung und abgeschlossener direkter Bestätigung; HomePilot akzeptiert den Status „von Xiaomi angenommen“ als erfolgreiche Übernahme mit noch ausstehendem Readback.
+- Reinigungsmodi auf fünf Auswahlwerte aus Xiaomi Home angepasst: automatische Anpassung, nur Saugen, Saugen und Wischen, nur Wischen, Saugen vor Wischen.
+- Uhrzeit wird künftig über den Android-Uhrzeitdialog (Stunden/Minuten) gewählt, nicht mehr frei als Text eingegeben.
+- Version **1.29.119 / versionCode 177**. CI-Build und Release-Prüfung stehen noch aus.
