@@ -2500,43 +2500,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
         }
 
-        CardBlock(panel, text, "Reinigungsbereiche", "Alle Bereiche oder einzelne Räume reinigen", Icons.Default.Map) {
-            if (rooms.isEmpty()) {
-                Text("Noch keine Raumkarte geladen. Die Xiaomi-Raumkarte kann hier aktualisiert werden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-            } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { selectedRooms = if (selectedRooms.size == rooms.size) emptySet() else rooms.map { it.first }.toSet() }) {
-                        Text(if (selectedRooms.size == rooms.size) "Auswahl aufheben" else "Alle Räume auswählen")
-                    }
-                }
-                rooms.chunked(2).forEach { roomRow ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        roomRow.forEach { (id, name) ->
-                            Row(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { selectedRooms = if (id in selectedRooms) selectedRooms - id else selectedRooms + id }.padding(horizontal = 3.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = id in selectedRooms, onCheckedChange = { checked -> selectedRooms = if (checked) selectedRooms + id else selectedRooms - id }, modifier = Modifier.size(30.dp))
-                                Text(name, color = text, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            }
-                        }
-                        if (roomRow.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-                Button(onClick = { cleanSelectedRooms() }, enabled = connected && adapter && selectedRooms.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.PlayArrow, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("Ausgewählte Räume reinigen")
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(onClick = { refreshRooms() }, enabled = connected && adapter && !busy) {
-                    Icon(Icons.Default.Refresh, null)
-                    Spacer(Modifier.width(5.dp))
-                    Text("Raumkarte aktualisieren")
-                }
-            }
-            mapStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
-            cleanStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
-        }
-
         CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
             Divider()
@@ -2578,6 +2541,43 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
             scheduleStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
         }
+        CardBlock(panel, text, "Reinigungsbereiche", "Alle Bereiche oder einzelne Räume reinigen", Icons.Default.Map) {
+            if (rooms.isEmpty()) {
+                Text("Noch keine Raumkarte geladen. Die Xiaomi-Raumkarte kann hier aktualisiert werden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { selectedRooms = if (selectedRooms.size == rooms.size) emptySet() else rooms.map { it.first }.toSet() }) {
+                        Text(if (selectedRooms.size == rooms.size) "Auswahl aufheben" else "Alle Räume auswählen")
+                    }
+                }
+                rooms.chunked(2).forEach { roomRow ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        roomRow.forEach { (id, name) ->
+                            Row(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).clickable { selectedRooms = if (id in selectedRooms) selectedRooms - id else selectedRooms + id }.padding(horizontal = 3.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = id in selectedRooms, onCheckedChange = { checked -> selectedRooms = if (checked) selectedRooms + id else selectedRooms - id }, modifier = Modifier.size(30.dp))
+                                Text(name, color = text, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                        if (roomRow.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+                Button(onClick = { cleanSelectedRooms() }, enabled = connected && adapter && selectedRooms.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.PlayArrow, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ausgewählte Räume reinigen")
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { refreshRooms() }, enabled = connected && adapter && !busy) {
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(5.dp))
+                    Text("Raumkarte aktualisieren")
+                }
+            }
+            mapStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+            cleanStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        }
+
         pendingReset?.let { (id, label) ->
             AlertDialog(
                 onDismissRequest = { pendingReset = null },
@@ -2720,15 +2720,34 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0)) }
             if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
-        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Sensoren", sensorPercent, sensorMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSensors" to "Sensoren" }) { Text("Reset", fontSize = 10.sp) } }
-            Text("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+        CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (state?.toInt() == 3) {
+                    RoidmiActionButton("Fortsetzen", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { showResumeConfirm = true }
+                } else {
+                    RoidmiActionButton("Start", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { command("start", "Reinigungsstart") }
+                }
+                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy && state?.toInt() != 3, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
+            }
+            if (showResumeConfirm) {
+                AlertDialog(
+                    onDismissRequest = { showResumeConfirm = false },
+                    title = { Text("Reinigung fortsetzen?") },
+                    text = { Text("Die Reinigung wird für die ausgewählten Räume neu gestartet. Bereits gereinigte Bereiche können erneut gereinigt werden.") },
+                    confirmButton = {
+                        TextButton(onClick = { showResumeConfirm = false; command("resume", "Fortsetzen") }) { Text("Fortsetzen") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showResumeConfirm = false }) { Text("Abbrechen") }
+                    }
+                )
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                RoidmiActionButton("Stop", Icons.Default.Stop, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("stop", "Stopp") }
+                RoidmiActionButton("Laden", Icons.Default.Home, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("dock", "Rückkehrbefehl") }
+            }
+            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
         }
         CardBlock(panel, text, "Saug/Wisch-Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2789,34 +2808,15 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 )
             }
         }
-        CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                if (state?.toInt() == 3) {
-                    RoidmiActionButton("Fortsetzen", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { showResumeConfirm = true }
-                } else {
-                    RoidmiActionButton("Start", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1f)) { command("start", "Reinigungsstart") }
-                }
-                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy && state?.toInt() != 3, modifier = Modifier.weight(1f)) { command("pause", "Pause") }
-            }
-            if (showResumeConfirm) {
-                AlertDialog(
-                    onDismissRequest = { showResumeConfirm = false },
-                    title = { Text("Reinigung fortsetzen?") },
-                    text = { Text("Die Reinigung wird für die ausgewählten Räume neu gestartet. Bereits gereinigte Bereiche können erneut gereinigt werden.") },
-                    confirmButton = {
-                        TextButton(onClick = { showResumeConfirm = false; command("resume", "Fortsetzen") }) { Text("Fortsetzen") }
-                    },
-                    dismissButton = {
-                        TextButton(onClick = { showResumeConfirm = false }) { Text("Abbrechen") }
-                    }
-                )
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoidmiActionButton("Stop", Icons.Default.Stop, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("stop", "Stopp") }
-                RoidmiActionButton("Laden", Icons.Default.Home, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("dock", "Rückkehrbefehl") }
-            }
-            if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Sensoren", sensorPercent, sensorMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSensors" to "Sensoren" }) { Text("Reset", fontSize = 10.sp) } }
+            Text("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
         }
         CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
             if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = MaterialTheme.colorScheme.onSurfaceVariant)

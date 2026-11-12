@@ -95,3 +95,11 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Reset-Zuordnungen beruhen auf dokumentierten MIoT-Action-IDs und müssen am realen Gerät noch praktisch verifiziert werden. Keine automatischen Resets; jeder Reset erfordert Bestätigung.
 - Build 168 (Version 1.29.110) scheiterte an einer doppelten @Composable-Annotation vor der Wartungszeilen-Composable. Korrektur in dieser Version.
 - Installationsversion: **1.29.111 / versionCode 169**. Build und Tests stehen aus.
+
+
+## Roboter-Detailseiten – Reihenfolge der Kacheln vereinheitlicht (12.11.2026)
+- Xiaomi X20+: Die Karte **Reinigungsbereiche** steht jetzt ganz unten hinter Wartung und Zeitplänen.
+- Roidmi EVE Plus: Die Reihenfolge entspricht dem X20+: **Gerätestatus → Steuerung → Saug/Wisch-Einstellungen → Wartung → Reinigungszonen**. Die Reinigungszonen stehen damit ebenfalls ganz unten.
+- Es wurden ausschließlich die Positionen der vorhandenen Karten geändert; Inhalte, Datenpunkte, Steuerbefehle und Bestätigungsdialoge bleiben unverändert.
+- Installationsversion: **1.29.112 / versionCode 170**.
+- Build für diesen Stand läuft nach dem Commit; APK und Signatur müssen vor Freigabe geprüft werden.
