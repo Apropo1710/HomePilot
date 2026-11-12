@@ -47,13 +47,3 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 3. Builds/Tests für den exakten Commit prüfen und Ergebnis samt Run/Artefakt festhalten.
 4. Produktionsbranch und Testbranches strikt trennen.
 5. Bei Chatwechsel hier beginnen; keine bereits erledigten Nutzertests erneut verlangen.
-
-
-## Xiaomi X20+ – Dashboard und vollständige Steuerungsseite (12.11.2026)
-- Die X20+-Startkachel ist optisch an die MOVA-/Roidmi-Roboterkacheln angeglichen: Produktbild, Status, Akku und direkter Einstieg in die Robotersteuerung.
-- Die bisherige reine Zeitplanansicht wurde zur vollständigen X20+-Detailseite erweitert. Sie verwendet ausschließlich den eigenen Objektunterbaum `roidmi.0.x20Plus.*`.
-- Enthalten sind die hardwarebestätigten Funktionen: Start/Fortsetzen, Pause, Rückkehr zur Station, Reinigungsart, Saugleistung, Wasserstufe, Teppich-Boost, gezielte Raumreinigung und Aktivieren/Deaktivieren gespeicherter Xiaomi-Home-Zeitpläne.
-- Raumkarte und Zeitpläne bleiben getrennte Bereiche; Zeitplanänderungen behalten die Adapter-Readback-Bestätigung bei.
-- Die Roboterkachel-Reihenfolge wird beim Verschieben auch bei einem abgebrochenen Drag-Gesture gespeichert. Der wechselnde Listeninhalt wird nicht mehr als Schlüssel für den laufenden Pointer-Handler verwendet; dadurch wird der Drag-Vorgang nicht bei jedem Positionswechsel neu gestartet.
-- Keine Änderungen am Roidmi-Steuerablauf oder am APK-Installer.
-- Installationsversion: **1.29.106 / versionCode 164**. GitHub-Actions-Build und Smartphone-Test stehen noch aus.
