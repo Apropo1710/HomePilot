@@ -2432,7 +2432,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, batteryCharging)) }
-            if (fault != null && fault != 0.0) Text("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
+            if (fault != null && fault != 0.0) DiagnosticText("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
             if (cleaningTime != null || cleaningArea != null) {
                 Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " Flächenwert", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
