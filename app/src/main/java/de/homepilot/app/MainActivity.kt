@@ -2045,7 +2045,7 @@ private fun X20PlusProductPhoto(size: androidx.compose.ui.unit.Dp) {
 }
 
 private fun x20PlusStatusLabel(value: Int?): String = when (value) {
-    1 -> "Saugt"
+    1 -> "Reinigung aktiv"
     2 -> "Bereit"
     3 -> "Pausiert"
     4 -> "Störung"
@@ -2378,10 +2378,10 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
 
         CardBlock(panel, text, "Steuerung", "Reinigung starten, pausieren oder beenden", Icons.Default.Gamepad) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                RoidmiActionButton(if (stateCode == 3) "Fortsetzen" else "Reinigung starten", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1.4f)) {
-                    command("start", if (stateCode == 3) "Fortsetzen" else "Reinigungsstart")
+                RoidmiActionButton("Start / Fortsetzen", Icons.Default.PlayArrow, enabled = connected && adapter && !busy, primary = true, modifier = Modifier.weight(1.4f)) {
+                    command("start", "Start / Fortsetzen")
                 }
-                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy && stateCode != 3, modifier = Modifier.weight(1f)) {
+                RoidmiActionButton("Pause", Icons.Default.Pause, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) {
                     command("pause", "Pause")
                 }
                 RoidmiActionButton("Zur Station", Icons.Default.Home, enabled = connected && adapter && !busy && stateCode != 5 && stateCode != 6 && stateCode != 13, modifier = Modifier.weight(1.2f)) {
