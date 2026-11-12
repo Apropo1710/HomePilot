@@ -117,3 +117,12 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Die Wartung bleibt die letzte Kachel. Die Roidmi-Reihenfolge bleibt unverändert.
 - Nur die Position der beiden X20+-Karten wurde getauscht; Inhalte und Funktionen bleiben unverändert.
 - Installationsversion: **1.29.114 / versionCode 172**.
+
+
+## Appweite Diagnosetexte ein-/ausblenden (12.11.2026)
+- Unter **Einstellungen → App-Einstellungen** gibt es den Schalter **Diagnosetexte anzeigen**.
+- Standard ist **Aus**; die Auswahl wird lokal in den App-Einstellungen gespeichert und bleibt nach Neustart erhalten.
+- Die Anzeige technischer Adapter-Rückmeldungen lässt sich zentral steuern. Diagnosewerte und Abfragen bleiben aktiv; nur die Textausgabe wird ausgeblendet.
+- Erfasst sind unter anderem Xiaomi-X20+-Raumkarten-/Reinigungs-/Zeitplan-Rückmeldungen, Zeitplan-Parsefehler sowie technische Roidmi-Fehlercodes und Adapterdetails.
+- Normale Bedienhinweise, Gerätestatus und die eigentliche Steuerung bleiben sichtbar und unverändert.
+- Installationsversion: **1.29.115 / versionCode 173**.

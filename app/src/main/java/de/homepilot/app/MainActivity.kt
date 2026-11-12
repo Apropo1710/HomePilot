@@ -68,6 +68,7 @@ private val LightBg = Color(0xFFF3F6FA)
 private val DarkBg = Color(0xFF101923)
 private val LightText = Color(0xFF172334)
 private val DarkText = Color(0xFFEAF1F8)
+private val LocalDiagnosticsEnabled = compositionLocalOf { false }
 
 private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsStore) {
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -621,6 +622,7 @@ private fun HomePilotApp() {
     StartupUpdateCheck(appVersion = BuildConfig.VERSION_NAME, onOpenSettings = { selectedTab = Tab.SETTINGS })
     val prefs = remember { context.getSharedPreferences("homepilot", Context.MODE_PRIVATE) }
     var appFontScale by remember { mutableFloatStateOf(prefs.getFloat("appFontScale", 1.0f).coerceIn(0.85f, 1.5f)) }
+    var showDiagnostics by remember { mutableStateOf(prefs.getBoolean("showDiagnostics", false)) }
     val pageAlpha = remember { Animatable(1f) }
     LaunchedEffect(selectedTab) {
         if (displayedTab != selectedTab) {
@@ -1103,7 +1105,10 @@ private fun HomePilotApp() {
     val text = if (dark) DarkText else LightText
     val scheme = if (dark) darkColorScheme(primary = Color(0xFF78B9F3), secondary = Color(0xFF67D4A5), background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFF293747), onSurfaceVariant = Color(0xFFB2C1D0)) else lightColorScheme(primary = Blue, secondary = Green, background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFFE6EDF5), onSurfaceVariant = Muted, outline = Color(0xFFCBD5E1))
 
-    CompositionLocalProvider(LocalDensity provides androidx.compose.ui.unit.Density(LocalDensity.current.density, LocalDensity.current.fontScale * appFontScale)) {
+    CompositionLocalProvider(
+        LocalDensity provides androidx.compose.ui.unit.Density(LocalDensity.current.density, LocalDensity.current.fontScale * appFontScale),
+        LocalDiagnosticsEnabled provides showDiagnostics
+    ) {
     MaterialTheme(colorScheme = scheme) {
         Surface(Modifier.fillMaxSize(), color = bg) {
             if (!loginAccepted) {
@@ -1287,7 +1292,7 @@ private fun HomePilotApp() {
                             onEdit = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind })
                         Tab.ENERGY -> EnergyScreen(devices + lights, energyPrice, onPrice = { energyPrice = it; prefs.edit().putString("energyPrice", it).apply() }, panel, text)
                         Tab.DEVICE_HEALTH -> DeviceHealthScreen(devices + lights, connected, connectionStatus, floodBattery, floodBatteryKnown, panel, text)
-                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; check(prefs.edit().putFloat("appFontScale", it).commit()) }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { userProfileLoaded = false; userProfileRevision = 0L; prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
+                        Tab.MORE -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; check(prefs.edit().putFloat("appFontScale", it).commit()) }, showDiagnostics = showDiagnostics, onShowDiagnostics = { showDiagnostics = it; prefs.edit().putBoolean("showDiagnostics", it).apply() }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() }, serverUrl = serverUrl, onServerUrl = { serverUrl = it }, weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() }, status = connectionStatus, connected = connected, onConnect = { connectToIoBroker(manualDeviceSearch = false) }, onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } }, onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { userProfileLoaded = false; userProfileRevision = 0L; prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
                         Tab.ROOMS -> RoomsScreen(rooms, devices, lights, panel, text, connected = connected,
                             onToggle = { item, value ->
                                 val id = item.stateId
@@ -1320,7 +1325,7 @@ private fun HomePilotApp() {
                             hiddenItems = hiddenItems,
                             onShowHidden = { showHiddenDevices = true },
                             onRequestDeleteRoom = { room -> confirmDeleteRoom = room })
-                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; prefs.edit().putFloat("appFontScale", it).apply() }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() },
+                        Tab.SETTINGS -> SettingsScreen(dark, onDark = { dark = it }, panel, text, fontScale = appFontScale, onFontScale = { appFontScale = it; prefs.edit().putFloat("appFontScale", it).apply() }, showDiagnostics = showDiagnostics, onShowDiagnostics = { showDiagnostics = it; prefs.edit().putBoolean("showDiagnostics", it).apply() }, expandedSetting = expandedSettingsSection, onExpandedSettingChange = { expandedSettingsSection = it }, onBack = { navigateBack() },
                             serverUrl = serverUrl, onServerUrl = { serverUrl = it },
                             weatherCity = weatherCity, onWeatherCity = { weatherCity = it; prefs.edit().putString("weatherCity", it).apply() },
                             status = connectionStatus, connected = connected,
@@ -2449,7 +2454,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 busyLabel?.let { Text(it + " …", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
             }
-            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) }
+            DiagnosticText(message, fontSize = 11.sp)
         }
 
         CardBlock(panel, text, "Reinigungseinstellungen", "Reinigungsart, Saugleistung und Wasserfluss", Icons.Default.Settings) {
@@ -2533,8 +2538,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                     Text("Raumkarte aktualisieren")
                 }
             }
-            mapStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
-            cleanStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+            DiagnosticText(mapStatus)
+            DiagnosticText(cleanStatus)
         }
 
         CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten aus Xiaomi Home", Icons.Default.Schedule) {
@@ -2547,7 +2552,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                         Text(schedule.time + "  ·  " + schedule.weekdaysText, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         Text(schedule.cleaningModeText + " · " + schedule.fanSpeedText, color = text, fontSize = 11.sp)
                         Text("Wasser: " + schedule.waterLevelText + " · Räume: " + schedule.roomsText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                        schedule.parseError?.let { Text("Nicht vollständig lesbar: " + it, color = Color(0xFFD97706), fontSize = 10.sp) }
+                        schedule.parseError?.let { DiagnosticText("Nicht vollständig lesbar: " + it, color = Color(0xFFD97706)) }
                     }
                     Switch(checked = schedule.enabled, enabled = connected && adapter && scheduleBusyId == null && schedule.parseError == null, onCheckedChange = { enabled -> setScheduleEnabled(schedule, enabled) })
                 }
@@ -2561,7 +2566,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                     Text("Aktualisieren")
                 }
             }
-            scheduleStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+            DiagnosticText(scheduleStatus)
         }
         CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
@@ -2718,7 +2723,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0)) }
-            if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            if (adapter && error != null && error != 0.0) DiagnosticText("Fehlercode: ${error!!.toInt()}", fontSize = 12.sp)
         }
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -2747,7 +2752,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 RoidmiActionButton("Laden", Icons.Default.Home, enabled = connected && adapter && !busy, modifier = Modifier.weight(1f)) { command("dock", "Rückkehrbefehl") }
             }
             if (busy) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-            message?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+            DiagnosticText(message)
         }
         CardBlock(panel, text, "Saug/Wisch-Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2838,7 +2843,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
             Divider()
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Sensoren", sensorPercent, sensorMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSensors" to "Sensoren" }) { Text("Reset", fontSize = 10.sp) } }
-            Text("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+            DiagnosticText("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.")
         }
         pendingReset?.let { (id, label) ->
             AlertDialog(
@@ -3923,7 +3928,12 @@ private fun SettingsMenuSection(
 }
 
 @Composable
-private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color, fontScale: Float, onFontScale: (Float) -> Unit, onBack: () -> Unit,
+private fun DiagnosticText(value: String?, color: Color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize: androidx.compose.ui.unit.TextUnit = 10.sp) {
+    if (LocalDiagnosticsEnabled.current && !value.isNullOrBlank()) Text(value, color = color, fontSize = fontSize)
+}
+
+@Composable
+private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Color, text: Color, fontScale: Float, onFontScale: (Float) -> Unit, showDiagnostics: Boolean, onShowDiagnostics: (Boolean) -> Unit, onBack: () -> Unit,
     serverUrl: String, onServerUrl: (String) -> Unit, weatherCity: String, onWeatherCity: (String) -> Unit,
     status: String, connected: Boolean, onConnect: () -> Unit,
     onSearchDevices: () -> Unit, onOpenLights: () -> Unit, onOpenDevices: () -> Unit, onOpenRooms: () -> Unit, onOpenHealth: () -> Unit, onShowHidden: () -> Unit,
@@ -4012,6 +4022,14 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
                     Text("${(scale*100).toInt()}%",fontSize=11.sp,fontWeight=if(selected) FontWeight.Bold else FontWeight.Normal,color=if(selected) MaterialTheme.colorScheme.onPrimaryContainer else text)
                 }
             }
+        }
+        Divider()
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Diagnosetexte anzeigen", color = text, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Technische Rückmeldungen und Adapterdetails bei Bedarf einblenden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            }
+            Switch(checked = showDiagnostics, onCheckedChange = onShowDiagnostics)
         }
         Divider()
         Text("ioBroker-Verbindung",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
