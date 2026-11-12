@@ -2857,6 +2857,11 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var eveLastCommandTime by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.control.lastCommandTime")) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
+            // Zeitpläne beim Öffnen aus ioBroker laden; keinen zusätzlichen Roboter-Refresh auslösen.
+            client.getTextState(serverUrl, "roidmi.0.evePlus.timing.raw") { eveSchedulesRaw = it ?: eveSchedulesRaw }
+            client.getTextState(serverUrl, "roidmi.0.evePlus.timing.parsed") { eveSchedulesParsed = it ?: eveSchedulesParsed }
+            client.getTextState(serverUrl, "roidmi.0.evePlus.timing.lastUpdate") { eveScheduleLastUpdate = it ?: eveScheduleLastUpdate }
+            client.getTextState(serverUrl, "roidmi.0.evePlus.control.lastCommandTime") { eveLastCommandTime = it ?: eveLastCommandTime }
             client.cachedText("roidmi.0.evePlus.map.roomsJson")?.let { roomsRaw = it }
             client.cachedNumber("roidmi.0.evePlus.map.mapId")?.let { mapId = it }
             while (true) {
