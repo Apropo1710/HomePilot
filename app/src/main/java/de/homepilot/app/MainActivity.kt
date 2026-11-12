@@ -2132,7 +2132,6 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
 }
 
 @Composable
-@Composable
 private fun X20PlusMaintenanceRow(label: String, percent: Double?, hours: Double?, text: Color) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2189,6 +2188,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var filterHours by remember { mutableStateOf(client.cachedNumber(prefix + "status.filterLeft")) }
     var mopPercent by remember { mutableStateOf(client.cachedNumber(prefix + "status.mopLife")) }
     var mopHours by remember { mutableStateOf(client.cachedNumber(prefix + "status.mopLeft")) }
+    var pendingReset by remember { mutableStateOf<Pair<String, String>?>(null) }
     var roomsRaw by remember { mutableStateOf(client.cachedText(prefix + "rooms.roomsJson")) }
     var mapStatus by remember { mutableStateOf(client.cachedText(prefix + "rooms.mapStatus")) }
     var cleanStatus by remember { mutableStateOf(client.cachedText(prefix + "control.cleanRoomsStatus")) }
@@ -2537,13 +2537,13 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
         }
 
         CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
-            X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
             Divider()
-            X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushHours, text)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushHours, text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
             Divider()
-            X20PlusMaintenanceRow("Filter", filterPercent, filterHours, text)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterHours, text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
             Divider()
-            X20PlusMaintenanceRow("Wischmopps", mopPercent, mopHours, text)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Wischmopps", mopPercent, mopHours, text) }; TextButton(onClick = { pendingReset = "resetMop" to "Wischmopps" }) { Text("Reset", fontSize = 10.sp) } }
             Text(
                 "Die Werte werden vom X20+-Adapter ungefähr alle fünf Minuten aktualisiert.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -2576,6 +2576,15 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
             }
             scheduleStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        }
+        pendingReset?.let { (id, label) ->
+            AlertDialog(
+                onDismissRequest = { pendingReset = null },
+                title = { Text("${label} zurücksetzen?") },
+                text = { Text("Nur bestätigen, wenn das Verschleißteil tatsächlich gereinigt oder ersetzt wurde. Der Wartungszähler in Xiaomi Home wird zurückgesetzt.") },
+                confirmButton = { TextButton(onClick = { pendingReset = null; command(id, "${label} zurücksetzen") }) { Text("Zurücksetzen") } },
+                dismissButton = { TextButton(onClick = { pendingReset = null }) { Text("Abbrechen") } }
+            )
         }
     }
 }
@@ -2617,6 +2626,15 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
 @Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
     var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.waterLevel")) }; var customizeRooms by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.individual")) }; var doubleClean by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.doubleClean")) }; var moppingPath by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.pathType")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.map.mapId")) }
     var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }; var showResumeConfirm by remember { mutableStateOf(false) }
+    var mainBrushPercent by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.mainBrushLife")) }
+    var mainBrushMinutes by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.mainBrushLeftMinutes")) }
+    var sideBrushPercent by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sideBrushLife")) }
+    var sideBrushMinutes by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sideBrushLeftMinutes")) }
+    var filterPercent by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.filterLife")) }
+    var filterMinutes by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.filterLeftMinutes")) }
+    var sensorPercent by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sensorDirtyLife")) }
+    var sensorMinutes by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sensorDirtyLeftMinutes")) }
+    var pendingReset by remember { mutableStateOf<Pair<String, String>?>(null) }
     LaunchedEffect(serverUrl, connected) {
         if (connected) {
             client.cachedText("roidmi.0.evePlus.map.roomsJson")?.let { roomsRaw = it }
@@ -2633,6 +2651,14 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 client.getNumericState(serverUrl, "roidmi.0.evePlus.status.individual") { customizeRooms = it ?: customizeRooms }
                 client.getNumericState(serverUrl, "roidmi.0.evePlus.status.doubleClean") { doubleClean = it ?: doubleClean }
                 client.getNumericState(serverUrl, "roidmi.0.evePlus.status.pathType") { moppingPath = it ?: moppingPath }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.mainBrushLife") { mainBrushPercent = it ?: mainBrushPercent }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.mainBrushLeftMinutes") { mainBrushMinutes = it ?: mainBrushMinutes }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.sideBrushLife") { sideBrushPercent = it ?: sideBrushPercent }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.sideBrushLeftMinutes") { sideBrushMinutes = it ?: sideBrushMinutes }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.filterLife") { filterPercent = it ?: filterPercent }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.filterLeftMinutes") { filterMinutes = it ?: filterMinutes }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.sensorDirtyLife") { sensorPercent = it ?: sensorPercent }
+                client.getNumericState(serverUrl, "roidmi.0.evePlus.status.sensorDirtyLeftMinutes") { sensorMinutes = it ?: sensorMinutes }
                 client.getTextState(serverUrl, "roidmi.0.evePlus.map.roomsJson") { roomsRaw = it ?: roomsRaw }
                 client.getNumericState(serverUrl, "roidmi.0.evePlus.map.mapId") { mapId = it ?: mapId }
                 delay(30_000)
@@ -2692,6 +2718,16 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0)) }
             if (adapter && error != null && error != 0.0) Text("Fehlercode: ${error!!.toInt()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        }
+        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Sensoren", sensorPercent, sensorMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSensors" to "Sensoren" }) { Text("Reset", fontSize = 10.sp) } }
+            Text("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
         }
         CardBlock(panel, text, "Saug/Wisch-Einstellungen", "Reinigungsart, Saugstufe und Wasserstufe", Icons.Default.Settings) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2802,6 +2838,15 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
                 Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.evePlus.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
             }
+        }
+        pendingReset?.let { (id, label) ->
+            AlertDialog(
+                onDismissRequest = { pendingReset = null },
+                title = { Text("${label} zurücksetzen?") },
+                text = { Text("Nur bestätigen, wenn das Verschleißteil tatsächlich gereinigt oder ersetzt wurde. Der Wartungszähler des Roidmi wird zurückgesetzt.") },
+                confirmButton = { TextButton(onClick = { pendingReset = null; command(id, "${label} zurücksetzen") }) { Text("Zurücksetzen") } },
+                dismissButton = { TextButton(onClick = { pendingReset = null }) { Text("Abbrechen") } }
+            )
         }
     }
 }

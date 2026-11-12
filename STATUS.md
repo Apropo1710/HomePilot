@@ -86,3 +86,12 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Prozentwerte werden mit Fortschrittsbalken und dezenter Warnfarblogik angezeigt. Fehlende Daten bleiben als „—“ sichtbar; es werden keine Werte geschätzt.
 - Keine Reset-Schaltflächen, da im aktuellen Adapter keine bestätigten Reset-Aktionen für diese Verbrauchsteile bereitgestellt werden.
 - Installationsversion: **1.29.110 / versionCode 168**. GitHub-Actions-Build und Smartphone-Prüfung stehen noch aus.
+
+
+## Wartung und Verschleißteil-Reset für beide Saugroboter (12.11.2026)
+- Xiaomi X20+: Reset-Aktionen gemäß C102GL-MIoT-Profil: Hauptbürste 9/1, Seitenbürste 10/1, Filter 11/1, Wischmopps 18/1. Bestätigungsdialog warnt vor Reset ohne tatsächliche Reinigung/einen Austausch.
+- Roidmi EVE Plus: Der Adapter-Feature-Branch stellt Wartungswerte für Filter (10/1-2), Hauptbürste (11/1-2), Seitenbürste (12/1-2) und Sensoren (15/1-2) bereit. Reset-Aktionen: Filter 10/1, Hauptbürste 11/1, Seitenbürste 12/1, Sensoren 15/1. Restzeit kommt in Minuten und wird in HomePilot in Stunden angezeigt.
+- Beide Detailseiten erhalten Wartungskarten im einheitlichen HomePilot-Stil. Roidmi hat im verwendeten MIoT-Profil keinen eigenen Wischmopp-Verbrauchszähler; es wird kein Wert erfunden.
+- Reset-Zuordnungen beruhen auf dokumentierten MIoT-Action-IDs und müssen am realen Gerät noch praktisch verifiziert werden. Keine automatischen Resets; jeder Reset erfordert Bestätigung.
+- Build 168 (Version 1.29.110) scheiterte an einer doppelten @Composable-Annotation vor der Wartungszeilen-Composable. Korrektur in dieser Version.
+- Installationsversion: **1.29.111 / versionCode 169**. Build und Tests stehen aus.
