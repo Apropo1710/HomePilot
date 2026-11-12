@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 0a00917468ea183d0ccd2aa1fe437753840b9c7d
-- App-Version / versionCode: **1.29.116 / 174**
-- Build-Zeit: 2026-11-12 17:03:57 UTC
+- Quellcommit des APK-Builds: 8b339e630b0dbac58c424f443d6e3a21910ee843
+- App-Version / versionCode: **1.29.117 / 175**
+- Build-Zeit: 2026-11-12 17:36:56 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 42823e5cde5e856a3ff139514fff5014a77b515398c5abcd2d5f88e3e12a58c8
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: 15d67a4da32c81d24564e85f370b557db728b92f2b46e216a537e8cf90f9d88b
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -357,4 +357,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - HomePilot erhält pro vorhandenem Zeitplan eine Schaltfläche **Bearbeiten**. Kein Neu-Anlegen und kein Löschen.
 - Bearbeitungsdialog: Uhrzeit, Wiederholung/Einmalig, Wochentage, Reinigungsmodus, Saugleistung, Wasserstufe und Raum-IDs. Speichern sendet einen einzelnen JSON-Auftrag an `roidmi.0.x20Plus.control.updateSchedule`.
 - HomePilot wartet auf die Adapter-Rückmeldung und aktualisiert die Anzeige erst nach bestätigtem direktem Readback. Aktivieren/Deaktivieren bleibt unverändert.
-- Version **1.29.117 / versionCode 175**. Smartphone- und Hardwaretest der neuen Bearbeitung offen.
+- Version **1.29.117 / versionCode 175**. Smartphone- und Hardwaretest der neuen Bearbeitung offen.\n
