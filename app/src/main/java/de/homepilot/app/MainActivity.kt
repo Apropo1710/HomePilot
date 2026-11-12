@@ -2500,21 +2500,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
         }
 
-        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushHours, text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterHours, text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Wischmopps", mopPercent, mopHours, text) }; TextButton(onClick = { pendingReset = "resetMop" to "Wischmopps" }) { Text("Reset", fontSize = 10.sp) } }
-            Text(
-                "Die Werte werden vom X20+-Adapter ungefähr alle fünf Minuten aktualisiert.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 10.sp
-            )
-        }
-
         CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten aus Xiaomi Home", Icons.Default.Schedule) {
             if (schedules.isEmpty()) {
                 Text(if (schedulesRaw == null) "Zeitpläne werden geladen oder wurden noch nicht synchronisiert." else "Keine gespeicherten Zeitpläne gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
@@ -2576,6 +2561,21 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
             mapStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
             cleanStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        }
+
+        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushHours, text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterHours, text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Wischmopps", mopPercent, mopHours, text) }; TextButton(onClick = { pendingReset = "resetMop" to "Wischmopps" }) { Text("Reset", fontSize = 10.sp) } }
+            Text(
+                "Die Werte werden vom X20+-Adapter ungefähr alle fünf Minuten aktualisiert.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 10.sp
+            )
         }
 
         pendingReset?.let { (id, label) ->
@@ -2808,16 +2808,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 )
             }
         }
-        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
-            Divider()
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Sensoren", sensorPercent, sensorMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSensors" to "Sensoren" }) { Text("Reset", fontSize = 10.sp) } }
-            Text("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-        }
         CardBlock(panel, text, "Reinigungszonen", "Räume auswählen und gezielt reinigen", Icons.Default.Map) {
             if (rooms.isEmpty() || mapId == null || mapId!! <= 0) Text("Noch keine gültige Raumkarte importiert. Importierte Räume erscheinen hier automatisch.", color = MaterialTheme.colorScheme.onSurfaceVariant)
             else {
@@ -2839,6 +2829,16 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
                 Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.evePlus.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
             }
+        }
+        CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Seitenbürste", sideBrushPercent, sideBrushMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSideBrush" to "Seitenbürste" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Filter", filterPercent, filterMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetFilter" to "Filter" }) { Text("Reset", fontSize = 10.sp) } }
+            Divider()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Sensoren", sensorPercent, sensorMinutes?.div(60.0), text) }; TextButton(onClick = { pendingReset = "resetSensors" to "Sensoren" }) { Text("Reset", fontSize = 10.sp) } }
+            Text("Restzeiten werden vom Adapter in Minuten geliefert und hier in Stunden angezeigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
         }
         pendingReset?.let { (id, label) ->
             AlertDialog(

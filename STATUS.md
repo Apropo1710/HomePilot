@@ -103,3 +103,10 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Es wurden ausschließlich die Positionen der vorhandenen Karten geändert; Inhalte, Datenpunkte, Steuerbefehle und Bestätigungsdialoge bleiben unverändert.
 - Installationsversion: **1.29.112 / versionCode 170**.
 - Build für diesen Stand läuft nach dem Commit; APK und Signatur müssen vor Freigabe geprüft werden.
+
+
+## Roboter-Detailseiten – Wartungskarte ganz nach unten (12.11.2026)
+- Xiaomi X20+: **Wartung** steht jetzt nach Zeitplänen und Reinigungsbereichen als letzte Kachel.
+- Roidmi EVE Plus: **Wartung** steht jetzt nach den Reinigungszonen als letzte Kachel.
+- Alle Kachelinhalte, Datenpunkte, Steuerbefehle und Dialoge bleiben unverändert.
+- Installationsversion: **1.29.113 / versionCode 171**.
