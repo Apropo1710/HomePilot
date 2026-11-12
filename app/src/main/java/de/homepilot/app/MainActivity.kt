@@ -2398,9 +2398,10 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
         CardBlock(panel, text, "Reinigungseinstellungen", "Reinigungsart, Saugleistung und Wasserfluss", Icons.Default.Settings) {
             Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("Saugen und Wischen", "Wischen", "Saugen", "Saugen vor Wischen").forEachIndexed { level, label ->
-                    RoidmiLevelChoice(label, selected = cleaningMode?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.CleaningServices, modifier = Modifier.weight(1f), maxLines = if (level == 0 || level == 3) 2 else 1) {
-                        updateSetting("cleaningMode", level, "Reinigungsart")
+                listOf("Saugen", "Saugen und Wischen", "Wischen", "Saugen vor Wischen").forEachIndexed { position, label ->
+                    val adapterMode = listOf(2, 0, 1, 3)[position]
+                    RoidmiLevelChoice(label, selected = cleaningMode?.toInt() == adapterMode, enabled = connected && adapter, icon = Icons.Default.CleaningServices, modifier = Modifier.weight(1f), maxLines = if (position == 1 || position == 3) 2 else 1) {
+                        updateSetting("cleaningMode", adapterMode, "Reinigungsart")
                     }
                 }
             }
