@@ -2500,32 +2500,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             }
         }
 
-        CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten aus Xiaomi Home", Icons.Default.Schedule) {
-            if (schedules.isEmpty()) {
-                Text(if (schedulesRaw == null) "Zeitpläne werden geladen oder wurden noch nicht synchronisiert." else "Keine gespeicherten Zeitpläne gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
-            }
-            schedules.forEach { schedule ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(schedule.time + "  ·  " + schedule.weekdaysText, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text(schedule.cleaningModeText + " · " + schedule.fanSpeedText, color = text, fontSize = 11.sp)
-                        Text("Wasser: " + schedule.waterLevelText + " · Räume: " + schedule.roomsText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                        schedule.parseError?.let { Text("Nicht vollständig lesbar: " + it, color = Color(0xFFD97706), fontSize = 10.sp) }
-                    }
-                    Switch(checked = schedule.enabled, enabled = connected && adapter && scheduleBusyId == null && schedule.parseError == null, onCheckedChange = { enabled -> setScheduleEnabled(schedule, enabled) })
-                }
-                Divider()
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-                if (scheduleBusyId != null) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                OutlinedButton(onClick = { refreshSchedules() }, enabled = connected && adapter && scheduleBusyId == null) {
-                    Icon(Icons.Default.Refresh, null)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Aktualisieren")
-                }
-            }
-            scheduleStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
-        }
         CardBlock(panel, text, "Reinigungsbereiche", "Alle Bereiche oder einzelne Räume reinigen", Icons.Default.Map) {
             if (rooms.isEmpty()) {
                 Text("Noch keine Raumkarte geladen. Die Xiaomi-Raumkarte kann hier aktualisiert werden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
@@ -2563,6 +2537,32 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             cleanStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
         }
 
+        CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten aus Xiaomi Home", Icons.Default.Schedule) {
+            if (schedules.isEmpty()) {
+                Text(if (schedulesRaw == null) "Zeitpläne werden geladen oder wurden noch nicht synchronisiert." else "Keine gespeicherten Zeitpläne gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+            }
+            schedules.forEach { schedule ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(schedule.time + "  ·  " + schedule.weekdaysText, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text(schedule.cleaningModeText + " · " + schedule.fanSpeedText, color = text, fontSize = 11.sp)
+                        Text("Wasser: " + schedule.waterLevelText + " · Räume: " + schedule.roomsText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        schedule.parseError?.let { Text("Nicht vollständig lesbar: " + it, color = Color(0xFFD97706), fontSize = 10.sp) }
+                    }
+                    Switch(checked = schedule.enabled, enabled = connected && adapter && scheduleBusyId == null && schedule.parseError == null, onCheckedChange = { enabled -> setScheduleEnabled(schedule, enabled) })
+                }
+                Divider()
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                if (scheduleBusyId != null) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                OutlinedButton(onClick = { refreshSchedules() }, enabled = connected && adapter && scheduleBusyId == null) {
+                    Icon(Icons.Default.Refresh, null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Aktualisieren")
+                }
+            }
+            scheduleStatus?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp) }
+        }
         CardBlock(panel, text, "Wartung", "Verbleibende Lebensdauer der Verschleißteile", Icons.Default.Build) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { X20PlusMaintenanceRow("Hauptbürste", mainBrushPercent, mainBrushHours, text) }; TextButton(onClick = { pendingReset = "resetMainBrush" to "Hauptbürste" }) { Text("Reset", fontSize = 10.sp) } }
             Divider()

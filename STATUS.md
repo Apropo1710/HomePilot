@@ -110,3 +110,10 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Roidmi EVE Plus: **Wartung** steht jetzt nach den Reinigungszonen als letzte Kachel.
 - Alle Kachelinhalte, Datenpunkte, Steuerbefehle und Dialoge bleiben unverändert.
 - Installationsversion: **1.29.113 / versionCode 171**.
+
+
+## Xiaomi X20+ – Reihenfolge von Zeitplänen und Reinigungsbereichen getauscht (12.11.2026)
+- Die Kacheln stehen jetzt in der Reihenfolge **Reinigungsbereiche → Zeitpläne → Wartung**.
+- Die Wartung bleibt die letzte Kachel. Die Roidmi-Reihenfolge bleibt unverändert.
+- Nur die Position der beiden X20+-Karten wurde getauscht; Inhalte und Funktionen bleiben unverändert.
+- Installationsversion: **1.29.114 / versionCode 172**.
