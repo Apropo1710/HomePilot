@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 4ee5f15c22dabec286767b02d5cbde7b04449a00
+- Quellcommit des APK-Builds: bfd0da4589bd1c4ad66ca1f7a38440a479f5c396
 - App-Version / versionCode: **1.29.120 / 178**
-- Build-Zeit: 2026-11-12 20:05:43 UTC
+- Build-Zeit: 2026-11-12 20:25:56 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 42e1d5cad4679ea5135d683418d8bfc73d9bd1cf6d02af2acf3ec846a3b200c3
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: 2deaa89fc4d824ff7217019c29eece82f266a7d1aafe884587e4d481cb2ca75d
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -376,4 +376,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Nutzer bestätigt nach Installation von HomePilot **1.29.120 / versionCode 178** und Adapter **0.1.63**, dass die Synchronisation der Zeitpläne jetzt in beide Richtungen funktioniert.
 - Die Feldzuordnung und Bearbeitung bestehender Zeitpläne ist damit im Zusammenspiel mit dem echten X20+ bestätigt.
 - Keine Zeitplan-Neuanlage oder -Löschung; bestehende Aktivieren/Deaktivieren-Funktion bleibt erhalten.
-- Weiterer Schritt: normale Alltagsbeobachtung. Keine zusätzlichen zyklischen Abfragen einführen.
+- Weiterer Schritt: normale Alltagsbeobachtung. Keine zusätzlichen zyklischen Abfragen einführen.\n
