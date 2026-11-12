@@ -138,4 +138,5 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Der Reinigungsmodus und unbekannte Felder bleiben unverändert, bis ihre numerischen Werte eindeutig verifiziert sind. Der Adapter prüft vor dem Schreiben, ob sich der zuvor angezeigte Zeitplan zwischenzeitlich geändert hat, und bestätigt Änderungen durch Readback.
 - Die Aktualisierung und Bearbeitung erfolgen ausschließlich auf ausdrückliche Benutzeraktion; es kommen keine neuen zyklischen Abfragen hinzu.
 - Für eine installierbare Aktualisierung wird die App-Version auf **1.29.121 / versionCode 179** angehoben.
-- Android-Release-Build und Signaturprüfung stehen noch aus; Hardwaretest am EVE Plus ebenfalls.
+- Android-Release-Build für **1.29.121 / versionCode 179** erfolgreich; APK-Paket und Signatur wurden von GitHub Actions geprüft und das GitHub-Release `latest` aktualisiert.
+- Adapter **0.1.64**: beide CI-Prüfungen erfolgreich (Build/Test). Hardwaretest der Eve-Plus-Zeitplanbearbeitung steht noch aus; bis dahin keine Zeitplan-Schreiboperation am Roboter.

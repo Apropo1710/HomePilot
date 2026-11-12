@@ -385,3 +385,11 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - HomePilot soll danach die Bearbeitung für den Eve Plus passend zum Adapter-Datenpfad unterstützen. Zunächst nur bestehende Zeitpläne bearbeiten, keine Neuanlage/Löschung.
 - Bestehende X20+-Funktion nicht verändern. Last gering halten: keine unnötigen zyklischen Abfragen, Schreib-/Prüfoperationen nur bei manueller Nutzeraktion.
 - Status: geplant, noch nicht begonnen.\n\n\n
+
+## Aktueller Produktionsstand – Roidmi EVE Plus Zeitpläne (12.11.2026)
+- Adapter-Branch `feature/xiaomi-x20plus`, Version **0.1.64**: Tests und Build in beiden GitHub-Prüfungen erfolgreich.
+- HomePilot `main`, Version **1.29.121 / versionCode 179**: Release-APK erfolgreich gebaut, Paket und Signatur geprüft und im Release `latest` veröffentlicht.
+- Download: https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk
+- Eve-Plus-Zeitplaneditor: Adapter-Schreibpfad mit Konfliktprüfung und Readback sowie HomePilot-Bedienoberfläche implementiert. Echter Hardwaretest steht noch aus. Bis dahin keine Zeitpläne am Roboter ändern.
+- X20+-Zeitplansynchronisierung bleibt separat und wurde zuvor mit Adapter 0.1.63 und HomePilot 1.29.120 bidirektional bestätigt.
+- Keine neuen zyklischen Abfragen eingeführt.
