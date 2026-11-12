@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: bfd0da4589bd1c4ad66ca1f7a38440a479f5c396
+- Quellcommit des APK-Builds: 53aa8810efceed076ac6fd6dcd3fe3449f24a57e
 - App-Version / versionCode: **1.29.120 / 178**
-- Build-Zeit: 2026-11-12 20:25:56 UTC
+- Build-Zeit: 2026-11-12 20:33:41 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 2deaa89fc4d824ff7217019c29eece82f266a7d1aafe884587e4d481cb2ca75d
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: 2e2e62b9027228973e63685a4d49d3faeb0fd446497f333808417b5abab3cd7b
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -384,4 +384,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Zuerst Adapter-/MIoT-Bestand und Eve-Plus-Zeitplanformat untersuchen, dann einen gerätespezifischen Schreibpfad mit Readback/Verifikation umsetzen.
 - HomePilot soll danach die Bearbeitung für den Eve Plus passend zum Adapter-Datenpfad unterstützen. Zunächst nur bestehende Zeitpläne bearbeiten, keine Neuanlage/Löschung.
 - Bestehende X20+-Funktion nicht verändern. Last gering halten: keine unnötigen zyklischen Abfragen, Schreib-/Prüfoperationen nur bei manueller Nutzeraktion.
-- Status: geplant, noch nicht begonnen.
+- Status: geplant, noch nicht begonnen.\n
