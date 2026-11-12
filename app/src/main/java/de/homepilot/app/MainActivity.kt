@@ -2888,7 +2888,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 eveScheduleBusy = false
                 eveScheduleMessage = result
             } else eveScheduleScope.launch {
-                delay(2200)
+                delay(4500)
                 loadEveScheduleStates()
                 eveScheduleBusy = false
                 eveScheduleMessage = "Aktualisierung angefordert. Zeitstempel: " + (eveScheduleLastUpdate ?: "noch nicht bestätigt")
@@ -2918,11 +2918,11 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             eveScheduleMessage = "Bitte eine gültige Uhrzeit auswählen."
             return
         }
-        if (eveEditDays.isEmpty()) {
+        if (eveEditDays.isEmpty() && eveEditDays != schedule.weekdays.toSet()) {
             eveScheduleMessage = "Bitte mindestens einen Wochentag auswählen."
             return
         }
-        if (rooms.isNotEmpty() && eveEditRooms.isEmpty()) {
+        if (rooms.isNotEmpty() && eveEditRooms.isEmpty() && eveEditRooms != schedule.roomIds.toSet()) {
             eveScheduleMessage = "Bitte mindestens einen Raum auswählen."
             return
         }
@@ -3156,7 +3156,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                         Text("Wasser: " + roidmiWaterLabel(schedule.waterLevel) + " · Raum-IDs: " + schedule.roomIds.joinToString(", "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Switch(checked = schedule.enabled, enabled = connected && adapter && !eveScheduleBusy && eveSchedulesRaw != null, onCheckedChange = { enabled ->
+                        Switch(checked = schedule.enabled, enabled = connected && adapter && !eveScheduleBusy && !eveSchedulesRaw.isNullOrBlank(), onCheckedChange = { enabled ->
                             eveEditEnabled = enabled
                             openEveScheduleEditor(schedule)
                             eveEditEnabled = enabled
