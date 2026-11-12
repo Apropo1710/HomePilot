@@ -2435,18 +2435,17 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 message = result
             } else scope.launch {
                 var done = false
-                repeat(60) {
-                    if (!done) {
-                        delay(1000)
-                        client.getTextState(serverUrl, prefix + "timing.status") { latest ->
-                            if (latest != null) {
-                                scheduleStatus = latest
-                                if (latest.contains("direkt am Roboter bestätigt") || latest.contains("von Xiaomi angenommen") || latest.contains("Zeitplanbearbeitung fehlgeschlagen")) {
-                                    done = true
-                                    client.getTextState(serverUrl, prefix + "timing.parsed") { schedulesRaw = it ?: schedulesRaw }
-                                    scheduleBusyId = null
-                                    message = latest
-                                }
+                for (attempt in 0 until 60) {
+                    if (done) break
+                    delay(1000)
+                    client.getTextState(serverUrl, prefix + "timing.status") { latest ->
+                        if (latest != null) {
+                            scheduleStatus = latest
+                            if (latest.contains("direkt am Roboter bestätigt") || latest.contains("von Xiaomi angenommen") || latest.contains("Zeitplanbearbeitung fehlgeschlagen")) {
+                                done = true
+                                client.getTextState(serverUrl, prefix + "timing.parsed") { schedulesRaw = it ?: schedulesRaw }
+                                scheduleBusyId = null
+                                message = latest
                             }
                         }
                     }
