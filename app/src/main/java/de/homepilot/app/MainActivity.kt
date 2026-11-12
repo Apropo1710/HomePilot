@@ -2085,11 +2085,12 @@ private fun x20PlusStatusLabel(value: Int?): String = when (value) {
 }
 
 private fun x20PlusCleaningModeLabel(value: Int?): String = when (value) {
-    0 -> "Saugen und Wischen"
-    1 -> "Wischen"
-    2 -> "Saugen"
-    3 -> "Saugen vor Wischen"
-    else -> "—"
+    0 -> "Automatische Anpassung"
+    1 -> "Nur Saugen"
+    2 -> "Saugen und Wischen"
+    3 -> "Nur Wischen"
+    4 -> "Saugen vor Wischen"
+    else -> "Unbekannter Modus ($value)"
 }
 
 private fun x20PlusSuctionLabel(value: Int?): String = when (value) {
@@ -2219,6 +2220,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var scheduleBusyId by remember { mutableStateOf<String?>(null) }
     var editingSchedule by remember { mutableStateOf<X20PlusScheduleUi?>(null) }
     var editTime by remember { mutableStateOf("") }
+    val schedulePickerContext = LocalContext.current
     var editDays by remember { mutableStateOf(setOf<Int>()) }
     var editRepeat by remember { mutableStateOf(true) }
     var editMode by remember { mutableStateOf("1") }
@@ -2433,13 +2435,13 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 message = result
             } else scope.launch {
                 var done = false
-                repeat(20) {
+                repeat(60) {
                     if (!done) {
                         delay(1000)
                         client.getTextState(serverUrl, prefix + "timing.status") { latest ->
                             if (latest != null) {
                                 scheduleStatus = latest
-                                if (latest.contains("direkt am Roboter bestätigt") || latest.contains("Zeitplanbearbeitung fehlgeschlagen")) {
+                                if (latest.contains("direkt am Roboter bestätigt") || latest.contains("von Xiaomi angenommen") || latest.contains("Zeitplanbearbeitung fehlgeschlagen")) {
                                     done = true
                                     client.getTextState(serverUrl, prefix + "timing.parsed") { schedulesRaw = it ?: schedulesRaw }
                                     scheduleBusyId = null
@@ -2680,7 +2682,22 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 title = { Text("Zeitplan #${schedule.id} bearbeiten") },
                 text = {
                     Column(Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(value = editTime, onValueChange = { editTime = it }, label = { Text("Uhrzeit (HH:mm)") }, singleLine = true)
+                        OutlinedButton(
+                            onClick = {
+                                val parts = editTime.split(":")
+                                val hour = parts.getOrNull(0)?.toIntOrNull()?.coerceIn(0, 23) ?: 10
+                                val minute = parts.getOrNull(1)?.toIntOrNull()?.coerceIn(0, 59) ?: 0
+                                android.app.TimePickerDialog(
+                                    schedulePickerContext,
+                                    { _, selectedHour, selectedMinute -> editTime = "%02d:%02d".format(selectedHour, selectedMinute) },
+                                    hour, minute, true
+                                ).show()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Uhrzeit: $editTime", modifier = Modifier.weight(1f), textAlign = TextAlign.Start)
+                            Icon(Icons.Default.Schedule, contentDescription = "Uhrzeit auswählen")
+                        }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Checkbox(checked = editRepeat, onCheckedChange = { editRepeat = it; if (!it) editDays = emptySet() })
                             Text("Wiederholen")
@@ -2698,7 +2715,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                                 }
                             }
                         } else Text("Einmaliger Zeitplan", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        ScheduleChoice("Reinigungsmodus", editMode, listOf("0" to "Nur Saugen", "1" to "Saugen und Wischen", "2" to "Nur Wischen", "3" to "Individuell")) { editMode = it }
+                        ScheduleChoice("Reinigungsmodus", editMode, listOf("0" to "Automatische Anpassung", "1" to "Nur Saugen", "2" to "Saugen und Wischen", "3" to "Nur Wischen", "4" to "Saugen vor Wischen")) { editMode = it }
                         ScheduleChoice("Saugleistung", editFan, listOf("0" to "Leise", "1" to "Standard", "2" to "Mittel", "3" to "Turbo")) { editFan = it }
                         ScheduleChoice("Wasserstufe", editWater, listOf("0" to "Automatisch", "32" to "Niedrig", "64" to "Mittel", "96" to "Hoch")) { editWater = it }
                         Text("Bereiche", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
