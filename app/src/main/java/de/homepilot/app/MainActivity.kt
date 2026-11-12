@@ -2714,9 +2714,9 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                                 }
                             }
                         } else Text("Einmaliger Zeitplan", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        ScheduleChoice("Reinigungsmodus", editMode, listOf("0" to "Automatische Anpassung", "1" to "Nur Saugen", "2" to "Saugen und Wischen", "3" to "Nur Wischen", "4" to "Saugen vor Wischen")) { editMode = it }
+                        ScheduleChoice("Reinigungsmodus", editMode, listOf("16" to "Nur Saugen", "32" to "Saugen und Wischen", "48" to "Nur Wischen", "64" to "Saugen vor Wischen")) { editMode = it }
                         ScheduleChoice("Saugleistung", editFan, listOf("0" to "Leise", "1" to "Standard", "2" to "Mittel", "3" to "Turbo")) { editFan = it }
-                        ScheduleChoice("Wasserstufe", editWater, listOf("0" to "Automatisch", "32" to "Niedrig", "64" to "Mittel", "96" to "Hoch")) { editWater = it }
+                        ScheduleChoice("Wasserstufe", editWater, listOf("0" to "Automatisch", "1" to "Niedrig", "2" to "Mittel", "3" to "Hoch")) { editWater = it }
                         Text("Bereiche", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                         ScheduleRoomPicker(roomsRaw, editRooms) { editRooms = it }
                         Text("Die Eingaben werden vor dem Schreiben geprüft. Andere Zeitpläne bleiben unverändert.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
