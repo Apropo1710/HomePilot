@@ -352,3 +352,9 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Anzeige pro Zeitplan: Uhrzeit, Wochentage, Reinigungsmodus, Saugstufe, Wasserstufe, Räume und Aktivierungsstatus.
 - Ein/Aus-Schalter sendet `{id, enabled}` an `roidmi.0.x20Plus.control.setScheduleEnabled`. Der Schalter wird erst nach Adapter-Readback als abgeschlossen angezeigt. Eine manuelle Aktualisieren-Schaltfläche nutzt `roidmi.0.x20Plus.control.refreshSchedules`.
 - Version **1.29.105 / versionCode 163**. Build und APK-Veröffentlichung noch ausstehend; Smartphone-Test ebenfalls offen.\n\n\n\n\n\n\n\n\n\n
+
+## Xiaomi X20+ – bestehende Zeitpläne bearbeiten (12.11.2026)
+- HomePilot erhält pro vorhandenem Zeitplan eine Schaltfläche **Bearbeiten**. Kein Neu-Anlegen und kein Löschen.
+- Bearbeitungsdialog: Uhrzeit, Wiederholung/Einmalig, Wochentage, Reinigungsmodus, Saugleistung, Wasserstufe und Raum-IDs. Speichern sendet einen einzelnen JSON-Auftrag an `roidmi.0.x20Plus.control.updateSchedule`.
+- HomePilot wartet auf die Adapter-Rückmeldung und aktualisiert die Anzeige erst nach bestätigtem direktem Readback. Aktivieren/Deaktivieren bleibt unverändert.
+- Version **1.29.117 / versionCode 175**. Smartphone- und Hardwaretest der neuen Bearbeitung offen.

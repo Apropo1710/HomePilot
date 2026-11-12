@@ -2016,7 +2016,13 @@ private data class X20PlusScheduleUi(
     val fanSpeedText: String,
     val waterLevelText: String,
     val roomsText: String,
-    val parseError: String?
+    val parseError: String?,
+    val weekdays: List<Int>,
+    val repeat: Boolean,
+    val cleaningMode: Int,
+    val fanSpeed: Int,
+    val waterLevel: Int,
+    val roomIds: List<Int>
 )
 
 private fun parseX20PlusScheduleUi(raw: String?): List<X20PlusScheduleUi> = runCatching {
@@ -2032,7 +2038,13 @@ private fun parseX20PlusScheduleUi(raw: String?): List<X20PlusScheduleUi> = runC
             fanSpeedText = item.optString("fanSpeedText"),
             waterLevelText = item.optString("waterLevelText"),
             roomsText = item.optString("roomsText"),
-            parseError = item.optString("parseError").takeIf { it.isNotBlank() && it != "null" }
+            parseError = item.optString("parseError").takeIf { it.isNotBlank() && it != "null" },
+            weekdays = item.optJSONArray("weekdays")?.let { a -> (0 until a.length()).map { a.optInt(it) } } ?: emptyList(),
+            repeat = item.optBoolean("repeat", false),
+            cleaningMode = item.optInt("cleaningMode", -1),
+            fanSpeed = item.optInt("fanSpeed", -1),
+            waterLevel = item.optInt("waterLevel", -1),
+            roomIds = item.optJSONArray("roomIds")?.let { a -> (0 until a.length()).map { a.optInt(it) } } ?: emptyList()
         )
     }
 }.getOrDefault(emptyList())
@@ -2205,6 +2217,14 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var busyLabel by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     var scheduleBusyId by remember { mutableStateOf<String?>(null) }
+    var editingSchedule by remember { mutableStateOf<X20PlusScheduleUi?>(null) }
+    var editTime by remember { mutableStateOf("") }
+    var editDays by remember { mutableStateOf("") }
+    var editRepeat by remember { mutableStateOf(true) }
+    var editMode by remember { mutableStateOf("1") }
+    var editFan by remember { mutableStateOf("1") }
+    var editWater by remember { mutableStateOf("64") }
+    var editRooms by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
 
     fun loadRoomAndScheduleData() {
@@ -2368,6 +2388,67 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 loadRoomAndScheduleData()
                 scheduleBusyId = null
                 message = scheduleStatus ?: "Zeitpläne aktualisiert."
+            }
+        }
+    }
+
+    fun openScheduleEditor(schedule: X20PlusScheduleUi) {
+        editingSchedule = schedule
+        editTime = schedule.time
+        editDays = schedule.weekdays.joinToString(",")
+        editRepeat = schedule.repeat
+        editMode = schedule.cleaningMode.toString()
+        editFan = schedule.fanSpeed.toString()
+        editWater = schedule.waterLevel.toString()
+        editRooms = schedule.roomIds.joinToString(",")
+    }
+
+    fun saveScheduleEdit(schedule: X20PlusScheduleUi) {
+        if (!connected || !adapter || scheduleBusyId != null) return
+        val days = if (editDays.isBlank()) emptyList() else editDays.split(",").mapNotNull { it.trim().toIntOrNull() }
+        val roomIds = editRooms.split(",").mapNotNull { it.trim().toIntOrNull() }
+        if (days.size != editDays.split(",").filter { it.isNotBlank() }.size || roomIds.size != editRooms.split(",").filter { it.isNotBlank() }.size) {
+            message = "Bitte Wochentage und Raum-IDs als Zahlen eingeben."
+            return
+        }
+        val update = JSONObject()
+            .put("time", editTime.trim())
+            .put("weekdays", JSONArray(days))
+            .put("repeat", editRepeat)
+            .put("cleaningMode", editMode.toIntOrNull() ?: -1)
+            .put("fanSpeed", editFan.toIntOrNull() ?: -1)
+            .put("waterLevel", editWater.toIntOrNull() ?: -1)
+            .put("roomIds", JSONArray(roomIds))
+        val payload = JSONObject().put("id", schedule.id).put("update", update).toString()
+        scheduleBusyId = schedule.id
+        editingSchedule = null
+        message = "Zeitplan wird gespeichert und am Roboter geprüft…"
+        client.setTextState(serverUrl, prefix + "control.updateSchedule", payload) { ok, result ->
+            if (!ok) {
+                scheduleBusyId = null
+                message = result
+            } else scope.launch {
+                var done = false
+                repeat(20) {
+                    if (!done) {
+                        delay(1000)
+                        client.getTextState(serverUrl, prefix + "timing.status") { latest ->
+                            if (latest != null) {
+                                scheduleStatus = latest
+                                if (latest.contains("direkt am Roboter bestätigt") || latest.contains("Zeitplanbearbeitung fehlgeschlagen")) {
+                                    done = true
+                                    client.getTextState(serverUrl, prefix + "timing.parsed") { schedulesRaw = it ?: schedulesRaw }
+                                    scheduleBusyId = null
+                                    message = latest
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!done) {
+                    scheduleBusyId = null
+                    message = "Keine abschließende Rückmeldung. Bitte Zeitpläne aktualisieren."
+                }
             }
         }
     }
@@ -2554,7 +2635,13 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                         Text("Wasser: " + schedule.waterLevelText + " · Räume: " + schedule.roomsText, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                         schedule.parseError?.let { DiagnosticText("Nicht vollständig lesbar: " + it, color = Color(0xFFD97706)) }
                     }
-                    Switch(checked = schedule.enabled, enabled = connected && adapter && scheduleBusyId == null && schedule.parseError == null, onCheckedChange = { enabled -> setScheduleEnabled(schedule, enabled) })
+                    Column(horizontalAlignment = Alignment.End) {
+                        Switch(checked = schedule.enabled, enabled = connected && adapter && scheduleBusyId == null && schedule.parseError == null, onCheckedChange = { enabled -> setScheduleEnabled(schedule, enabled) })
+                        TextButton(onClick = { openScheduleEditor(schedule) }, enabled = connected && adapter && scheduleBusyId == null && schedule.parseError == null) {
+                            Icon(Icons.Default.Edit, null, modifier = Modifier.size(16.dp))
+                            Text("Bearbeiten", fontSize = 10.sp)
+                        }
+                    }
                 }
                 Divider()
             }
@@ -2580,6 +2667,31 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 "Die Werte werden vom X20+-Adapter ungefähr alle fünf Minuten aktualisiert.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 10.sp
+            )
+        }
+
+        editingSchedule?.let { schedule ->
+            AlertDialog(
+                onDismissRequest = { if (scheduleBusyId == null) editingSchedule = null },
+                title = { Text("Zeitplan #${schedule.id} bearbeiten") },
+                text = {
+                    Column(Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(value = editTime, onValueChange = { editTime = it }, label = { Text("Uhrzeit (HH:mm)") }, singleLine = true)
+                        Text("Wochentage: 0=Mo, 1=Di, 2=Mi, 3=Do, 4=Fr, 5=Sa, 6=So", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        OutlinedTextField(value = editDays, onValueChange = { editDays = it }, label = { Text("Wochentage, kommasepariert") }, placeholder = { Text("z. B. 0,1,2,3,4") }, singleLine = true)
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(checked = editRepeat, onCheckedChange = { editRepeat = it; if (!it) editDays = "" })
+                            Text("Wiederholen (aus = einmalig)")
+                        }
+                        OutlinedTextField(value = editMode, onValueChange = { editMode = it }, label = { Text("Reinigungsmodus: 0 Saugen, 1 Saugen/Wischen, 2 Wischen, 3 Individuell") }, singleLine = true)
+                        OutlinedTextField(value = editFan, onValueChange = { editFan = it }, label = { Text("Saugleistung: 0 Leise, 1 Standard, 2 Mittel, 3 Turbo") }, singleLine = true)
+                        OutlinedTextField(value = editWater, onValueChange = { editWater = it }, label = { Text("Wasser: 0 Auto, 32 Niedrig, 64 Mittel, 96 Hoch") }, singleLine = true)
+                        OutlinedTextField(value = editRooms, onValueChange = { editRooms = it }, label = { Text("Raum-IDs, kommasepariert (0 = alle)") }, singleLine = true)
+                        Text("Die Eingaben werden vor dem Schreiben geprüft. Andere Zeitpläne bleiben unverändert.", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
+                confirmButton = { TextButton(onClick = { saveScheduleEdit(schedule) }) { Text("Speichern") } },
+                dismissButton = { TextButton(onClick = { editingSchedule = null }) { Text("Abbrechen") } }
             )
         }
 
