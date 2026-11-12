@@ -2022,6 +2022,20 @@ private data class EvePlusScheduleUi(
     val roomIds: List<Int>
 )
 
+private fun evePlusRoomNames(raw: String?, roomIds: List<Int>): String {
+    if (roomIds.isEmpty()) return "Keine Raumzuordnung"
+    val names = runCatching {
+        val array = org.json.JSONArray(raw ?: "[]")
+        (0 until array.length()).mapNotNull { index ->
+            val item = array.optJSONObject(index) ?: return@mapNotNull null
+            val id = item.optInt("id", item.optInt("segmentId", -1))
+            val name = item.optString("name").trim()
+            if (id > 0 && name.isNotEmpty()) id to name else null
+        }.toMap()
+    }.getOrDefault(emptyMap())
+    return roomIds.distinct().joinToString(", ") { id -> names[id] ?: "Raum $id" }
+}
+
 private fun parseEvePlusScheduleUi(raw: String?): List<EvePlusScheduleUi> = runCatching {
     val array = org.json.JSONArray(raw ?: "[]")
     (0 until array.length()).mapNotNull { index ->
@@ -3152,8 +3166,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                         Text(schedule.timeText + " · " + schedule.weekdaysText, color = text, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text(roidmiFanLabel(schedule.fanSpeed) + " · Modus " + schedule.cleaningMode, color = text, fontSize = 11.sp)
-                        Text("Wasser: " + roidmiWaterLabel(schedule.waterLevel) + " · Raum-IDs: " + schedule.roomIds.joinToString(", "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                        Text(roidmiFanLabel(schedule.fanSpeed) + " · Wasser: " + roidmiWaterLabel(schedule.waterLevel), color = text, fontSize = 11.sp)
+                        Text("Räume: " + evePlusRoomNames(roomsRaw, schedule.roomIds), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                     }
                     Column(horizontalAlignment = Alignment.End) {
                         Switch(checked = schedule.enabled, enabled = connected && adapter && !eveScheduleBusy && !eveSchedulesRaw.isNullOrBlank(), onCheckedChange = { enabled ->
