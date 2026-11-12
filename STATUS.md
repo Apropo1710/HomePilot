@@ -126,8 +126,3 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Erfasst sind unter anderem Xiaomi-X20+-Raumkarten-/Reinigungs-/Zeitplan-Rückmeldungen, Zeitplan-Parsefehler sowie technische Roidmi-Fehlercodes und Adapterdetails.
 - Normale Bedienhinweise, Gerätestatus und die eigentliche Steuerung bleiben sichtbar und unverändert.
 - Installationsversion: **1.29.115 / versionCode 173**.
-
-
-## Diagnose-Schalter – zusätzliche Fehlercode-Ausgabe (12.11.2026)
-- Auch der numerische Fehlercode des Xiaomi X20+ wird über **Diagnosetexte anzeigen** gesteuert. Der normale Fehler-/Betriebsstatus des Roboters bleibt sichtbar.
-- Installationsversion: **1.29.116 / versionCode 174**.
