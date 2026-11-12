@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 8b339e630b0dbac58c424f443d6e3a21910ee843
+- Quellcommit des APK-Builds: cb593bb82780318bcb74dbf19ad091319494db02
 - App-Version / versionCode: **1.29.117 / 175**
-- Build-Zeit: 2026-11-12 17:36:56 UTC
+- Build-Zeit: 2026-11-12 18:40:56 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 15d67a4da32c81d24564e85f370b557db728b92f2b46e216a537e8cf90f9d88b
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: 30a47a61748526c47041f0ae8db9e017a6d09f3a4f7a58c5e2b7ba2685ae4727
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -354,8 +354,7 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Version **1.29.105 / versionCode 163**. Build und APK-Veröffentlichung noch ausstehend; Smartphone-Test ebenfalls offen.\n\n\n\n\n\n\n\n\n\n
 
 ## Xiaomi X20+ – bestehende Zeitpläne bearbeiten (12.11.2026)
-- Bearbeitungsdialog überarbeitet: Wochentage per Checkbox, Reinigungsmodus/Saugleistung/Wasserstufe per Auswahlfeld und Räume per Checkbox statt numerischer Eingaben.
-- Einmalig/Wiederholen bleibt als Schalter; keine Neuanlage oder Löschung.
-- Fehlerursache des ersten Speicherversuchs: Adapter-State `x20Plus.control.updateSchedule` war nicht angelegt und nicht abonniert. Daher erreichte der Auftrag den Handler nicht; kein Roboter-Schreibversuch fand statt.
-- Adapter legt den Befehl jetzt an und abonniert ihn. Bestehender direkter Read/Write/Readback- und Verifikationspfad bleibt bestehen.
-- Version **1.29.118 / versionCode 176**. Build und Hardwaretest nach CI offen.\n
+- HomePilot erhält pro vorhandenem Zeitplan eine Schaltfläche **Bearbeiten**. Kein Neu-Anlegen und kein Löschen.
+- Bearbeitungsdialog: Uhrzeit, Wiederholung/Einmalig, Wochentage, Reinigungsmodus, Saugleistung, Wasserstufe und Raum-IDs. Speichern sendet einen einzelnen JSON-Auftrag an `roidmi.0.x20Plus.control.updateSchedule`.
+- HomePilot wartet auf die Adapter-Rückmeldung und aktualisiert die Anzeige erst nach bestätigtem direktem Readback. Aktivieren/Deaktivieren bleibt unverändert.
+- Version **1.29.117 / versionCode 175**. Smartphone- und Hardwaretest der neuen Bearbeitung offen.\n\n
