@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 75e48deb4259319c4254a4c35c7fa69fb987b908
-- App-Version / versionCode: **1.29.106 / 164**
-- Build-Zeit: 2026-11-12 14:48:19 UTC
+- Quellcommit des APK-Builds: d14e82b4925bba50e144ff09160fd8ade8c7abe9
+- App-Version / versionCode: **1.29.107 / 165**
+- Build-Zeit: 2026-11-12 15:06:24 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 4c0c63582925c3ba727132ca1472186dbc8c1f31e263bfac26a6242668b50e0d
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: f14faca7d5932ece9566f8e079f0cfa2f901e32d61ef0e8676493c0c71911828
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -351,4 +351,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - HomePilot liest die bestehenden ioBroker-Datenpunkte `roidmi.0.x20Plus.timing.parsed` und `roidmi.0.x20Plus.timing.status`. Es werden keine zusätzlichen Roboter- oder Xiaomi-Abfragen im App-Hintergrund eingerichtet.
 - Anzeige pro Zeitplan: Uhrzeit, Wochentage, Reinigungsmodus, Saugstufe, Wasserstufe, Räume und Aktivierungsstatus.
 - Ein/Aus-Schalter sendet `{id, enabled}` an `roidmi.0.x20Plus.control.setScheduleEnabled`. Der Schalter wird erst nach Adapter-Readback als abgeschlossen angezeigt. Eine manuelle Aktualisieren-Schaltfläche nutzt `roidmi.0.x20Plus.control.refreshSchedules`.
-- Version **1.29.105 / versionCode 163**. Build und APK-Veröffentlichung noch ausstehend; Smartphone-Test ebenfalls offen.\n\n
+- Version **1.29.105 / versionCode 163**. Build und APK-Veröffentlichung noch ausstehend; Smartphone-Test ebenfalls offen.\n\n\n
