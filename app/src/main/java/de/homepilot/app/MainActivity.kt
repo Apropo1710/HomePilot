@@ -2032,7 +2032,7 @@ private fun parseX20PlusScheduleUi(raw: String?): List<X20PlusScheduleUi> = runC
     }
 }.getOrDefault(emptyList())
 
-private const val X20PlusProductImage = "https://i02.appmifile.com/mi-com-product/fly-birds/xiaomi-robot-vacuum-x20-plus/PC/377e06499b45c223099fdf05748825bd.jpg"
+private const val X20PlusProductImage = "https://i05.appmifile.com/182_item_ro/10/01/2025/3538593aa9a7b3b0fae9f82a668ea27c.png?q=85&thumb=1"
 
 @Composable
 private fun X20PlusProductPhoto(size: androidx.compose.ui.unit.Dp) {
@@ -2398,8 +2398,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
         CardBlock(panel, text, "Reinigungseinstellungen", "Reinigungsart, Saugleistung und Wasserfluss", Icons.Default.Settings) {
             Text("Reinigungsart", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("S+W", "Wischen", "Saugen", "Vorher").forEachIndexed { level, label ->
-                    RoidmiLevelChoice(label, selected = cleaningMode?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.CleaningServices, modifier = Modifier.weight(1f)) {
+                listOf("S+W", "Wischen", "Saugen", "Saugen vor Wischen").forEachIndexed { level, label ->
+                    RoidmiLevelChoice(label, selected = cleaningMode?.toInt() == level, enabled = connected && adapter, icon = Icons.Default.CleaningServices, modifier = Modifier.weight(1f), maxLines = if (level == 3) 2 else 1) {
                         updateSetting("cleaningMode", level, "Reinigungsart")
                     }
                 }
@@ -4046,11 +4046,11 @@ private fun RoidmiModeChoice(label: String, selected: Boolean, enabled: Boolean,
 }
 
 @Composable
-private fun RoidmiLevelChoice(label: String, selected: Boolean, enabled: Boolean, icon: ImageVector, modifier: Modifier = Modifier, accent: Color = Blue, onClick: () -> Unit) {
+private fun RoidmiLevelChoice(label: String, selected: Boolean, enabled: Boolean, icon: ImageVector, modifier: Modifier = Modifier, accent: Color = Blue, maxLines: Int = 1, onClick: () -> Unit) {
     val bg = if (selected) accent else MaterialTheme.colorScheme.surfaceVariant
     val fg = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     Column(modifier.heightIn(min = 43.dp).clip(RoundedCornerShape(9.dp)).background(bg.copy(alpha = if (enabled) 1f else 0.45f)).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 2.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Icon(icon, null, tint = fg.copy(alpha = if (enabled) 1f else 0.55f), modifier = Modifier.size(15.dp))
-        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 10.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
+        Text(label, color = fg.copy(alpha = if (enabled) 1f else 0.55f), fontSize = 10.sp, lineHeight = 11.sp, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, maxLines = maxLines, textAlign = TextAlign.Center, overflow = TextOverflow.Ellipsis)
     }
 }
