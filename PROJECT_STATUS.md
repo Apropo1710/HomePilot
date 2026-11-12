@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 4f151af71980a56177cfc2e18ad3d440ee8ead76
+- Quellcommit des APK-Builds: 5042f92364e9c1627268a76b348748b239e2fd59
 - App-Version / versionCode: **1.29.119 / 177**
-- Build-Zeit: 2026-11-12 19:15:07 UTC
+- Build-Zeit: 2026-11-12 20:02:09 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: 860d2330a4e283f8deef60b948f701f91e7568641be7b26fe1e008031fc00fe1
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: d79e7014cf9a71482157101331ccaef695e098fc4623840276b817a9bb6d9b5e
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -365,9 +365,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Adapterstatus unterscheidet jetzt zwischen angenommener Änderung und abgeschlossener direkter Bestätigung; HomePilot akzeptiert den Status „von Xiaomi angenommen“ als erfolgreiche Übernahme mit noch ausstehendem Readback.
 - Reinigungsmodi auf fünf Auswahlwerte aus Xiaomi Home angepasst: automatische Anpassung, nur Saugen, Saugen und Wischen, nur Wischen, Saugen vor Wischen.
 - Uhrzeit wird künftig über den Android-Uhrzeitdialog (Stunden/Minuten) gewählt, nicht mehr frei als Text eingegeben.
-- Version **1.29.119 / versionCode 177**. CI-Build und Release-Prüfung stehen noch aus.\n
-
-## Xiaomi X20+ Zeitplanfeld-Zuordnung (12.11.2026)
-- Xiaomi-Rohdatenvergleich zeigt: Feld 5 Wasserstufe (0 automatisch, 1 niedrig, 2 mittel, 3 hoch), Feld 6 Saugleistung, Feld 7 Reinigungsart (16 Saugen, 32 Saugen/Wischen, 48 Wischen, 64 Saugen vor Wischen).
-- Zeitplan-Editor und Anzeige verwenden die korrigierten Werte; Bitmap `1001011` entspricht So, Mi, Fr, Sa.
-- Version **1.29.120 / versionCode 178**. CI und Gerätetest noch ausstehend.
+- Version **1.29.119 / versionCode 177**. CI-Build und Release-Prüfung stehen noch aus.\n\n
