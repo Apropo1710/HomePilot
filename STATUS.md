@@ -131,3 +131,11 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 ## Diagnose-Schalter – zusätzliche Fehlercode-Ausgabe (12.11.2026)
 - Auch der numerische Fehlercode des Xiaomi X20+ wird über **Diagnosetexte anzeigen** gesteuert. Der normale Fehler-/Betriebsstatus des Roboters bleibt sichtbar.
 - Installationsversion: **1.29.116 / versionCode 174**.
+
+
+## Roidmi EVE Plus – Zeitplanbearbeitung (12.11.2026)
+- Die Roidmi-Detailseite erhält eine eigene Karte für gespeicherte Zeitpläne. Bestehende Einträge können hinsichtlich Uhrzeit, Aktivierung, Wochentagen, Saugstufe, Wasserstufe und – sofern die Raumkarte verfügbar ist – Raumzuordnung bearbeitet werden.
+- Der Reinigungsmodus und unbekannte Felder bleiben unverändert, bis ihre numerischen Werte eindeutig verifiziert sind. Der Adapter prüft vor dem Schreiben, ob sich der zuvor angezeigte Zeitplan zwischenzeitlich geändert hat, und bestätigt Änderungen durch Readback.
+- Die Aktualisierung und Bearbeitung erfolgen ausschließlich auf ausdrückliche Benutzeraktion; es kommen keine neuen zyklischen Abfragen hinzu.
+- Für eine installierbare Aktualisierung wird die App-Version auf **1.29.121 / versionCode 179** angehoben.
+- Android-Release-Build und Signaturprüfung stehen noch aus; Hardwaretest am EVE Plus ebenfalls.
