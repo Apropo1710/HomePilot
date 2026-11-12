@@ -1,14 +1,14 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: bbaa7e0f9b33e7de057eb4947e1471f8f433d66f
-- App-Version / versionCode: **1.29.121 / 179**
-- Build-Zeit: 2026-11-12 22:10:47 UTC
+- Quellcommit des APK-Builds: 75551ae3a1a0202fa74d79a3e492cc20f2be1246
+- App-Version / versionCode: **1.29.122 / 180**
+- Build-Zeit: 2026-11-12 22:17:02 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: c13696d23eea7aae7732eb4a8a1e08d3ec44cc92abcd8520f8cb3e6efb9e6150
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: cbad116472298c421567b16881230b389380e0347d5e56b7ff1a13414d8b51cb
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
@@ -392,4 +392,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Download: https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk
 - Eve-Plus-Zeitplaneditor: Adapter-Schreibpfad mit Konfliktprüfung und Readback sowie HomePilot-Bedienoberfläche implementiert. Echter Hardwaretest steht noch aus. Bis dahin keine Zeitpläne am Roboter ändern.
 - X20+-Zeitplansynchronisierung bleibt separat und wurde zuvor mit Adapter 0.1.63 und HomePilot 1.29.120 bidirektional bestätigt.
-- Keine neuen zyklischen Abfragen eingeführt.\n
+- Keine neuen zyklischen Abfragen eingeführt.\n\n
