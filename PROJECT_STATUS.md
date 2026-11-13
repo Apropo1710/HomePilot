@@ -14,6 +14,13 @@
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
 
+## Projektweiter Statusabgleich – 13.11.2026
+- Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Actions #412 erfolgreich; Release `latest` mit HomePilot 1.29.125 / 183 veröffentlicht.
+- X20+: bidirektionale Zeitplansynchronisation ist vom Nutzer bestätigt; nicht erneut als offene Implementierung führen.
+- Eve Plus: Zeitplaneditor ist implementiert und die Synchronisation in beide Richtungen wurde vom Nutzer bestätigt. Die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt als einziger dazugehöriger Validierungspunkt offen.
+- Historische Einträge mit älteren Versionsnummern oder damaligem Build-Pending-Status bleiben als Verlauf erhalten und dürfen nicht als aktueller Stand interpretiert werden.
+
+
 # HomePilot – Projektstatus
 
 ## Aktueller Stand Eve Plus Zeitpläne (12.11.2026)
