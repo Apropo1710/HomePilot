@@ -1,25 +1,18 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: a3c5afed22d11ef3c707fc32236d891933a25bba
+- Quellcommit des APK-Builds: 0eedf91e7f6cb565cd135e9e7e0ad9a9170f9d7e
 - App-Version / versionCode: **1.29.125 / 183**
-- Build-Zeit: 2026-11-12 22:58:24 UTC
+- Build-Zeit: 2026-11-13 10:01:38 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: de31a62d490504beb654d36aaff1280c384fd4d1ba0c741431752094d3ba7855
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: cbf6676b03ca6c8f982f7fdd9daf7ac7861884d167dbfdd2ded468fe68d4c51b
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
-
-## Projektweiter Statusabgleich – 13.11.2026
-- Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Actions #412 erfolgreich; Release `latest` mit HomePilot 1.29.125 / 183 veröffentlicht.
-- X20+: bidirektionale Zeitplansynchronisation ist vom Nutzer bestätigt; nicht erneut als offene Implementierung führen.
-- Eve Plus: Zeitplaneditor ist implementiert und die Synchronisation in beide Richtungen wurde vom Nutzer bestätigt. Die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt als einziger dazugehöriger Validierungspunkt offen.
-- Historische Einträge mit älteren Versionsnummern oder damaligem Build-Pending-Status bleiben als Verlauf erhalten und dürfen nicht als aktueller Stand interpretiert werden.
-
 
 # HomePilot – Projektstatus
 
@@ -407,4 +400,4 @@ Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a.
 - Download: https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk
 - Eve-Plus-Zeitplaneditor: Adapter-Schreibpfad mit Konfliktprüfung und Readback sowie HomePilot-Bedienoberfläche implementiert. Echter Hardwaretest steht noch aus. Bis dahin keine Zeitpläne am Roboter ändern.
 - X20+-Zeitplansynchronisierung bleibt separat und wurde zuvor mit Adapter 0.1.63 und HomePilot 1.29.120 bidirektional bestätigt.
-- Keine neuen zyklischen Abfragen eingeführt.\n\n\n\n\n
+- Keine neuen zyklischen Abfragen eingeführt.\n\n\n\n\n\n
