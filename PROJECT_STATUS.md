@@ -1,18 +1,25 @@
 <!-- AUTO-PRODUCTION-STATUS:START -->
 ## Automatisch gepflegter Produktionsstatus
 
-- Quellcommit des APK-Builds: 0eedf91e7f6cb565cd135e9e7e0ad9a9170f9d7e
+- Quellcommit des APK-Builds: 1139405a8ff17514ba9c653e1314b9042381991b
 - App-Version / versionCode: **1.29.125 / 183**
-- Build-Zeit: 2026-11-13 10:01:38 UTC
+- Build-Zeit: 2026-11-13 10:05:33 UTC
 - APK-Dateiname: **HomePilot.apk**
 - APK-Signaturprüfung: erfolgreich (apksigner verify --print-certs)
 - Build-Artefakt: kein Actions-Artefakt; APK wird im GitHub-Release latest veröffentlicht
-- APK-SHA-256: cbf6676b03ca6c8f982f7fdd9daf7ac7861884d167dbfdd2ded468fe68d4c51b
-- GitHub-Release: **erfolgreich veröffentlicht**; Asset HomePilot.apk wurde aktualisiert.
+- APK-SHA-256: fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339
+- GitHub-Release: Veröffentlichung wird in diesem Workflow nach dem Statuscommit abgeschlossen.
 - Smartphone-Test: **nicht durch CI geprüft**; nur separat bestätigte Nutzerberichte gelten als Gerätetest.
 - ChatGPT-Bibliotheksakte: separate Langzeit-/Historienakte; wird durch diesen Workflow nicht verändert.
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
+
+## Projektweiter Statusabgleich – 13.11.2026
+- Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Actions #412 erfolgreich; Release `latest` mit HomePilot 1.29.125 / 183 veröffentlicht.
+- X20+: bidirektionale Zeitplansynchronisation ist vom Nutzer bestätigt; nicht erneut als offene Implementierung führen.
+- Eve Plus: Zeitplaneditor ist implementiert und die Synchronisation in beide Richtungen wurde vom Nutzer bestätigt. Die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt als einziger dazugehöriger Validierungspunkt offen.
+- Historische Einträge mit älteren Versionsnummern oder damaligem Build-Pending-Status bleiben als Verlauf erhalten und dürfen nicht als aktueller Stand interpretiert werden.
+
 
 # HomePilot – Projektstatus
 
