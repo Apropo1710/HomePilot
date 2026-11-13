@@ -1,6 +1,6 @@
 # Projektstatus – HomePilot
 
-Zuletzt aktualisiert: 13.11.2026, 10:xx MEZ  
+Zuletzt aktualisiert: 13.11.2026 (vormittags, MEZ)  
 Repository: https://github.com/Apropo1710/HomePilot  
 Produktionsbranch: `main`  
 Aktuelle produktive Quelle: `main`
