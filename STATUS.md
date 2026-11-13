@@ -1,11 +1,22 @@
 # Projektstatus – HomePilot
 
-Zuletzt aktualisiert: 11.11.2026  
+Zuletzt aktualisiert: 13.11.2026, 10:xx MEZ  
 Repository: https://github.com/Apropo1710/HomePilot  
 Produktionsbranch: `main`  
-Aktuelle Arbeitsbranches: `feat/roidmi-eve-plus-options`, `fix/update-installer-result`
+Aktuelle produktive Quelle: `main`
 
 > Diese Datei ist die zentrale Übergabe für neue Chats. Vor jeder Arbeit zuerst lesen und nach jeder zusammenhängenden Änderung aktualisieren.
+
+
+## Geprüfter Gesamtstand – 13.11.2026, 10:xx MEZ
+- Produktionsbranch `main`, letzter App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`.
+- Produktionsversion: **1.29.125 / versionCode 183**.
+- GitHub Actions #412 (Run `43324303930`): **completed / success** für genau diesen Commit.
+- Release `latest`: veröffentlicht; Asset `HomePilot.apk` vorhanden. SHA-256: `de31a62d490504beb654d36aaff1280c384fd4d1ba0c741431752094d3ba7855`.
+- Eve Plus: Zeitpläne werden geladen und bearbeitet; bidirektionale Synchronisation wurde vom Nutzer bestätigt. Die Hardwarebestätigung der eigentlichen Zeitplan-Schreiboperation bleibt als separater Punkt offen.
+- X20+: Zeitplan-Synchronisation in beide Richtungen und die relevanten Steuerfunktionen wurden bereits praktisch bestätigt.
+- Ältere Versions-/Build-Pending-Angaben im Änderungsverlauf sind historische Zwischenstände, keine aktuellen offenen Build-Aufgaben.
+
 
 ## Projektziel
 Android-App zur Steuerung und Verwaltung von ioBroker-Geräten mit Kotlin und Jetpack Compose.
@@ -15,7 +26,7 @@ Android-App zur Steuerung und Verwaltung von ioBroker-Geräten mit Kotlin und Je
 - Simple API / HTTP auf Port 8087 ist nicht der App-Kommunikationsweg.
 - GitHub-Repository ist die technische Quelle der Wahrheit.
 - Produktive Releases ausschließlich aus `main`; Testbranches dürfen produktive Artefakte/`latest` nicht überschreiben.
-- Letzter bekannter Produktionsstand aus dem Projektverlauf: Version 1.29.15, versionCode 72 (Stand 05.11.2026; vor weiterer Versionsarbeit im Repo prüfen).
+- Aktueller Produktionsstand: **1.29.125 / versionCode 183** (siehe `PROJECT_STATUS.md` und Release `latest`).
 
 ## Bereits vorhandene Funktionen laut README
 - Verbindungstest und ioBroker-WebSocket-Status
@@ -28,9 +39,8 @@ Android-App zur Steuerung und Verwaltung von ioBroker-Geräten mit Kotlin und Je
 - Waschmaschine verwaltbar, aber ausdrücklich nicht als Testgerät verwenden
 
 ## Laufende bzw. vorgemerkte Arbeiten
-- Roidmi Eve Plus in HomePilot integrieren und die vorhandene Roidmi-Raumauswahl-Kachel erweitern, nicht duplizieren.
-- Xiaomi X20+ später analog zum Roidmi Eve Plus integrieren; korrekte Trennung der Geräte-Unterbäume beachten.
-- Vor der Xiaomi/HomePilot-Anpassung auf eine stabile/finale Adapter-Objektstruktur warten.
+- Eve-Plus-Zeitplanbearbeitung: Implementierung vorhanden; bidirektionale Synchronisation mit der Original-App wurde bestätigt. Ein gezielter Hardwaretest der Zeitplan-Schreibfunktion bleibt separat offen.
+- Die auf dem X20+ bestätigte Zeitplan-Synchronisation und Gerätebedienung bleiben erhalten; keine erneute Grundsatzintegration erforderlich.
 - Raumorientierte Navigation: Raum antippen und Geräte/Sensoren des Raums anzeigen.
 - App-Konfiguration: Räume erstellen/umbenennen/löschen; Geräte umbenennen/löschen und Räumen zuordnen/verschieben.
 - Neue ioBroker-Geräte automatisch oder per manuellem Scan erkennen und zur Klassifizierung/Raumzuweisung anbieten.
