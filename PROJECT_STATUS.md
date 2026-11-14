@@ -14,12 +14,14 @@
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
 
-## Projektweiter Statusabgleich – 13.11.2026
-- Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Actions #412 erfolgreich; Release `latest` mit HomePilot 1.29.125 / 183 veröffentlicht.
+## Projektweiter Statusabgleich – 14.11.2026
+- Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
+- Der aktuelle APK-Build wurde aus Dokumentationscommit `1139405a8ff17514ba9c653e1314b9042381991b` erstellt; der App-Code entspricht weiterhin dem genannten Code-Commit. GitHub Actions Run `43405642595`: **completed / success**.
+- Release `latest` enthält `HomePilot.apk`, SHA-256 `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339`; APK-Signaturprüfung erfolgreich.
+- Aktueller `main`-Head `f1700819958bf04f32d320c71aa54269e5a9054c` ist ein Dokumentationscommit und ändert den App-Code nicht.
 - X20+: bidirektionale Zeitplansynchronisation ist vom Nutzer bestätigt; nicht erneut als offene Implementierung führen.
-- Eve Plus: Zeitplaneditor ist implementiert und die Synchronisation in beide Richtungen wurde vom Nutzer bestätigt. Die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt als einziger dazugehöriger Validierungspunkt offen.
+- Eve Plus: Zeitplaneditor ist implementiert und die Synchronisation in beide Richtungen wurde vom Nutzer bestätigt. Die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt als Validierungspunkt offen.
 - Historische Einträge mit älteren Versionsnummern oder damaligem Build-Pending-Status bleiben als Verlauf erhalten und dürfen nicht als aktueller Stand interpretiert werden.
-
 
 # HomePilot – Projektstatus
 
