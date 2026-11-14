@@ -1,22 +1,20 @@
 # Projektstatus – HomePilot
 
-Zuletzt aktualisiert: 13.11.2026, 10:xx MEZ  
-Repository: https://github.com/Apropo1710/HomePilot  
-Produktionsbranch: `main`  
+Zuletzt aktualisiert: 14.11.2026, 02:57 MEZ
+Repository: https://github.com/Apropo1710/HomePilot
+Produktionsbranch: `main`
 Aktuelle produktive Quelle: `main`
 
 > Diese Datei ist die zentrale Übergabe für neue Chats. Vor jeder Arbeit zuerst lesen und nach jeder zusammenhängenden Änderung aktualisieren.
 
-
-## Geprüfter Gesamtstand – 13.11.2026, 10:xx MEZ
-- Produktionsbranch `main`, letzter App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`.
-- Produktionsversion: **1.29.125 / versionCode 183**.
-- GitHub Actions #412 (Run `43324303930`): **completed / success** für genau diesen Commit.
-- Release `latest`: veröffentlicht; Asset `HomePilot.apk` vorhanden. SHA-256: `de31a62d490504beb654d36aaff1280c384fd4d1ba0c741431752094d3ba7855`.
-- Eve Plus: Zeitpläne werden geladen und bearbeitet; bidirektionale Synchronisation wurde vom Nutzer bestätigt. Die Hardwarebestätigung der eigentlichen Zeitplan-Schreiboperation bleibt als separater Punkt offen.
-- X20+: Zeitplan-Synchronisation in beide Richtungen und die relevanten Steuerfunktionen wurden bereits praktisch bestätigt.
+## Geprüfter Gesamtstand – 14.11.2026, 02:57 MEZ
+- Aktueller Branch-Head auf `main`: `f1700819958bf04f32d320c71aa54269e5a9054c` (reiner Dokumentationscommit).
+- Letzter App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
+- APK-Build-Quellcommit: `1139405a8ff17514ba9c653e1314b9042381991b` (Dokumentationscommit auf demselben App-Code-Stand); GitHub Actions Run `43405642595`: **completed / success**.
+- Release `latest`: Asset `HomePilot.apk` vorhanden, SHA-256 `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339`; Signaturprüfung laut Produktionsnachweis erfolgreich.
+- Eve Plus: Zeitpläne werden geladen und bearbeitet; bidirektionale Synchronisation ist bestätigt. Die Hardwarebestätigung einer tatsächlichen Zeitplan-Schreibänderung am Eve Plus bleibt offen.
+- X20+: Zeitplan-Synchronisation in beide Richtungen und relevante Steuerfunktionen sind praktisch bestätigt.
 - Ältere Versions-/Build-Pending-Angaben im Änderungsverlauf sind historische Zwischenstände, keine aktuellen offenen Build-Aufgaben.
-
 
 ## Projektziel
 Android-App zur Steuerung und Verwaltung von ioBroker-Geräten mit Kotlin und Jetpack Compose.
