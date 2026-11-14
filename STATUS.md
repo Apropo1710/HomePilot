@@ -8,7 +8,7 @@ Aktuelle produktive Quelle: `main`
 > Diese Datei ist die zentrale Übergabe für neue Chats. Vor jeder Arbeit zuerst lesen und nach jeder zusammenhängenden Änderung aktualisieren.
 
 ## Geprüfter Gesamtstand – 14.11.2026, 02:57 MEZ
-- Aktueller Branch-Head auf `main`: `f1700819958bf04f32d320c71aa54269e5a9054c` (reiner Dokumentationscommit).
+- Zuletzt vor dieser Statuspflege geprüfter Branch-Head auf `main`: `f1700819958bf04f32d320c71aa54269e5a9054c` (reiner Dokumentationscommit); der App-Code blieb unverändert.
 - Letzter App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
 - APK-Build-Quellcommit: `1139405a8ff17514ba9c653e1314b9042381991b` (Dokumentationscommit auf demselben App-Code-Stand); GitHub Actions Run `43405642595`: **completed / success**.
 - Release `latest`: Asset `HomePilot.apk` vorhanden, SHA-256 `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339`; Signaturprüfung laut Produktionsnachweis erfolgreich.
