@@ -14,14 +14,13 @@
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
 
-## Projektweiter Statusabgleich – 14.11.2026
+## Projektweiter Statusabgleich – 15.11.2026
 - Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
-- Der aktuelle APK-Build wurde aus Dokumentationscommit `1139405a8ff17514ba9c653e1314b9042381991b` erstellt; der App-Code entspricht weiterhin dem genannten Code-Commit. GitHub Actions Run `43405642595`: **completed / success**.
-- Release `latest` enthält `HomePilot.apk`, SHA-256 `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339`; APK-Signaturprüfung erfolgreich.
-- Der vor dieser Statuspflege geprüfte `main`-Head `f1700819958bf04f32d320c71aa54269e5a9054c` war ein Dokumentationscommit; auch diese Aktualisierung ändert den App-Code nicht.
-- X20+: bidirektionale Zeitplansynchronisation ist vom Nutzer bestätigt; nicht erneut als offene Implementierung führen.
-- Eve Plus: Zeitplaneditor ist implementiert und die Synchronisation in beide Richtungen wurde vom Nutzer bestätigt. Die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt als Validierungspunkt offen.
-- Historische Einträge mit älteren Versionsnummern oder damaligem Build-Pending-Status bleiben als Verlauf erhalten und dürfen nicht als aktueller Stand interpretiert werden.
+- Der aktuelle APK-Build wurde aus Dokumentationscommit `32e81218b47a44988ecbdd85df7ad8c9d6990e09` erstellt; GitHub Actions Run `43666036392`: **completed / success**. Der App-Code blieb unverändert.
+- Release `latest` enthält `HomePilot.apk`, SHA-256 `485899947c41f4f05fdf904fec92704f6c1d7789c4a3cbfbe0cd8fa0c819fd77`; Signaturprüfung laut Produktionsnachweis erfolgreich.
+- X20+: bidirektionale Zeitplansynchronisation ist vom Nutzer bestätigt.
+- Eve Plus: Zeitplaneditor und bidirektionale Synchronisation sind bestätigt; die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt offen.
+- Ältere Angaben zu Build-Quellcommit `1139405a8ff17514ba9c653e1314b9042381991b` und APK-SHA `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339` sind der vorherige Produktionsstand vom 13.11.2026.
 
 # HomePilot – Projektstatus
 
