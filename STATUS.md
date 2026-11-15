@@ -7,14 +7,21 @@ Aktuelle produktive Quelle: `main`
 
 > Diese Datei ist die zentrale Übergabe für neue Chats. Vor jeder Arbeit zuerst lesen und nach jeder zusammenhängenden Änderung aktualisieren.
 
-## Geprüfter Gesamtstand – 14.11.2026, 02:57 MEZ
-- Zuletzt vor dieser Statuspflege geprüfter Branch-Head auf `main`: `f1700819958bf04f32d320c71aa54269e5a9054c` (reiner Dokumentationscommit); der App-Code blieb unverändert.
+## Geprüfter Gesamtstand – 15.11.2026, 03:01 MEZ
+- Maßgeblicher Produktionsbranch: `main`; aktueller Branch-Head `5da8ea5462a2a6c05dfd66a87dbb4ae51652c8b4` (Dokumentationscommit).
 - Letzter App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
-- APK-Build-Quellcommit: `1139405a8ff17514ba9c653e1314b9042381991b` (Dokumentationscommit auf demselben App-Code-Stand); GitHub Actions Run `43405642595`: **completed / success**.
+- APK-Build-Quellcommit: `1139405a8ff17514ba9c653e1314b9042381991b`; GitHub Actions Run `43405642595`: **completed / success**.
 - Release `latest`: Asset `HomePilot.apk` vorhanden, SHA-256 `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339`; Signaturprüfung laut Produktionsnachweis erfolgreich.
-- Eve Plus: Zeitpläne werden geladen und bearbeitet; bidirektionale Synchronisation ist bestätigt. Die Hardwarebestätigung einer tatsächlichen Zeitplan-Schreibänderung am Eve Plus bleibt offen.
+- Eve Plus: Zeitpläne werden geladen und bearbeitet; bidirektionale Synchronisation ist bestätigt. Eine echte Zeitplan-Schreibänderung am Gerät bleibt noch zu testen.
 - X20+: Zeitplan-Synchronisation in beide Richtungen und relevante Steuerfunktionen sind praktisch bestätigt.
-- Ältere Versions-/Build-Pending-Angaben im Änderungsverlauf sind historische Zwischenstände, keine aktuellen offenen Build-Aufgaben.
+- Es sind keine offenen HomePilot-Pull-Requests vorhanden.
+
+## Remote-Branch-Abgleich – 15.11.2026
+- `feat/roidmi-eve-plus-options`: Head `18b47b5d944e7cb2737faa8b5b71e830180bcace`, Paketversion 1.29.91; gegenüber `main` drei Commits voraus und 191 zurück, kein offener PR. Der Branch enthält noch eigene Änderungen und wird deshalb nicht als vollständig übernommen oder gelöscht betrachtet.
+- `fix/update-installer-result`: Head `fd8cd1a08b1acf97a9e976fdb7bc6ee5a92bf779`, Paketversion 1.29.91; gegenüber `main` 188 Commits zurück und ohne eigene Commits voraus, kein offener PR. Er ist ein älterer Vorfahrstand und nicht produktiv.
+- Beide Branches bleiben unverändert. Keine automatische Zusammenführung oder Löschung.
+
+Zuletzt aktualisiert: 15.11.2026, 03:01 MEZ
 
 ## Projektziel
 Android-App zur Steuerung und Verwaltung von ioBroker-Geräten mit Kotlin und Jetpack Compose.
