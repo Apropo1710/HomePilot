@@ -1,20 +1,21 @@
 # Projektstatus – HomePilot
 
-Zuletzt aktualisiert: 14.11.2026, 02:57 MEZ
+Zuletzt aktualisiert: 15.11.2026, 03:10 MEZ
 Repository: https://github.com/Apropo1710/HomePilot
 Produktionsbranch: `main`
 Aktuelle produktive Quelle: `main`
 
 > Diese Datei ist die zentrale Übergabe für neue Chats. Vor jeder Arbeit zuerst lesen und nach jeder zusammenhängenden Änderung aktualisieren.
 
-## Geprüfter Gesamtstand – 15.11.2026, 03:01 MEZ
-- Maßgeblicher Produktionsbranch: `main`; aktueller Branch-Head `5da8ea5462a2a6c05dfd66a87dbb4ae51652c8b4` (Dokumentationscommit).
+## Geprüfter Gesamtstand – 15.11.2026, 03:10 MEZ
+- Maßgeblicher Produktionsbranch: `main`; vor dieser Statusaktualisierung geprüfter Head `32e81218b47a44988ecbdd85df7ad8c9d6990e09` (Dokumentationscommit).
 - Letzter App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
-- APK-Build-Quellcommit: `1139405a8ff17514ba9c653e1314b9042381991b`; GitHub Actions Run `43405642595`: **completed / success**.
-- Release `latest`: Asset `HomePilot.apk` vorhanden, SHA-256 `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339`; Signaturprüfung laut Produktionsnachweis erfolgreich.
+- APK-Build-Quellcommit: `32e81218b47a44988ecbdd85df7ad8c9d6990e09`; GitHub Actions Run `43666036392`: **completed / success**.
+- Release `latest`: Asset `HomePilot.apk` vorhanden, SHA-256 `485899947c41f4f05fdf904fec92704f6c1d7789c4a3cbfbe0cd8fa0c819fd77`; Signaturprüfung laut automatisch gepflegtem Produktionsnachweis erfolgreich.
 - Eve Plus: Zeitpläne werden geladen und bearbeitet; bidirektionale Synchronisation ist bestätigt. Eine echte Zeitplan-Schreibänderung am Gerät bleibt noch zu testen.
 - X20+: Zeitplan-Synchronisation in beide Richtungen und relevante Steuerfunktionen sind praktisch bestätigt.
 - Es sind keine offenen HomePilot-Pull-Requests vorhanden.
+
 
 ## Remote-Branch-Abgleich – 15.11.2026
 - `feat/roidmi-eve-plus-options`: Head `18b47b5d944e7cb2737faa8b5b71e830180bcace`, Paketversion 1.29.91; gegenüber `main` drei Commits voraus und 191 zurück, kein offener PR. Der Branch enthält noch eigene Änderungen und wird deshalb nicht als vollständig übernommen oder gelöscht betrachtet.
