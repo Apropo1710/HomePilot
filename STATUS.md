@@ -193,3 +193,10 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Fallback auf die bisherige vacuumState-Übersetzung bleibt erhalten, falls statusText leer/nicht verfügbar ist. Keine Änderung am Adapter oder dessen Abfrageintervallen.
 - App-Version **1.29.128 / versionCode 186**. Build ausstehend.
 - UI-Commit: `bb857f5e3d5e4f036ec20476f6767a6bda5d110e`.
+
+
+## X20+ statusText – Buildkorrektur (16.11.2026)
+- Der erste Build von 1.29.128 scheiterte an zwei übrig gebliebenen Verweisen auf die entfernte Hilfsfunktion `isX20PlusNoticeFault` in den Textfarben der Start- und Detailansicht.
+- Beide Verweise wurden durch dieselbe aktuelle `statusText`-basierte Fehlerfarbprüfung ersetzt. Keine Änderung an der Statuslogik selbst.
+- Korrekturversion **1.29.129 / versionCode 187**.
+- Korrekturcommit: `60fbd24319bf391fe551e54783f34a3bd6d81d48`. Build wird erneut ausgeführt.
