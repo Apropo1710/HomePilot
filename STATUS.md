@@ -166,3 +166,12 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Für eine installierbare Aktualisierung wird die App-Version auf **1.29.121 / versionCode 179** angehoben.
 - Android-Release-Build für **1.29.121 / versionCode 179** erfolgreich; APK-Paket und Signatur wurden von GitHub Actions geprüft und das GitHub-Release `latest` aktualisiert.
 - Adapter **0.1.64**: beide CI-Prüfungen erfolgreich (Build/Test). Hardwaretest der Eve-Plus-Zeitplanbearbeitung steht noch aus; bis dahin keine Zeitplan-Schreiboperation am Roboter.
+
+
+## Roboter-Detailseiten – m²-Anzeige und Rückmeldung bei Raumreinigung (16.11.2026)
+- Xiaomi X20+: Die bisherige Bezeichnung „Flächenwert“ in der Statuskachel lautet jetzt „m² bearbeitet“.
+- Xiaomi X20+ und Roidmi EVE Plus: Nach dem Start über die Raum-Auswahl erscheint die Rückmeldung direkt in der oberen Gerätestatus-Kachel. Erfolgreich bestätigter Start wird grün, Fehler rot und ein noch nicht bestätigter Start gelb angezeigt.
+- Beim X20+ wird „Reinigung gestartet“ nur angezeigt, wenn der Adapter die Startbeobachtung im regulären Status-Polling bestätigt. Vorher erscheint „Reinigungsauftrag angenommen – Start wird geprüft.“; ein nicht beobachteter Start wird nicht fälschlich als Erfolg dargestellt.
+- Der aktuelle Roidmi-EVE-Plus-Adapter stellt keinen Datenpunkt für die bearbeitete Reinigungsfläche bereit. Deshalb wird dort keine m²-Zahl erfunden; die Start-/Fehlerrückmeldung ist trotzdem enthalten.
+- Keine Änderungen an Adapter, Roboterkommunikation oder Reinigungsbefehlen. App-Version **1.29.126 / versionCode 184**.
+- Quellcommits: `5a5e00580722706d38e023a0b11bb4502d8fedcb`, `61c08e6217d887c7d447787e5d0dd0b651cfaa7e`, `3aa8da15306140c2094ecac3aed62a070acff106`. GitHub-Actions-Build ausstehend.
