@@ -2155,6 +2155,14 @@ private fun x20PlusStatusLabel(value: Int?): String = when (value) {
     else -> "Unbekannter Status (" + value + ")"
 }
 
+private fun isX20PlusNoticeFault(value: Int?): Boolean = value == 68 || value == 114
+
+private fun x20PlusFaultNotice(fault: Int?, state: Int?): String? = when (fault) {
+    68 -> if (state == 8) "Wischer-Pads werden getrocknet" else "Stationshinweis · Wischpad-Trocknung"
+    114 -> "Wartungshinweis · Wischschale reinigen"
+    else -> null
+}
+
 private fun x20PlusCleaningModeLabel(value: Int?): String = when (value) {
     0 -> "Automatische Anpassung"
     1 -> "Nur Saugen"
@@ -2201,7 +2209,8 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
     val status = when {
         !connected -> "Offline · letzter Stand"
         !adapter -> "Nicht verbunden"
-        fault != null && fault != 0.0 -> "Störung · Fehlercode " + fault!!.toInt()
+        fault != null && fault != 0.0 && !isX20PlusNoticeFault(fault?.toInt()) -> "Störung · Fehlercode " + fault!!.toInt()
+        isX20PlusNoticeFault(fault?.toInt()) -> x20PlusFaultNotice(fault?.toInt(), state?.toInt()) ?: x20PlusStatusLabel(state?.toInt())
         else -> x20PlusStatusLabel(state?.toInt())
     }
     CardBlock(panel, text, "Xiaomi X20+", "Saugroboter · Status und Steuerung öffnen", Icons.Default.CleaningServices, action = onOpen) {
@@ -2209,7 +2218,7 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
             X20PlusProductPhoto(104.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(status, color = if (connected && adapter && (fault == null || fault == 0.0)) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(status, color = if (connected && adapter && (fault == null || fault == 0.0 || isX20PlusNoticeFault(fault?.toInt()))) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Akku: ", color = text, fontSize = 13.sp)
                     Text(battery?.let { it.toInt().toString() + " %" } ?: "—", color = robotBatteryColor(battery, state?.toInt() == 6), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -2362,7 +2371,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     val statusLabel = when {
         !connected -> "Offline · letzter Stand"
         !adapter -> "Nicht verbunden"
-        fault != null && fault != 0.0 -> "Störung · Fehlercode " + fault!!.toInt()
+        fault != null && fault != 0.0 && !isX20PlusNoticeFault(fault?.toInt()) -> "Störung · Fehlercode " + fault!!.toInt()
+        isX20PlusNoticeFault(fault?.toInt()) -> x20PlusFaultNotice(fault?.toInt(), stateCode) ?: x20PlusStatusLabel(stateCode)
         else -> x20PlusStatusLabel(stateCode)
     }
 
@@ -2593,7 +2603,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 X20PlusProductPhoto(124.dp)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(statusLabel, color = if (connected && adapter && (fault == null || fault == 0.0)) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(statusLabel, color = if (connected && adapter && (fault == null || fault == 0.0 || isX20PlusNoticeFault(fault?.toInt()))) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Akku: ", color = text, fontSize = 14.sp)
                         Text(battery?.let { it.toInt().toString() + " %" } ?: "—", color = robotBatteryColor(battery, batteryCharging), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
@@ -2602,7 +2612,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, batteryCharging)) }
-            if (fault != null && fault != 0.0) DiagnosticText("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
+            if (fault != null && fault != 0.0 && !isX20PlusNoticeFault(fault?.toInt())) DiagnosticText("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
             if (cleaningTime != null || cleaningArea != null) {
                 Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " m² bearbeitet", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
