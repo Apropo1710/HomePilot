@@ -1,5 +1,15 @@
 # Projektstatus – HomePilot
 
+## Verifizierter Abgleich – 16.11.2026, 03:02 MEZ
+
+- `main` Head: `e52440110ca9bdb11654aedb6c6f42dc0eaddf3c` (Dokumentationscommit). App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Paketversion **1.29.125 / versionCode 183**.
+- APK-Build-Run `43666036392`: Job `build` **completed / success**. `PROJECT_STATUS.md` dokumentiert das Release-Asset `HomePilot.apk`, SHA-256 `485899947c41f4f05fdf904fec92704f6c1d7789c4a3cbfbe0cd8fa0c819fd77`, und erfolgreiche Signaturprüfung.
+- X20+: bidirektionale Zeitplansynchronisation und relevante Steuerfunktionen sind vom Nutzer praktisch bestätigt. Eve Plus: Zeitplaneditor und Synchronisierung in beide Richtungen bestätigt; der gezielte Hardwaretest einer Zeitplan-Schreibänderung bleibt offen.
+- Remote-Branch-Abgleich: `feat/roidmi-eve-plus-options` (Head `18b47b5d944e7cb2737faa8b5b71e830180bcace`, Version 1.29.91 / 149) liegt **3 Commits voraus und 196 zurück**. PR #1 ist gemergt, aber der verbliebene Branch-Diff ist nicht automatisch als übernommen zu betrachten; kein offener PR. Nicht löschen oder ungeprüft übernehmen.
+- `fix/update-installer-result` (Head `fd8cd1a08b1acf97a9e976fdb7bc6ee5a92bf779`, Version 1.29.91 / 149) liegt **0 Commits voraus und 193 zurück**; kein offener PR, historischer Vorfahrstand.
+- Aktuell sind keine offenen HomePilot-Pull-Requests vorhanden.
+
+
 Zuletzt aktualisiert: 15.11.2026, 03:10 MEZ
 Repository: https://github.com/Apropo1710/HomePilot
 Produktionsbranch: `main`
