@@ -184,3 +184,12 @@ KlimaPilot ist ein eigenes Repository/Projekt. Klimaanlagenfunktionen nicht unge
 - Statuscodes und Faultcodes bleiben getrennte Werte. Status 8 = Wischpads trocknen; nicht mit Faultcode 68 verwechseln.
 - App-Version **1.29.127 / versionCode 185**. Quellenbasis: MIoT-Spezifikation und unabhängige, am Livegerät geprüfte C102GL-Implementierung; offizielle Xiaomi-FAQ bestätigt die automatische Trocknung an der Station.
 - Quellcommits: `b23f07290349af8e3ebd599e554d4a04b7a2e73b` (UI), Versionscommit folgt. Build ausstehend.
+
+
+## Xiaomi X20+ – dynamischen Status aus statusText anzeigen (16.11.2026)
+- Die Faultcode-Sonderbehandlung für 68 und 114 wurde aus HomePilot entfernt. Diese Codes bleiben ausschließlich Diagnosewerte und werden nicht mehr als dauerhafte Statushinweise missbraucht.
+- HomePilot liest jetzt `x20Plus.status.statusText` zusätzlich zum normalen Status-Polling (30 Sekunden) und verwendet den vom Adapter gelieferten dynamischen Text in der Roboterkachel und Detailansicht.
+- Nur wenn `statusText` ausdrücklich „Fehler“ meldet, wird ein vorhandener Faultcode ergänzend als Fehlercode angezeigt. Ein alter, stehenbleibender Faultcode kann einen normalen aktuellen Status nicht mehr überschreiben.
+- Fallback auf die bisherige vacuumState-Übersetzung bleibt erhalten, falls statusText leer/nicht verfügbar ist. Keine Änderung am Adapter oder dessen Abfrageintervallen.
+- App-Version **1.29.128 / versionCode 186**. Build ausstehend.
+- UI-Commit: `bb857f5e3d5e4f036ec20476f6767a6bda5d110e`.
