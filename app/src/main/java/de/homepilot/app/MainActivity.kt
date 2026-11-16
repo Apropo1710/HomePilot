@@ -2155,14 +2155,6 @@ private fun x20PlusStatusLabel(value: Int?): String = when (value) {
     else -> "Unbekannter Status (" + value + ")"
 }
 
-private fun isX20PlusNoticeFault(value: Int?): Boolean = value == 68 || value == 114
-
-private fun x20PlusFaultNotice(fault: Int?, state: Int?): String? = when (fault) {
-    68 -> if (state == 8) "Wischer-Pads werden getrocknet" else "Stationshinweis · Wischpad-Trocknung"
-    114 -> "Wartungshinweis · Wischschale reinigen"
-    else -> null
-}
-
 private fun x20PlusCleaningModeLabel(value: Int?): String = when (value) {
     0 -> "Automatische Anpassung"
     1 -> "Nur Saugen"
@@ -2193,6 +2185,7 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
     var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.x20Plus.status.battery")) }
     var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.x20Plus.status.vacuumState")) }
     var fault by remember { mutableStateOf(client.cachedNumber("roidmi.0.x20Plus.status.fault")) }
+    var robotStatusText by remember { mutableStateOf(client.cachedText("roidmi.0.x20Plus.status.statusText")) }
     LaunchedEffect(serverUrl, connected) {
         if (!connected) {
             adapter = false
@@ -2202,6 +2195,7 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
                 client.getNumericState(serverUrl, "roidmi.0.x20Plus.status.battery") { battery = it ?: battery }
                 client.getNumericState(serverUrl, "roidmi.0.x20Plus.status.vacuumState") { state = it ?: state }
                 client.getNumericState(serverUrl, "roidmi.0.x20Plus.status.fault") { fault = it ?: fault }
+                client.getTextState(serverUrl, "roidmi.0.x20Plus.status.statusText") { robotStatusText = it ?: robotStatusText }
                 delay(30_000)
             }
         }
@@ -2209,8 +2203,8 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
     val status = when {
         !connected -> "Offline · letzter Stand"
         !adapter -> "Nicht verbunden"
-        fault != null && fault != 0.0 && !isX20PlusNoticeFault(fault?.toInt()) -> "Störung · Fehlercode " + fault!!.toInt()
-        isX20PlusNoticeFault(fault?.toInt()) -> x20PlusFaultNotice(fault?.toInt(), state?.toInt()) ?: x20PlusStatusLabel(state?.toInt())
+        robotStatusText.equals("Fehler", true) && fault != null && fault != 0.0 -> "Störung · Fehlercode " + fault!!.toInt()
+        !robotStatusText.isNullOrBlank() -> robotStatusText!!
         else -> x20PlusStatusLabel(state?.toInt())
     }
     CardBlock(panel, text, "Xiaomi X20+", "Saugroboter · Status und Steuerung öffnen", Icons.Default.CleaningServices, action = onOpen) {
@@ -2272,6 +2266,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var battery by remember { mutableStateOf(client.cachedNumber(prefix + "status.battery")) }
     var state by remember { mutableStateOf(client.cachedNumber(prefix + "status.vacuumState")) }
     var fault by remember { mutableStateOf(client.cachedNumber(prefix + "status.fault")) }
+    var robotStatusText by remember { mutableStateOf(client.cachedText(prefix + "status.statusText")) }
     var charging by remember { mutableStateOf(client.cachedNumber(prefix + "status.chargingState")) }
     var cleaningTime by remember { mutableStateOf(client.cachedNumber(prefix + "status.cleaningTime")) }
     var cleaningArea by remember { mutableStateOf(client.cachedNumber(prefix + "status.cleaningArea")) }
@@ -2331,6 +2326,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 client.getNumericState(serverUrl, prefix + "status.battery") { battery = it ?: battery }
                 client.getNumericState(serverUrl, prefix + "status.vacuumState") { state = it ?: state }
                 client.getNumericState(serverUrl, prefix + "status.fault") { fault = it ?: fault }
+                client.getTextState(serverUrl, prefix + "status.statusText") { robotStatusText = it ?: robotStatusText }
                 client.getNumericState(serverUrl, prefix + "status.chargingState") { charging = it ?: charging }
                 client.getNumericState(serverUrl, prefix + "status.cleaningTime") { cleaningTime = it ?: cleaningTime }
                 client.getNumericState(serverUrl, prefix + "status.cleaningArea") { cleaningArea = it ?: cleaningArea }
@@ -2371,8 +2367,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     val statusLabel = when {
         !connected -> "Offline · letzter Stand"
         !adapter -> "Nicht verbunden"
-        fault != null && fault != 0.0 && !isX20PlusNoticeFault(fault?.toInt()) -> "Störung · Fehlercode " + fault!!.toInt()
-        isX20PlusNoticeFault(fault?.toInt()) -> x20PlusFaultNotice(fault?.toInt(), stateCode) ?: x20PlusStatusLabel(stateCode)
+        robotStatusText.equals("Fehler", true) && fault != null && fault != 0.0 -> "Störung · Fehlercode " + fault!!.toInt()
+        !robotStatusText.isNullOrBlank() -> robotStatusText!!
         else -> x20PlusStatusLabel(stateCode)
     }
 
@@ -2612,7 +2608,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, batteryCharging)) }
-            if (fault != null && fault != 0.0 && !isX20PlusNoticeFault(fault?.toInt())) DiagnosticText("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
+            if (robotStatusText.equals("Fehler", true) && fault != null && fault != 0.0) DiagnosticText("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
             if (cleaningTime != null || cleaningArea != null) {
                 Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " m² bearbeitet", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
