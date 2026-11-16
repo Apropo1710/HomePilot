@@ -2212,7 +2212,7 @@ private fun X20PlusHomeTile(serverUrl: String, connected: Boolean, client: IoBro
             X20PlusProductPhoto(104.dp)
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                Text(status, color = if (connected && adapter && (fault == null || fault == 0.0 || isX20PlusNoticeFault(fault?.toInt()))) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                Text(status, color = if (connected && adapter && (!robotStatusText.equals("Fehler", true) || fault == null || fault == 0.0)) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Akku: ", color = text, fontSize = 13.sp)
                     Text(battery?.let { it.toInt().toString() + " %" } ?: "—", color = robotBatteryColor(battery, state?.toInt() == 6), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -2599,7 +2599,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 X20PlusProductPhoto(124.dp)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(statusLabel, color = if (connected && adapter && (fault == null || fault == 0.0 || isX20PlusNoticeFault(fault?.toInt()))) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(statusLabel, color = if (connected && adapter && (!robotStatusText.equals("Fehler", true) || fault == null || fault == 0.0)) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Akku: ", color = text, fontSize = 14.sp)
                         Text(battery?.let { it.toInt().toString() + " %" } ?: "—", color = robotBatteryColor(battery, batteryCharging), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
