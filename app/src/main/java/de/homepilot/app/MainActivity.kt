@@ -70,6 +70,22 @@ private val LightText = Color(0xFF172334)
 private val DarkText = Color(0xFFEAF1F8)
 private val LocalDiagnosticsEnabled = compositionLocalOf { false }
 
+@Composable
+private fun RobotActionFeedback(message: String?, success: Boolean = true) {
+    if (!message.isNullOrBlank()) {
+        val backgroundColor = if (success) Color(0xFFE3F5E9) else Color(0xFFFFE8E8)
+        val foregroundColor = if (success) Color(0xFF176B3A) else Color(0xFFB42318)
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(backgroundColor).padding(horizontal = 12.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(if (success) Icons.Default.CheckCircle else Icons.Default.Error, null, tint = foregroundColor, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(message, color = foregroundColor, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        }
+    }
+}
+
 private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsStore) {
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var socket: IoBrokerSocket? = null
@@ -2269,6 +2285,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var schedulesRaw by remember { mutableStateOf(client.cachedText(prefix + "timing.parsed")) }
     var scheduleStatus by remember { mutableStateOf(client.cachedText(prefix + "timing.status")) }
     var selectedRooms by remember { mutableStateOf(setOf<Int>()) }
+    var roomCleanFeedback by remember { mutableStateOf<String?>(null) }
+    var roomCleanFeedbackSuccess by remember { mutableStateOf(true) }
     var busy by remember { mutableStateOf(false) }
     var busyLabel by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -2423,9 +2441,17 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 busy = false
                 busyLabel = null
                 message = result
+                roomCleanFeedbackSuccess = false
+                roomCleanFeedback = "Reinigungsstart fehlgeschlagen: $result"
             } else scope.launch {
                 delay(1800)
-                client.getTextState(serverUrl, prefix + "control.cleanRoomsStatus") { cleanStatus = it ?: cleanStatus }
+                client.getTextState(serverUrl, prefix + "control.cleanRoomsStatus") { latest ->
+                    cleanStatus = latest ?: cleanStatus
+                    val statusText = latest ?: "Reinigungsauftrag an den Adapter übergeben."
+                    val failed = statusText.contains("fehlgeschlagen", true) || statusText.contains("error", true) || statusText.contains("fehler", true)
+                    roomCleanFeedbackSuccess = !failed
+                    roomCleanFeedback = if (failed) statusText else "Reinigung gestartet"
+                }
                 busy = false
                 busyLabel = null
                 message = cleanStatus ?: "Raumreinigungsauftrag an den Adapter übergeben."
@@ -2575,8 +2601,9 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, batteryCharging)) }
             if (fault != null && fault != 0.0) DiagnosticText("Fehlercode: " + fault!!.toInt(), color = Color(0xFFD62828), fontSize = 12.sp)
             if (cleaningTime != null || cleaningArea != null) {
-                Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " Flächenwert", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " m² bearbeitet", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
+            RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess)
         }
 
         CardBlock(panel, text, "Steuerung", "Reinigung starten, fortsetzen oder pausieren", Icons.Default.Gamepad) {
@@ -2830,7 +2857,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
 }
 @Composable private fun RoidmiDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onBack: () -> Unit) {
     var adapter by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.info.connection") == "true") }; var battery by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.battery")) }; var charging by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.charging")) }; var state by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.state")) }; var error by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.errorCode")) }; var fan by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.fanSpeed")) }; var sweep by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sweepType")) }; var water by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.waterLevel")) }; var customizeRooms by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.individual")) }; var doubleClean by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.doubleClean")) }; var moppingPath by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.pathType")) }; var roomsRaw by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.map.roomsJson")) }; var mapId by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.map.mapId")) }
-    var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }; var showResumeConfirm by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf(setOf<Int>()) }; var busy by remember { mutableStateOf(false) }; var message by remember { mutableStateOf<String?>(null) }; var roomCleanFeedback by remember { mutableStateOf<String?>(null) }; var roomCleanFeedbackSuccess by remember { mutableStateOf(true) }; var showResumeConfirm by remember { mutableStateOf(false) }
     var mainBrushPercent by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.mainBrushLife")) }
     var mainBrushMinutes by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.mainBrushLeftMinutes")) }
     var sideBrushPercent by remember { mutableStateOf(client.cachedNumber("roidmi.0.evePlus.status.sideBrushLife")) }
@@ -3064,6 +3091,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0)) }
+            RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess)
             if (adapter && error != null && error != 0.0) DiagnosticText("Fehlercode: ${error!!.toInt()}", fontSize = 12.sp)
         }
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
@@ -3173,7 +3201,17 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                         if (roomRow.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
-                Button(onClick = { val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString(); busy = true; client.setTextState(serverUrl, "roidmi.0.evePlus.control.cleanRooms", payload) { ok, msg -> busy = false; message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg } }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
+                Button(onClick = {
+                    val payload = org.json.JSONObject().put("mapId", mapId!!.toInt()).put("roomIds", org.json.JSONArray(selected.sorted())).toString()
+                    busy = true
+                    roomCleanFeedback = null
+                    client.setTextState(serverUrl, "roidmi.0.evePlus.control.cleanRooms", payload) { ok, msg ->
+                        busy = false
+                        roomCleanFeedbackSuccess = ok
+                        roomCleanFeedback = if (ok) "Reinigung gestartet" else "Reinigungsstart fehlgeschlagen: $msg"
+                        message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg
+                    }
+                }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
             }
         }
         CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten des Roidmi EVE Plus", Icons.Default.Schedule) {
