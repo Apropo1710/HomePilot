@@ -2292,6 +2292,12 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var roomCleanFeedback by remember { mutableStateOf<String?>(null) }
     var roomCleanFeedbackSuccess by remember { mutableStateOf(true) }
     var roomCleanFeedbackPending by remember { mutableStateOf(false) }
+    LaunchedEffect(roomCleanFeedback, roomCleanFeedbackSuccess, roomCleanFeedbackPending) {
+        if (roomCleanFeedback == "Reinigung gestartet" && roomCleanFeedbackSuccess && !roomCleanFeedbackPending) {
+            delay(5000)
+            if (roomCleanFeedback == "Reinigung gestartet") roomCleanFeedback = null
+        }
+    }
     var busy by remember { mutableStateOf(false) }
     var busyLabel by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -2612,7 +2618,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             if (cleaningTime != null || cleaningArea != null) {
                 Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " m² bearbeitet", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
-            RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess, roomCleanFeedbackPending)
         }
 
         CardBlock(panel, text, "Steuerung", "Reinigung starten, fortsetzen oder pausieren", Icons.Default.Gamepad) {
@@ -2707,6 +2712,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                     Spacer(Modifier.width(8.dp))
                     Text("Ausgewählte Räume reinigen")
                 }
+                RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess, roomCleanFeedbackPending)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { refreshRooms() }, enabled = connected && adapter && !busy) {
@@ -2889,6 +2895,12 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var eveEditWater by remember { mutableStateOf("0") }
     var eveEditRooms by remember { mutableStateOf(setOf<Int>()) }
     val eveScheduleScope = rememberCoroutineScope()
+    LaunchedEffect(roomCleanFeedback, roomCleanFeedbackSuccess) {
+        if (roomCleanFeedback == "Reinigung gestartet" && roomCleanFeedbackSuccess) {
+            delay(5000)
+            if (roomCleanFeedback == "Reinigung gestartet") roomCleanFeedback = null
+        }
+    }
     val eveSchedulePickerContext = LocalContext.current
     var eveLastCommandTime by remember { mutableStateOf(client.cachedText("roidmi.0.evePlus.control.lastCommandTime")) }
     LaunchedEffect(serverUrl, connected) {
@@ -3100,7 +3112,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 }
             }
             battery?.let { LinearProgressIndicator(progress = { (it / 100.0).toFloat().coerceIn(0f,1f) }, modifier = Modifier.fillMaxWidth(), color = robotBatteryColor(battery, state?.toInt() == 6 || charging == 1.0)) }
-            RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess)
             if (adapter && error != null && error != 0.0) DiagnosticText("Fehlercode: ${error!!.toInt()}", fontSize = 12.sp)
         }
         CardBlock(panel, text, "Steuerung", "Reinigung und Ladestation", Icons.Default.Gamepad) {
@@ -3221,6 +3232,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                         message = if (ok) "Reinigungsauftrag an den Adapter übergeben." else msg
                     }
                 }, enabled = connected && adapter && selected.isNotEmpty() && !busy, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Default.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Ausgewählte Räume reinigen") }
+                RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess)
             }
         }
         CardBlock(panel, text, "Zeitpläne", "Gespeicherte Reinigungszeiten des Roidmi EVE Plus", Icons.Default.Schedule) {
