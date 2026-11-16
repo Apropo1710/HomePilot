@@ -71,10 +71,10 @@ private val DarkText = Color(0xFFEAF1F8)
 private val LocalDiagnosticsEnabled = compositionLocalOf { false }
 
 @Composable
-private fun RobotActionFeedback(message: String?, success: Boolean = true, pending: Boolean = false) {
+private fun RobotActionFeedback(message: String?, success: Boolean = true) {
     if (!message.isNullOrBlank()) {
-        val backgroundColor = when { pending -> Color(0xFFFFF4D6); success -> Color(0xFFE3F5E9); else -> Color(0xFFFFE8E8) }
-        val foregroundColor = when { pending -> Color(0xFF8A5A00); success -> Color(0xFF176B3A); else -> Color(0xFFB42318) }
+        val backgroundColor = if (success) Color(0xFFE3F5E9) else Color(0xFFFFE8E8)
+        val foregroundColor = if (success) Color(0xFF176B3A) else Color(0xFFB42318)
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(backgroundColor).padding(horizontal = 12.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -2287,7 +2287,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
     var selectedRooms by remember { mutableStateOf(setOf<Int>()) }
     var roomCleanFeedback by remember { mutableStateOf<String?>(null) }
     var roomCleanFeedbackSuccess by remember { mutableStateOf(true) }
-    var roomCleanFeedbackPending by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var busyLabel by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -2449,11 +2448,9 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 client.getTextState(serverUrl, prefix + "control.cleanRoomsStatus") { latest ->
                     cleanStatus = latest ?: cleanStatus
                     val statusText = latest ?: "Reinigungsauftrag an den Adapter übergeben."
-                    val confirmed = statusText.contains("start observed", true) || statusText.contains("reinigung gestartet", true)
-                    val failed = statusText.contains("not observed", true) || statusText.contains("fehlgeschlagen", true) || statusText.contains("error", true) || statusText.contains("fehler", true)
-                    roomCleanFeedbackPending = !confirmed && !failed
-                    roomCleanFeedbackSuccess = confirmed
-                    roomCleanFeedback = when { confirmed -> "Reinigung gestartet"; failed -> statusText; else -> "Reinigungsauftrag angenommen – Start wird geprüft." }
+                    val failed = statusText.contains("fehlgeschlagen", true) || statusText.contains("error", true) || statusText.contains("fehler", true)
+                    roomCleanFeedbackSuccess = !failed
+                    roomCleanFeedback = if (failed) statusText else "Reinigung gestartet"
                 }
                 busy = false
                 busyLabel = null
@@ -2606,7 +2603,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
             if (cleaningTime != null || cleaningArea != null) {
                 Text("Aktueller Vorgang: " + (cleaningTime?.toInt()?.toString() ?: "—") + " min · " + (cleaningArea?.toInt()?.toString() ?: "—") + " m² bearbeitet", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
-            RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess, roomCleanFeedbackPending)
+            RobotActionFeedback(roomCleanFeedback, roomCleanFeedbackSuccess)
         }
 
         CardBlock(panel, text, "Steuerung", "Reinigung starten, fortsetzen oder pausieren", Icons.Default.Gamepad) {
