@@ -1,5 +1,13 @@
 # Projektstatus – HomePilot
 
+## Roboter-Detailseiten – Rückmeldung bei Raumreinigung direkt an den Reinigungszonen (16.11.2026)
+- Die dauerhafte Rückmeldung „Reinigung gestartet“ wurde aus der oberen Gerätestatus-Kachel entfernt.
+- Xiaomi X20+ und Roidmi EVE Plus zeigen die Rückmeldung jetzt direkt im jeweiligen Bereich „Reinigungsbereiche“/„Reinigungszonen“, unmittelbar bei der Schaltfläche zum Starten.
+- Eine erfolgreich bestätigte Meldung „Reinigung gestartet“ blendet sich nach fünf Sekunden automatisch aus. Noch ausstehende Prüfungen und Fehlermeldungen bleiben sichtbar, damit ein nicht bestätigter Start nicht als Erfolg erscheint und Fehler gelesen werden können.
+- Reinigungsbefehle, Statusabfragen und Adapterkommunikation bleiben unverändert.
+- Installationsversion **1.29.130 / versionCode 188**. Build und APK-Prüfung stehen aus.
+
+
 ## Verifizierter Abgleich – 16.11.2026, 03:02 MEZ
 
 - `main` Head: `e52440110ca9bdb11654aedb6c6f42dc0eaddf3c` (Dokumentationscommit). App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Paketversion **1.29.125 / versionCode 183**.
