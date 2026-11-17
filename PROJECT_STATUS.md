@@ -284,6 +284,27 @@ Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
 - APK-Installation nutzt den Android-Standarddialog über `ACTION_VIEW` + APK-MIME-Type und FileProvider-URI. Die Berechtigung `REQUEST_INSTALL_PACKAGES` sowie der vorherige `ACTION_INSTALL_PACKAGE`-Pfad werden entfernt.
 - Version **1.29.84 / versionCode 142**. Play Protect muss auf dem Zielgerät erneut überprüft werden; CI kann diese Google-Prüfung nicht garantieren.\n\n\n\n\n\n\n
 
+## Absolute Sperre: Updater darf nicht verändert werden (17.11.2026)
+
+**Verbindliche, dauerhafte Projektregel auf ausdrückliche Anweisung des Nutzers: Der HomePilot-Updater darf niemals verändert werden.** Das gilt ausnahmslos für normale Feature-Arbeiten, Fehlerkorrekturen, Refactorings, Aufräumarbeiten und Nebenwirkungen anderer Änderungen.
+
+Geschützt sind insbesondere:
+- Updateprüfung, Versionsvergleich und Ermittlung der verfügbaren Version
+- GitHub-Verbindung, Authentifizierung und Abruf der Release-Metadaten
+- APK-Download, Downloadziel, Dateiname, Speicherung und Paketprüfung
+- Installer-Übergabe: Intent-Aktion, MIME-Type, FileProvider, URI, Flags, ClipData und Chooser
+- Manifest-Berechtigungen und sonstige Installer-/Android-Einstellungen
+- Signierung, Keystore, Alias, Zertifikat und zugehörige Build-Konfiguration
+- Update-Oberfläche, Update-Schaltflächen, Statusmeldungen und Start-/Wiederaufnahmeverhalten
+- GitHub-Actions-Schritte, Release-Veröffentlichung und sonstige für den Updater relevante Build-/Release-Logik
+
+**Arbeitsfolge für jede künftige Änderung:** Vor Änderungen am HomePilot-Code ist sicherzustellen, dass keine der geschützten Updater-Dateien oder -Bereiche mitbearbeitet werden. Diffs sind ausdrücklich auf direkte und indirekte Updater-Änderungen zu prüfen. Bei unvermeidbarem Konflikt oder möglicher Auswirkung auf den Updater: Arbeit anhalten und den Nutzer informieren, statt den Updater anzupassen. Auch keine vermeintliche Verbesserung, Anpassung oder Wiederherstellung eigenständig vornehmen.
+
+Diese Sperre darf nur durch eine spätere, ausdrückliche und konkrete Anweisung des Nutzers aufgehoben werden, die genau die gewünschte Updater-Änderung benennt. Allgemeine Feature-Aufträge sind niemals als Erlaubnis zur Änderung des Updaters zu verstehen.
+
+Der Nutzer hat am 17.11.2026 bestätigt, dass der Updater nach Rücknahme der Play-Protect-auslösenden Manifest-Berechtigung wieder funktioniert. Diesen funktionierenden Zustand bewahren.
+
+
 ## Verbindliche Regeln: APK-Installer, In-App-Update und Play Protect (05.11.2026)
 
 Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geändert werden.
