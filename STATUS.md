@@ -1,10 +1,3 @@
-## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026)
-## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026)
-- Ursache des erneuten Play-Protect-Blocks: In `app/src/main/AndroidManifest.xml` war `android.permission.REQUEST_INSTALL_PACKAGES` erneut eingetragen. Die Berechtigung war laut verbindlicher Updater-Dokumentation bereits am 05.11.2026 als Play-Protect-auslösend entfernt worden.
-- Die Berechtigung wurde jetzt wieder entfernt. Der vorhandene, an KlimaPilot 0.4.21 angeglichene `ACTION_VIEW`-Übergabepfad in `GithubUpdateCard.kt` wurde ausdrücklich nicht verändert.
-- Die stabile Signierung wurde geprüft: Keystore-SHA-256 und APK-Zertifikats-Fingerprint stimmen mit Build #431 (vorheriger Produktionsstand) überein.
-- Installationsversion: **1.29.132 / versionCode 190**. Build, Manifestprüfung, Release-Veröffentlichung und erneuter Play-Protect-Gerätetest stehen noch aus.
-
 # Projektstatus – HomePilot
 
 ## Roboter-Rückmeldungen und Roidmi-Beschriftung (17.11.2026)
