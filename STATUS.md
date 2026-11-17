@@ -1,5 +1,10 @@
 # Projektstatus – HomePilot
 
+## Roboter-Rückmeldungen und Roidmi-Beschriftung (17.11.2026)
+- Xiaomi X20+: Nach erfolgreicher Annahme des Raumreinigungsbefehls wird direkt eine grüne Rückmeldung **„Reinigung gestartet“** bei den Reinigungsbereichen angezeigt. Die bisherige gelbe Meldung „Reinigungsauftrag angenommen – Start wird geprüft.“ entfällt. Eine nachgelagerte Statusprüfung überschreibt die Rückmeldung weiterhin mit einem Fehler, falls der Adapter einen fehlgeschlagenen Start meldet.
+- Roidmi EVE Plus: Der erklärende Satz „Modus wird vom Adapter nur angezeigt; Saug- und Wasserstufe sind hier global einstellbar.“ wurde entfernt. Die Modus-, Saugstufen- und Wasserstufenanzeigen bleiben bestehen.
+- Installationsversion: **1.29.131 / versionCode 189**. GitHub-Actions-Build und Release-Prüfung stehen noch aus.
+
 ## Aktueller verifizierter Produktionsstand – 17.11.2026, 02:56 MEZ
 
 - `main`-HEAD vor dieser Statuspflege: `9dc54befca048a90d031f4adf088d76c00ed9be2` (Dokumentationscommit); letzter App-Code-Commit: `c0a7740dc6a010a5c52b7f51414be4f6de7aaf62` – Rückmeldung zum Raumreinigungsstart direkt bei den Reinigungszonen.
