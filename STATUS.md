@@ -1,8 +1,3 @@
-## Verbindliche Projektsperre: Updater bleibt unangetastet (17.11.2026)
-- Dauerhafte Nutzerregel: Der HomePilot-Updater darf bei keiner normalen Entwicklungsarbeit verändert werden – weder direkt noch indirekt. Das umfasst Updateprüfung, Download, Installer, Manifest-Berechtigungen, FileProvider/URI, Signierung/Keystore, Update-UI und Release-/Workflow-Logik.
-- Vor jedem Feature-Diff ist zu prüfen, dass der Updater unberührt bleibt. Bei möglichem Konflikt Arbeit stoppen und Nutzer informieren. Nur eine ausdrückliche, konkrete spätere Nutzeranweisung kann eine gezielte Updater-Änderung erlauben.
-- Vollständige verbindliche Regel: `PROJECT_STATUS.md`, Abschnitt **„Absolute Sperre: Updater darf nicht verändert werden“**.
-
 ## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026)
 ## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026)
 - Ursache des erneuten Play-Protect-Blocks: In `app/src/main/AndroidManifest.xml` war `android.permission.REQUEST_INSTALL_PACKAGES` erneut eingetragen. Die Berechtigung war laut verbindlicher Updater-Dokumentation bereits am 05.11.2026 als Play-Protect-auslösend entfernt worden.
