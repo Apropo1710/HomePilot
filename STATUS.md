@@ -11,6 +11,13 @@
 - `feat/roidmi-eve-plus-options`: 3 Commits voraus / 229 zurück; `fix/update-installer-result`: 0 voraus / 226 zurück. Beide bleiben unverändert und werden nicht automatisch übernommen oder gelöscht.
 
 
+## Branchstatus außerhalb von `main` – 17.11.2026
+
+- `feat/roidmi-eve-plus-options`: PR #1 ist gemergt, der Branch enthält danach aber weiterhin **3 Commits voraus / 229 zurück** gegenüber `main`. Die zusätzlichen Commits sind nicht automatisch als übernommen zu betrachten; Branch behalten und vor Wiederverwendung einzeln vergleichen.
+- `fix/update-installer-result`: **0 Commits voraus / 226 zurück**, kein offener PR; historischer Nebenbranch.
+- `docs/status-refresh-2026-11-16`: PR #2 wurde geschlossen, nicht gemergt. Der Branch liegt **1 Commit voraus / 35 zurück** und enthält einen abweichenden `STATUS.md`-Stand; kein offener PR. Nicht ungeprüft übernehmen.
+- Aktuell sind keine HomePilot-Pull-Requests offen. Keine Nebenbranch wurde in dieser Pflege gemergt oder gelöscht; `main` bleibt maßgeblich.
+
 ## Roboter-Detailseiten – Rückmeldung bei Raumreinigung direkt an den Reinigungszonen (16.11.2026)
 - Die dauerhafte Rückmeldung „Reinigung gestartet“ wurde aus der oberen Gerätestatus-Kachel entfernt.
 - Xiaomi X20+ und Roidmi EVE Plus zeigen die Rückmeldung jetzt direkt im jeweiligen Bereich „Reinigungsbereiche“/„Reinigungszonen“, unmittelbar bei der Schaltfläche zum Starten.
