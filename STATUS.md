@@ -2,7 +2,7 @@
 
 ## Aktueller verifizierter Produktionsstand – 17.11.2026, 02:56 MEZ
 
-- `main`-HEAD: `9dc54befca048a90d031f4adf088d76c00ed9be2` (Dokumentationscommit); letzter App-Code-Commit: `c0a7740dc6a010a5c52b7f51414be4f6de7aaf62` – Rückmeldung zum Raumreinigungsstart direkt bei den Reinigungszonen.
+- `main`-HEAD vor dieser Statuspflege: `9dc54befca048a90d031f4adf088d76c00ed9be2` (Dokumentationscommit); letzter App-Code-Commit: `c0a7740dc6a010a5c52b7f51414be4f6de7aaf62` – Rückmeldung zum Raumreinigungsstart direkt bei den Reinigungszonen.
 - Versionscommit: `c402b8e38abcda5c16e39ca602be913745ee53a1`; Paketversion aus `app/build.gradle.kts`: **1.29.130 / versionCode 188**.
 - APK-Build-Quellcommit: `0defefe727e56be727da7832ccd50f0e53c2ab87` (STATUS-Dokumentationscommit auf dem aktuellen Codebaum).
 - GitHub Actions [Build #431](https://github.com/Apropo1710/HomePilot/actions/runs/43924784448): **completed / success**, exakt für den APK-Build-Quellcommit.
