@@ -2456,20 +2456,25 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 message = result
                 roomCleanFeedbackSuccess = false
                 roomCleanFeedback = "Reinigungsstart fehlgeschlagen: $result"
-            } else scope.launch {
-                delay(1800)
-                client.getTextState(serverUrl, prefix + "control.cleanRoomsStatus") { latest ->
-                    cleanStatus = latest ?: cleanStatus
-                    val statusText = latest ?: "Reinigungsauftrag an den Adapter übergeben."
-                    val confirmed = statusText.contains("start observed", true) || statusText.contains("reinigung gestartet", true)
-                    val failed = statusText.contains("not observed", true) || statusText.contains("fehlgeschlagen", true) || statusText.contains("error", true) || statusText.contains("fehler", true)
-                    roomCleanFeedbackPending = !confirmed && !failed
-                    roomCleanFeedbackSuccess = confirmed
-                    roomCleanFeedback = when { confirmed -> "Reinigung gestartet"; failed -> statusText; else -> "Reinigungsauftrag angenommen – Start wird geprüft." }
+            } else {
+                roomCleanFeedbackPending = false
+                roomCleanFeedbackSuccess = true
+                roomCleanFeedback = "Reinigung gestartet"
+                scope.launch {
+                    delay(1800)
+                    client.getTextState(serverUrl, prefix + "control.cleanRoomsStatus") { latest ->
+                        cleanStatus = latest ?: cleanStatus
+                        val statusText = latest ?: ""
+                        val failed = statusText.contains("not observed", true) || statusText.contains("fehlgeschlagen", true) || statusText.contains("error", true) || statusText.contains("fehler", true)
+                        if (failed) {
+                            roomCleanFeedbackSuccess = false
+                            roomCleanFeedback = statusText
+                        }
+                    }
+                    busy = false
+                    busyLabel = null
+                    message = cleanStatus ?: "Raumreinigungsauftrag an den Adapter übergeben."
                 }
-                busy = false
-                busyLabel = null
-                message = cleanStatus ?: "Raumreinigungsauftrag an den Adapter übergeben."
             }
         }
     }
@@ -3149,7 +3154,6 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
                 Spacer(Modifier.weight(1f))
                 Text(sweep?.let { roidmiSweepLabel(it.toInt()) } ?: "—", color = Blue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
             }
-            Text("Modus wird vom Adapter nur angezeigt; Saug- und Wasserstufe sind hier global einstellbar.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text("Saugstufe", color = text, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                 Spacer(Modifier.weight(1f))
