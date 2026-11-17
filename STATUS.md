@@ -1,14 +1,25 @@
 # Projektstatus – HomePilot
 
+## Aktueller verifizierter Produktionsstand – 17.11.2026, 02:56 MEZ
+
+- `main`-HEAD: `9dc54befca048a90d031f4adf088d76c00ed9be2` (Dokumentationscommit); letzter App-Code-Commit: `c0a7740dc6a010a5c52b7f51414be4f6de7aaf62` – Rückmeldung zum Raumreinigungsstart direkt bei den Reinigungszonen.
+- Versionscommit: `c402b8e38abcda5c16e39ca602be913745ee53a1`; Paketversion aus `app/build.gradle.kts`: **1.29.130 / versionCode 188**.
+- APK-Build-Quellcommit: `0defefe727e56be727da7832ccd50f0e53c2ab87` (STATUS-Dokumentationscommit auf dem aktuellen Codebaum).
+- GitHub Actions [Build #431](https://github.com/Apropo1710/HomePilot/actions/runs/43924784448): **completed / success**, exakt für den APK-Build-Quellcommit.
+- Release `latest`: Asset `HomePilot.apk`, Asset-ID `755901350`, 12.552.612 Bytes; aktualisiert 16.11.2026, 18:11:30 UTC. APK-SHA-256 laut Produktionsnachweis: `3523e02c4fbe820f6af44b2b46d359661ec57c6a9188504be9d969cd53940412`; Signaturprüfung erfolgreich.
+- Git-Tag `latest` zeigt auf `9dc54befca048a90d031f4adf088d76c00ed9be2` (Dokumentationscommit nach dem APK-Build); kein offener HomePilot-PR.
+- `feat/roidmi-eve-plus-options`: 3 Commits voraus / 229 zurück; `fix/update-installer-result`: 0 voraus / 226 zurück. Beide bleiben unverändert und werden nicht automatisch übernommen oder gelöscht.
+
+
 ## Roboter-Detailseiten – Rückmeldung bei Raumreinigung direkt an den Reinigungszonen (16.11.2026)
 - Die dauerhafte Rückmeldung „Reinigung gestartet“ wurde aus der oberen Gerätestatus-Kachel entfernt.
 - Xiaomi X20+ und Roidmi EVE Plus zeigen die Rückmeldung jetzt direkt im jeweiligen Bereich „Reinigungsbereiche“/„Reinigungszonen“, unmittelbar bei der Schaltfläche zum Starten.
 - Eine erfolgreich bestätigte Meldung „Reinigung gestartet“ blendet sich nach fünf Sekunden automatisch aus. Noch ausstehende Prüfungen und Fehlermeldungen bleiben sichtbar, damit ein nicht bestätigter Start nicht als Erfolg erscheint und Fehler gelesen werden können.
 - Reinigungsbefehle, Statusabfragen und Adapterkommunikation bleiben unverändert.
-- Installationsversion **1.29.130 / versionCode 188**. Build und APK-Prüfung stehen aus.
+- Installationsversion **1.29.130 / versionCode 188**. Build #431 / Run `43924784448` ist **completed / success**; das Release-Asset `HomePilot.apk` wurde aktualisiert und die Signaturprüfung war erfolgreich. Details und SHA-256 stehen im aktuellen Produktionsblock oben.
 
 
-## Verifizierter Abgleich – 16.11.2026, 03:02 MEZ
+## Historischer Abgleich – 16.11.2026, 03:02 MEZ (vor Version 1.29.130)
 
 - `main` Head: `e52440110ca9bdb11654aedb6c6f42dc0eaddf3c` (Dokumentationscommit). App-Code-Commit: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Paketversion **1.29.125 / versionCode 183**.
 - APK-Build-Run `43666036392`: Job `build` **completed / success**. `PROJECT_STATUS.md` dokumentiert das Release-Asset `HomePilot.apk`, SHA-256 `485899947c41f4f05fdf904fec92704f6c1d7789c4a3cbfbe0cd8fa0c819fd77`, und erfolgreiche Signaturprüfung.
