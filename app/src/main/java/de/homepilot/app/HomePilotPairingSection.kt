@@ -238,11 +238,6 @@ internal fun HomePilotPairingSection(panel: Color, text: Color) {
         else "Gekoppelte Geräte: $pairedCount · Abgleich im WLAN alle 30 s",
         Icons.Default.PhonelinkRing, open, { expanded = !open }
     ) {
-        Text(
-            "Gekoppelte Smartphones gleichen Benutzerkonten, Räume, Geräte und Benutzerprofile automatisch ab, " +
-                "sobald HomePilot geöffnet ist und beide im selben WLAN sind – zusätzlich zu ioBroker.",
-            color = muted, fontSize = 11.sp
-        )
         OutlinedTextField(value = displayName, onValueChange = { displayName = it.take(48) }, label = { Text("Name dieses Geräts") }, singleLine = true, modifier = Modifier.fillMaxWidth())
         if (pending != null) {
             Text("Mit diesem Gerät koppeln?", color = text, fontSize = 13.sp)

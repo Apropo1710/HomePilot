@@ -1308,7 +1308,21 @@ private fun HomePilotApp() {
     val bg = if (dark) DarkBg else LightBg
     val panel = if (dark) Color(0xFF1B2734) else Color.White
     val text = if (dark) DarkText else LightText
-    val scheme = if (dark) darkColorScheme(primary = Color(0xFF78B9F3), secondary = Color(0xFF67D4A5), background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFF293747), onSurfaceVariant = Color(0xFFB2C1D0)) else lightColorScheme(primary = Blue, secondary = Green, background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFFE6EDF5), onSurfaceVariant = Muted, outline = Color(0xFFCBD5E1))
+    val scheme = if (dark) darkColorScheme(primary = Color(0xFF78B9F3), secondary = Color(0xFF67D4A5), background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFF293747), onSurfaceVariant = Color(0xFFB2C1D0),
+        // Alle übrigen Material-Standardfarben (sonst Lila/Rosa) auf das HomePilot-Blau abgestimmt.
+        primaryContainer = Color(0xFF1F4A6E), onPrimaryContainer = Color(0xFFD6E6F5),
+        secondaryContainer = Color(0xFF1F4A6E), onSecondaryContainer = Color(0xFFD6E6F5),
+        tertiary = Color(0xFF78B9F3), onTertiary = Color(0xFF0B2A44), tertiaryContainer = Color(0xFF1F4A6E), onTertiaryContainer = Color(0xFFD6E6F5),
+        inversePrimary = Blue, surfaceTint = Color(0xFF78B9F3), outline = Color(0xFF52657A), outlineVariant = Color(0xFF34465A),
+        surfaceBright = Color(0xFF2E3D4E), surfaceDim = Color(0xFF101923), surfaceContainerLowest = Color(0xFF0C141C), surfaceContainerLow = Color(0xFF16212C),
+        surfaceContainer = Color(0xFF1B2734), surfaceContainerHigh = Color(0xFF223040), surfaceContainerHighest = Color(0xFF293747)) else lightColorScheme(primary = Blue, secondary = Green, background = bg, surface = panel, onSurface = text, onBackground = text, surfaceVariant = Color(0xFFE6EDF5), onSurfaceVariant = Muted, outline = Color(0xFFCBD5E1),
+        // Alle übrigen Material-Standardfarben (sonst Lila/Rosa) auf das HomePilot-Blau abgestimmt.
+        primaryContainer = Color(0xFFD6E6F5), onPrimaryContainer = Color(0xFF0B3A5E),
+        secondaryContainer = Color(0xFFD6E6F5), onSecondaryContainer = Color(0xFF0B3A5E),
+        tertiary = Blue, onTertiary = Color.White, tertiaryContainer = Color(0xFFD6E6F5), onTertiaryContainer = Color(0xFF0B3A5E),
+        inversePrimary = Color(0xFF9CCAF0), surfaceTint = Blue, outlineVariant = Color(0xFFDCE4EC),
+        surfaceBright = Color.White, surfaceDim = Color(0xFFDCE3EA), surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF5F8FB),
+        surfaceContainer = Color(0xFFEFF3F8), surfaceContainerHigh = Color(0xFFE9EEF4), surfaceContainerHighest = Color(0xFFE3E9F0))
 
     CompositionLocalProvider(
         LocalDensity provides androidx.compose.ui.unit.Density(LocalDensity.current.density, LocalDensity.current.fontScale * appFontScale),
@@ -3771,7 +3785,7 @@ private fun CardBlock(panel: Color, text: Color, title: String, subtitle: String
         Icons.Default.WaterDrop -> Color(0xFF159A9C)
         Icons.Default.Lightbulb -> Color(0xFFE6A323)
         Icons.Default.Power, Icons.Default.Devices -> Color(0xFF3984D6)
-        Icons.Default.HomeWork, Icons.Default.Weekend, Icons.Default.Kitchen -> Color(0xFF7B61C9)
+        Icons.Default.HomeWork, Icons.Default.Weekend, Icons.Default.Kitchen -> Blue
         Icons.Default.Cloud -> Color(0xFF398FBA)
         Icons.Default.Palette -> Color(0xFF398FBA)
         Icons.Default.Shield -> Color(0xFF2E9B70)

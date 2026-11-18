@@ -1,3 +1,9 @@
+## Farben und Kopplungstext – 1.30.2 / 193 (18.11.2026)
+
+- Lila/Rosa entfernt: Raumauswahl-Kachel nutzt jetzt das HomePilot-Blau (wie die MOVA-Kachel); alle bisher nicht gesetzten Material-Standardfarben (Container, Navigationsmarkierung, Schalter, Dialog- und Menüflächen) im hellen und dunklen Schema auf Blau/Blaugrau abgestimmt. Farbvorgaben für Hue-Lampen („Violett“, „Pink“) bleiben, da sie echte Lampenfarben darstellen.
+- „Smartphones koppeln“: erklärender Hinweistext entfernt.
+- Updater unverändert.
+
 ## Updater wie KlimaPilot – 1.30.1 / 192 (18.11.2026, ausdrückliche Nutzeranweisung)
 
 - Befund: Seit 1.29.132 fehlte `REQUEST_INSTALL_PACKAGES`; „Update laden“ öffnete deshalb keinen Installationsdialog (gleiches Verhalten wie im KlimaPilot-Gerätetest vom 18.11.2026, Abschnitt 2h dort).
