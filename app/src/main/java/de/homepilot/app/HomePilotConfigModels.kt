@@ -19,7 +19,9 @@ internal data class HomePilotSharedConfig(
     val deviceNames: Map<String, String> = emptyMap(),
     val deviceRooms: Map<String, String> = emptyMap(),
     val deviceKinds: Map<String, String> = emptyMap(),
-    val hiddenDeviceItems: Set<String> = emptySet()
+    val hiddenDeviceItems: Set<String> = emptySet(),
+    /** Hue-Lampen, die in HomePilot übernommen wurden (optional, ältere Dokumente haben das Feld nicht). */
+    val importedLights: Set<String> = emptySet()
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("schemaVersion", schemaVersion)
@@ -30,6 +32,7 @@ internal data class HomePilotSharedConfig(
         put("deviceRooms", stringMapToJson(deviceRooms))
         put("deviceKinds", stringMapToJson(deviceKinds))
         put("hiddenDeviceItems", JSONArray(hiddenDeviceItems.sorted()))
+        put("importedLights", JSONArray(importedLights.sorted()))
     }
 
     companion object {
@@ -60,6 +63,10 @@ internal data class HomePilotSharedConfig(
             val hidden = (0 until hiddenArray.length())
                 .mapNotNull { hiddenArray.optString(it).takeIf(String::isNotBlank) }
                 .toSet()
+            val importedArray = json.optJSONArray("importedLights") ?: JSONArray()
+            val imported = (0 until importedArray.length())
+                .mapNotNull { importedArray.optString(it).takeIf(String::isNotBlank) }
+                .toSet()
 
             return HomePilotSharedConfig(
                 schemaVersion = version,
@@ -69,7 +76,8 @@ internal data class HomePilotSharedConfig(
                 deviceNames = names,
                 deviceRooms = mappings,
                 deviceKinds = kinds,
-                hiddenDeviceItems = hidden
+                hiddenDeviceItems = hidden,
+                importedLights = imported
             )
         }
 
@@ -83,6 +91,7 @@ internal data class HomePilotSharedConfig(
             deviceRooms: Map<String, String>,
             deviceKinds: Map<String, String>,
             hiddenDeviceItems: Set<String>,
+            importedLights: Set<String> = emptySet(),
             now: Long = System.currentTimeMillis()
         ): HomePilotSharedConfig = HomePilotSharedConfig(
             schemaVersion = CURRENT_SCHEMA_VERSION,
@@ -92,7 +101,8 @@ internal data class HomePilotSharedConfig(
             deviceNames = deviceNames,
             deviceRooms = deviceRooms,
             deviceKinds = deviceKinds,
-            hiddenDeviceItems = hiddenDeviceItems
+            hiddenDeviceItems = hiddenDeviceItems,
+            importedLights = importedLights
         )
 
         private fun readStringMap(json: JSONObject?): Map<String, String>? {

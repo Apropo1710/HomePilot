@@ -52,6 +52,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -511,40 +512,6 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
     }
 }
 /** ioBroker-backed HomePilot account registry with revision conflict protection. */
-private class HomePilotAccountRepository(private val client: IoBrokerClient) {
-    companion object { const val STATE_ID = "0_userdata.0.HomePilot.accounts" }
-
-    fun load(callback: (HomePilotAccountRegistry?, String?) -> Unit) {
-        client.ensureJsonState(STATE_ID, "HomePilot account registry", HomePilotAccountRegistry().toJson()) { json, _, error ->
-            if (error != null || json == null) {
-                callback(null, error ?: "Konten konnten nicht geladen werden.")
-                return@ensureJsonState
-            }
-            val registry = HomePilotAccountRegistry.fromJson(json)
-            if (registry == null) callback(null, "Die HomePilot-Kontenliste ist ungültig oder hat ein unbekanntes Format.")
-            else callback(registry, null)
-        }
-    }
-
-    fun save(expectedRevision: Long, registry: HomePilotAccountRegistry, callback: (Boolean, String?) -> Unit) {
-        load { current, error ->
-            if (error != null || current == null) {
-                callback(false, error ?: "Kontenliste konnte nicht geprüft werden.")
-                return@load
-            }
-            if (current.revision != expectedRevision) {
-                callback(false, "Die Kontenliste wurde zwischenzeitlich geändert. Bitte erneut laden.")
-                return@load
-            }
-            if (registry.revision != expectedRevision + 1) {
-                callback(false, "Ungültige Versionsnummer der Kontenliste.")
-                return@load
-            }
-            client.setJsonState(STATE_ID, registry.toJson(), callback)
-        }
-    }
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -742,7 +709,6 @@ private fun HomePilotApp() {
     var waterOn by remember { mutableStateOf(false) }
     val credentialStore = remember { IoBrokerCredentialsStore(context).also { it.clear() } }
     val ioClient = remember { IoBrokerClient(credentialStore) }
-    var loginAccepted by remember { mutableStateOf(true) }
     var homePilotAuthenticated by remember { mutableStateOf(false) }
     var homePilotRegistry by remember { mutableStateOf<HomePilotAccountRegistry?>(null) }
     var homePilotAccount by remember { mutableStateOf<HomePilotAccount?>(null) }
@@ -751,35 +717,119 @@ private fun HomePilotApp() {
     var homePilotPasswordConfirmation by remember { mutableStateOf("") }
     var homePilotDisplayName by remember { mutableStateOf("") }
     var homePilotAccountLoading by remember { mutableStateOf(false) }
-    val homePilotAccountRepository = remember { HomePilotAccountRepository(ioClient) }
-    fun loadHomePilotAccounts() {
-        homePilotAccountLoading = true
-        homePilotAccountRepository.load { registry, error ->
-            homePilotAccountLoading = false
-            homePilotRegistry = registry
-            if (error != null) {
-                connectionStatus = "HomePilot-Konten konnten nicht geladen werden: $error"
-            } else {
-                // Keep the trusted local HomePilot session across app updates.
-                val rememberedUsername = prefs.getString("homePilotRememberedUsername", null)
-                val rememberedAccount = registry?.accounts?.firstOrNull {
-                    it.username.equals(rememberedUsername, ignoreCase = true)
-                }
-                if (rememberedAccount != null) {
-                    homePilotAccount = rememberedAccount
-                    homePilotAuthenticated = true
-                    homePilotUsername = rememberedAccount.username
-                } else if (!rememberedUsername.isNullOrBlank()) {
-                    prefs.edit().remove("homePilotRememberedUsername").apply()
-                }
+    /** Lokal existiert noch keine Kontenliste: sie wird beim ersten ioBroker-Kontakt übernommen. */
+    var homePilotAccountsMissing by remember { mutableStateOf(false) }
+    var homePilotAccountsInvalid by remember { mutableStateOf(false) }
+    var homePilotLoginStatus by remember { mutableStateOf("") }
+    var manualAccountImport by remember { mutableStateOf(false) }
+    /** Erst nach dem ersten Verbindungsversuch zeigt der Login die Adresseingabe statt eines Ladekreises. */
+    var ioBrokerAttempted by remember { mutableStateOf(false) }
+    var loginAddressInput by remember { mutableStateOf(serverUrl) }
+    val accountStore = remember { HomePilotAccountStore(context) }
+    val docStore = remember { HomePilotDocStore(context) }
+
+    /** Übernimmt die lokale Kontenliste in die Oberfläche; gemerkte Benutzer werden angemeldet. */
+    fun applyLocalRegistry(registry: HomePilotAccountRegistry) {
+        homePilotRegistry = registry
+        homePilotAccountsMissing = false
+        homePilotAccountsInvalid = false
+        val current = homePilotAccount
+        if (current != null) {
+            val updated = registry.find(current.username)
+            if (updated != null) homePilotAccount = updated
+            else {
+                homePilotAccount = null
+                homePilotAuthenticated = false
+                prefs.edit().remove("homePilotRememberedUsername").apply()
+                homePilotLoginStatus = "Dein Benutzerkonto wurde auf einem anderen Gerät entfernt."
+            }
+            return
+        }
+        val remembered = prefs.getString("homePilotRememberedUsername", null)
+        val rememberedAccount = remembered?.let { registry.find(it) }
+        if (rememberedAccount != null) {
+            homePilotAccount = rememberedAccount
+            homePilotAuthenticated = true
+            homePilotUsername = rememberedAccount.username
+        } else if (!remembered.isNullOrBlank()) {
+            prefs.edit().remove("homePilotRememberedUsername").apply()
+        }
+    }
+
+    fun loadLocalAccounts() {
+        when (val local = accountStore.load()) {
+            is HomePilotAccountLoadResult.Loaded -> applyLocalRegistry(local.registry)
+            is HomePilotAccountLoadResult.Invalid -> {
+                homePilotRegistry = null
+                homePilotAccountsMissing = false
+                homePilotAccountsInvalid = true
+                homePilotAccount = null
+                homePilotAuthenticated = false
+                homePilotLoginStatus = if (local.backupSaved)
+                    "Die lokal gespeicherten Kontendaten sind beschädigt. Die Rohdaten wurden intern gesichert und nicht überschrieben."
+                else "Die lokal gespeicherten Kontendaten sind beschädigt. Sie wurden nicht verändert."
+            }
+            HomePilotAccountLoadResult.Missing -> {
+                homePilotRegistry = null
+                homePilotAccountsMissing = true
             }
         }
     }
-    fun saveHomePilotRegistry(expectedRevision: Long, next: HomePilotAccountRegistry, onSaved: (Boolean, String?) -> Unit) {
-        homePilotAccountRepository.save(expectedRevision, next) { success, error ->
-            if (success) homePilotRegistry = next
-            onSaved(success, error)
+
+    /**
+     * Gleicht die Kontenliste mit ioBroker ab: fehlt sie lokal, wird sie übernommen; sonst gewinnt
+     * der neuere Stand (Revision) und wird in die jeweils andere Richtung geschrieben.
+     */
+    fun syncAccountsWithIoBroker() {
+        if (!connected) return
+        val local = accountStore.load()
+        if (local is HomePilotAccountLoadResult.Invalid) return
+        val initial = (local as? HomePilotAccountLoadResult.Loaded)?.registry?.takeIf { it.accounts.isNotEmpty() }
+            ?: HomePilotAccountRegistry()
+        if (local is HomePilotAccountLoadResult.Missing) homePilotAccountLoading = true
+        ioClient.ensureJsonState(HomePilotIoBrokerIds.ACCOUNTS, "HomePilot account registry", initial.toJson()) { json, _, error ->
+            homePilotAccountLoading = false
+            val remote = json?.let { HomePilotAccountRegistry.fromJson(it) }
+            if (error != null || remote == null) {
+                if (homePilotRegistry == null || manualAccountImport) {
+                    homePilotLoginStatus = "Die Kontenliste in ioBroker ist nicht lesbar: ${error ?: "ungültiges Format"}. Es wurde nichts verändert."
+                }
+                manualAccountImport = false
+                return@ensureJsonState
+            }
+            when (val current = accountStore.load()) {
+                HomePilotAccountLoadResult.Missing -> {
+                    if (accountStore.saveInitial(remote)) {
+                        homePilotLoginStatus = ""
+                        applyLocalRegistry(remote)
+                    } else homePilotLoginStatus = "Die Kontenliste konnte nicht lokal gespeichert werden."
+                }
+                is HomePilotAccountLoadResult.Loaded -> {
+                    if (accountStore.mergeRemote(remote)) {
+                        accountStore.loadedRegistry()?.let { applyLocalRegistry(it) }
+                        if (manualAccountImport) homePilotLoginStatus = "Vorhandene Konten geladen. Du kannst dich jetzt anmelden."
+                    } else if (current.registry.accounts.isNotEmpty() && HomePilotDocMerge.isNewer(current.registry, remote)) {
+                        ioClient.setJsonState(HomePilotIoBrokerIds.ACCOUNTS, current.registry.toJson()) { ok, writeError ->
+                            if (!ok) connectionStatus = "ioBroker verbunden · Konten konnten nicht übertragen werden: $writeError"
+                        }
+                    } else if (manualAccountImport && current.registry.accounts.isEmpty()) {
+                        homePilotLoginStatus = "In ioBroker sind noch keine HomePilot-Konten vorhanden."
+                    }
+                }
+                is HomePilotAccountLoadResult.Invalid -> Unit
+            }
+            manualAccountImport = false
         }
+    }
+
+    fun saveHomePilotRegistry(expectedRevision: Long, next: HomePilotAccountRegistry, onSaved: (Boolean, String?) -> Unit) {
+        val error = accountStore.save(expectedRevision, next)
+        if (error == null) {
+            homePilotRegistry = next
+            homePilotAccount?.let { account -> next.find(account.username)?.let { homePilotAccount = it } }
+            syncAccountsWithIoBroker()
+        }
+        onSaved(error == null, error)
     }
     var backgroundDisconnectJob by remember { mutableStateOf<Job?>(null) }
     DisposableEffect(Unit) { onDispose { backgroundDisconnectJob?.cancel(); ioClient.disconnect() } }
@@ -788,6 +838,8 @@ private fun HomePilotApp() {
     var userProfileLoaded by remember { mutableStateOf(false) }
     var userProfileRevision by remember { mutableStateOf(0L) }
     var userProfileSyncToken by remember { mutableIntStateOf(0) }
+    /** Unterdrückt Profil-Speicherungen, während ein fremder Stand in die Einstellungen geschrieben wird. */
+    var applyingRemoteProfile by remember { mutableStateOf(false) }
     val tileOrderPreferenceKeys = listOf(
         "homeCardOrder", "lightCardOrder", "deviceCardOrder", "roomMenuOrder",
         "roomLampOrder", "roomSwitchOrder", "roomOtherOrder", "settingsSectionOrder"
@@ -795,35 +847,77 @@ private fun HomePilotApp() {
     fun readLocalTileOrders(): Map<String, List<String>> = tileOrderPreferenceKeys.associateWith { key ->
         prefs.getString(key, "").orEmpty().split("|").filter(String::isNotBlank)
     }
-    fun saveUserProfile() {
-        if (!userProfileLoaded || !connected) return
+    fun currentUserProfile(revision: Long, updatedAt: Long) = HomePilotUserProfile(
+        revision = revision,
+        updatedAt = updatedAt,
+        favoriteIds = favoriteIds,
+        favoriteOrder = favoriteOrder,
+        disconnectTimeoutMinutes = inactivityMinutes,
+        tileOrders = readLocalTileOrders()
+    )
+
+    /** Schreibt einen fremden Profilstand (ioBroker oder gekoppeltes Smartphone) in die Oberfläche. */
+    fun applyProfileToUi(profile: HomePilotUserProfile): Boolean {
+        userProfileRevision = profile.revision
+        val ordersToApply = profile.tileOrders.filterKeys { it in tileOrderPreferenceKeys }
+        val ordersChanged = ordersToApply.any { (key, order) -> readLocalTileOrders()[key] != order }
+        applyingRemoteProfile = true
+        try {
+            favoriteIds = profile.favoriteIds
+            favoriteOrder = profile.favoriteOrder
+            inactivityMinutes = profile.disconnectTimeoutMinutes
+            prefs.edit().apply {
+                putStringSet("favoriteDevices", profile.favoriteIds)
+                putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
+                putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
+                ordersToApply.forEach { (key, order) -> putString(key, order.joinToString("|")) }
+                commit()
+            }
+        } finally {
+            applyingRemoteProfile = false
+        }
+        userProfileLoaded = true
+        if (ordersChanged) userProfileSyncToken++
+        // Ältere Profile kennen nicht alle Kachel-Reihenfolgen: fehlende werden aus diesem Gerät ergänzt.
+        return ordersToApply.size < tileOrderPreferenceKeys.size
+    }
+
+    fun syncProfileWithIoBroker() {
         val username = homePilotAccount?.username?.trim().orEmpty()
-        if (username.isBlank()) return
-        val nextRevision = userProfileRevision + 1L
-        val profile = HomePilotUserProfile(
-            revision = nextRevision,
-            updatedAt = System.currentTimeMillis(),
-            favoriteIds = favoriteIds,
-            favoriteOrder = favoriteOrder,
-            disconnectTimeoutMinutes = inactivityMinutes,
-            tileOrders = readLocalTileOrders()
-        )
-        val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
-        ioClient.getJsonState(profileId) { remote, readError ->
-            if (readError != null || remote == null) {
-                connectionStatus = "ioBroker verbunden · Profiländerung nicht gespeichert (Remote-Prüfung fehlgeschlagen): $readError"
-                return@getJsonState
+        if (!connected || username.isBlank()) return
+        val profileId = HomePilotIoBrokerIds.profile(username)
+        val initial = docStore.profile(username) ?: currentUserProfile(1L, System.currentTimeMillis())
+        ioClient.ensureJsonState(profileId, "HomePilot profile: $username", initial.toJson()) { json, _, error ->
+            val remote = json?.let { HomePilotUserProfile.fromJson(it) }
+            if (error != null || remote == null) {
+                connectionStatus = "ioBroker verbunden · Profil-Sync fehlgeschlagen: ${error ?: "ungültiges Profilformat"}"
+                return@ensureJsonState
             }
-            val remoteProfile = HomePilotUserProfile.fromJson(remote)
-            if (remoteProfile == null || remoteProfile.revision != userProfileRevision) {
-                connectionStatus = "HomePilot: Profilkonflikt erkannt – Remote-Profil wurde zwischenzeitlich geändert. Änderung nicht übertragen."
-                return@getJsonState
-            }
-            ioClient.setJsonState(profileId, profile.toJson()) { success, error ->
-                if (success) userProfileRevision = maxOf(userProfileRevision, nextRevision)
-                else connectionStatus = "ioBroker verbunden · persönliches HomePilot-Profil konnte nicht gespeichert werden: $error"
+            if (homePilotAccount?.username?.equals(username, ignoreCase = true) != true) return@ensureJsonState
+            if (docStore.mergeProfile(username, remote)) {
+                docStore.profile(username)?.let { applyProfileToUi(it) }
+            } else {
+                val local = docStore.profile(username)
+                if (local != null && HomePilotDocMerge.isNewer(local, remote)) {
+                    ioClient.setJsonState(profileId, local.toJson()) { ok, writeError ->
+                        if (!ok) connectionStatus = "ioBroker verbunden · persönliches HomePilot-Profil konnte nicht gespeichert werden: $writeError"
+                    }
+                }
             }
         }
+    }
+
+    /** Lokale Profiländerung: lokal speichern, danach mit ioBroker abgleichen (gekoppelte Smartphones holen sie selbst). */
+    fun saveUserProfile() {
+        if (!userProfileLoaded || applyingRemoteProfile) return
+        val username = homePilotAccount?.username?.trim().orEmpty()
+        if (username.isBlank()) return
+        val base = docStore.profile(username)
+        if (base != null && currentUserProfile(base.revision, base.updatedAt).toJson().toString() == base.toJson().toString()) return
+        val next = currentUserProfile(maxOf(base?.revision ?: 0L, userProfileRevision) + 1L, System.currentTimeMillis())
+        if (!docStore.putLocalProfile(username, next)) return
+        userProfileRevision = next.revision
+        syncProfileWithIoBroker()
     }
     DisposableEffect(userProfileLoaded, connected) {
         val orderListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -832,33 +926,113 @@ private fun HomePilotApp() {
         prefs.registerOnSharedPreferenceChangeListener(orderListener)
         onDispose { prefs.unregisterOnSharedPreferenceChangeListener(orderListener) }
     }
-    fun saveSharedConfiguration() {
-        if (!sharedConfigLoaded || !connected) return
-        val nextRevision = sharedConfigRevision + 1L
-        val config = HomePilotSharedConfig(
-            revision = nextRevision,
-            updatedAt = System.currentTimeMillis(),
-            rooms = rooms.filter(String::isNotBlank).distinct().ifEmpty { HomePilotSharedConfig.DEFAULT_ROOMS },
+
+    fun currentSharedConfig(revision: Long, updatedAt: Long) = HomePilotSharedConfig(
+        revision = revision,
+        updatedAt = updatedAt,
+        rooms = rooms.filter(String::isNotBlank).distinct().ifEmpty { HomePilotSharedConfig.DEFAULT_ROOMS },
+        deviceNames = customNames,
+        deviceRooms = deviceRooms,
+        deviceKinds = deviceKinds,
+        hiddenDeviceItems = hiddenIds + hiddenItems.mapNotNull { it.stateId },
+        importedLights = importedLightIds
+    )
+
+    /** Ergänzt Hue-Lampen, die auf einem anderen Gerät übernommen wurden. */
+    fun restoreImportedLights() {
+        if (!connected) return
+        ioClient.discoverSwitches(serverUrl, "hue.0") { found, err ->
+            if (err != null) return@discoverSwitches
+            val missing = found.filter { item ->
+                item.stateId in importedLightIds && item.stateId !in hiddenIds && lights.none { it.stateId == item.stateId }
+            }
+            if (missing.isNotEmpty()) {
+                lights.addAll(missing)
+                applyCustomConfig()
+                refreshStates(ioClient, serverUrl, devices, lights)
+            }
+        }
+    }
+
+    /** Schreibt einen fremden Stand der gemeinsamen Konfiguration in die Oberfläche. */
+    fun applySharedToUi(shared: HomePilotSharedConfig) {
+        sharedConfigRevision = shared.revision
+        rooms = shared.rooms.toMutableList()
+        customNames = shared.deviceNames
+        deviceRooms = shared.deviceRooms
+        deviceKinds = shared.deviceKinds
+        hiddenIds = shared.hiddenDeviceItems
+        val knownHidden = hiddenItems.filter { it.stateId in hiddenIds }
+        hiddenItems = knownHidden + (devices + lights).filter { item ->
+            item.stateId in hiddenIds && knownHidden.none { it.stateId == item.stateId }
+        }
+        devices.removeAll { it.stateId in hiddenIds }
+        lights.removeAll { it.stateId in hiddenIds }
+        // Übernommene Lampen werden nur ergänzt: Entfernen läuft in HomePilot über das Ausblenden.
+        val newLights = shared.importedLights - importedLightIds
+        importedLightIds = importedLightIds + shared.importedLights
+        prefs.edit()
+            .putStringSet("hiddenDevices", hiddenIds)
+            .putString("hiddenDeviceItems", writeHiddenItems(hiddenItems))
+            .putStringSet("importedLights", importedLightIds)
+            .putString("rooms", rooms.joinToString("|"))
+            .putString("deviceNames", JSONObject(customNames as Map<*, *>).toString())
+            .putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString())
+            .putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString())
+            .apply()
+        applyCustomConfig()
+        sharedConfigLoaded = true
+        if (newLights.isNotEmpty()) restoreImportedLights()
+    }
+
+    fun syncConfigWithIoBroker() {
+        if (!connected) return
+        val initial = docStore.config() ?: HomePilotSharedConfig.initialFromLocal(
+            rooms = rooms,
             deviceNames = customNames,
             deviceRooms = deviceRooms,
             deviceKinds = deviceKinds,
-            hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
+            hiddenDeviceItems = hiddenIds + hiddenItems.mapNotNull { it.stateId },
+            importedLights = importedLightIds
         )
-        ioClient.getJsonState("0_userdata.0.HomePilot.config") { remote, readError ->
-            if (readError != null || remote == null) {
-                connectionStatus = "ioBroker verbunden · Konfigurationsänderung nicht gespeichert (Remote-Prüfung fehlgeschlagen): $readError"
-                return@getJsonState
+        ioClient.ensureJsonState(HomePilotIoBrokerIds.CONFIG, "HomePilot shared configuration", initial.toJson()) { json, _, error ->
+            val remote = json?.let { HomePilotSharedConfig.fromJson(it) }
+            if (error != null || remote == null) {
+                connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration nicht synchronisiert: ${error ?: "unbekanntes/ungültiges Format; lokale Daten bleiben unverändert."}"
+                return@ensureJsonState
             }
-            val remoteConfig = HomePilotSharedConfig.fromJson(remote)
-            if (remoteConfig == null || remoteConfig.revision != sharedConfigRevision) {
-                connectionStatus = "HomePilot: Konflikt erkannt – Remote-Konfiguration wurde zwischenzeitlich geändert. Lokale Änderung nicht übertragen; bitte erneut verbinden/laden."
-                return@getJsonState
-            }
-            ioClient.setJsonState("0_userdata.0.HomePilot.config", config.toJson()) { success, error ->
-                if (success) sharedConfigRevision = maxOf(sharedConfigRevision, nextRevision)
-                else connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $error"
+            if (docStore.mergeConfig(remote)) {
+                docStore.config()?.let { merged ->
+                    applySharedToUi(merged)
+                    // Lokal bekannte, im ioBroker-Stand fehlende Lampen werden direkt ergänzt.
+                    if (!merged.importedLights.containsAll(importedLightIds)) {
+                        val next = currentSharedConfig(merged.revision + 1L, System.currentTimeMillis())
+                        if (docStore.putLocalConfig(next)) {
+                            sharedConfigRevision = next.revision
+                            ioClient.setJsonState(HomePilotIoBrokerIds.CONFIG, next.toJson()) { _, _ -> }
+                        }
+                    }
+                }
+            } else {
+                sharedConfigLoaded = true
+                val local = docStore.config()
+                if (local != null && HomePilotDocMerge.isNewer(local, remote)) {
+                    ioClient.setJsonState(HomePilotIoBrokerIds.CONFIG, local.toJson()) { ok, writeError ->
+                        if (!ok) connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration konnte nicht gespeichert werden: $writeError"
+                    }
+                }
             }
         }
+    }
+
+    /** Lokale Konfigurationsänderung: lokal speichern, danach mit ioBroker abgleichen. */
+    fun saveSharedConfiguration() {
+        val base = docStore.config()
+        if (base != null && currentSharedConfig(base.revision, base.updatedAt).toJson().toString() == base.toJson().toString()) return
+        val next = currentSharedConfig(maxOf(base?.revision ?: 0L, sharedConfigRevision) + 1L, System.currentTimeMillis())
+        if (!docStore.putLocalConfig(next)) return
+        sharedConfigRevision = next.revision
+        syncConfigWithIoBroker()
     }
     fun persistRooms() { prefs.edit().putString("rooms", rooms.joinToString("|")).apply(); saveSharedConfiguration() }
     fun persistNames() { prefs.edit().putString("deviceNames", JSONObject(customNames as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
@@ -866,108 +1040,29 @@ private fun HomePilotApp() {
     fun persistDeviceKinds() { prefs.edit().putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
     fun persistHiddenItems() { prefs.edit().putString("hiddenDeviceItems", writeHiddenItems(hiddenItems)).apply(); saveSharedConfiguration() }
 
+    /** Kompletter Abgleich mit ioBroker: Konten, gemeinsame Konfiguration und eigenes Profil. */
+    fun syncDocsWithIoBroker() {
+        syncAccountsWithIoBroker()
+        syncConfigWithIoBroker()
+        if (homePilotAuthenticated) syncProfileWithIoBroker()
+    }
 
-    /** First-connect migration: only seed a document when its ioBroker object is absent. */
-    fun initializeHomePilotSync() {
-        val localShared = HomePilotSharedConfig.initialFromLocal(
-            rooms = rooms,
-            deviceNames = customNames,
-            deviceRooms = deviceRooms,
-            deviceKinds = deviceKinds,
-            hiddenDeviceItems = hiddenItems.mapNotNull { it.stateId }.toSet()
-        )
-        ioClient.ensureJsonState(
-            "0_userdata.0.HomePilot.config",
-            "HomePilot shared configuration",
-            localShared.toJson()
-        ) { sharedJson, created, sharedError ->
-            if (sharedError != null || sharedJson == null) {
-                connectionStatus = "ioBroker verbunden · HomePilot-Konfiguration nicht synchronisiert: $sharedError"
-                return@ensureJsonState
-            }
-            val shared = HomePilotSharedConfig.fromJson(sharedJson)
-            if (shared == null) {
-                connectionStatus = "ioBroker verbunden · Remote-Konfiguration hat ein unbekanntes/ungültiges Format; lokale Daten bleiben unverändert."
-                return@ensureJsonState
-            }
-            sharedConfigRevision = shared.revision
-            rooms = shared.rooms.toMutableList()
-            customNames = shared.deviceNames
-            deviceRooms = shared.deviceRooms
-            deviceKinds = shared.deviceKinds
-            hiddenIds = shared.hiddenDeviceItems
-            prefs.edit()
-                .putStringSet("hiddenDevices", hiddenIds)
-                .putString("rooms", rooms.joinToString("|"))
-                .putString("deviceNames", JSONObject(customNames as Map<*, *>).toString())
-                .putString("deviceRooms", JSONObject(deviceRooms as Map<*, *>).toString())
-                .putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString())
-                .apply()
-            applyCustomConfig()
-            sharedConfigLoaded = true
-
-            val username = homePilotAccount?.username?.trim().orEmpty()
-            if (username.isBlank()) {
-                connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; bitte mit einem HomePilot-Konto anmelden, um persönliche Einstellungen zu synchronisieren."
-                return@ensureJsonState
-            }
-            val localProfile = HomePilotUserProfile(
-                revision = 1L,
-                updatedAt = System.currentTimeMillis(),
-                favoriteIds = favoriteIds,
-                favoriteOrder = favoriteOrder,
-                disconnectTimeoutMinutes = inactivityMinutes,
-                tileOrders = readLocalTileOrders()
-            )
-            val profileId = "0_userdata.0.HomePilot.profiles.${homePilotProfileIdSegment(username)}"
-            ioClient.ensureJsonState(profileId, "HomePilot profile: $username", localProfile.toJson()) { profileJson, _, profileError ->
-                if (profileError != null || profileJson == null) {
-                    connectionStatus = "ioBroker verbunden · gemeinsame Konfiguration geladen; Profil-Sync fehlgeschlagen: $profileError"
-                    return@ensureJsonState
-                }
-                val profile = HomePilotUserProfile.fromJson(profileJson)
-                if (profile == null) {
-                    connectionStatus = "ioBroker verbunden · Profilformat ungültig; lokale Profileinstellungen bleiben unverändert."
-                    return@ensureJsonState
-                }
-                userProfileRevision = profile.revision
-                favoriteIds = profile.favoriteIds
-                favoriteOrder = profile.favoriteOrder
-                inactivityMinutes = profile.disconnectTimeoutMinutes
-                val localOrders = readLocalTileOrders()
-                val ordersToApply = profile.tileOrders.filterKeys { it in tileOrderPreferenceKeys }
-                prefs.edit().apply {
-                    putStringSet("favoriteDevices", profile.favoriteIds)
-                    putString("favoriteOrder", profile.favoriteOrder.joinToString("|"))
-                    putInt("disconnectAfterMinutes", profile.disconnectTimeoutMinutes)
-                    ordersToApply.forEach { (key, order) -> putString(key, order.joinToString("|")) }
-                    apply()
-                }
-                userProfileLoaded = true
-                userProfileSyncToken++
-                // Older profiles have no tile-order data. Keep this device's existing
-                // order and immediately seed it into the HomePilot account profile.
-                if (profile.tileOrders.isEmpty()) saveUserProfile()
-                else if (ordersToApply.size < tileOrderPreferenceKeys.size) {
-                    val merged = localOrders + profile.tileOrders
-                    prefs.edit().apply {
-                        tileOrderPreferenceKeys.forEach { key ->
-                            if (key !in profile.tileOrders) putString(key, merged[key].orEmpty().joinToString("|"))
-                        }
-                        apply()
-                    }
-                    saveUserProfile()
-                }
-                connectionStatus = if (created) {
-                    "ioBroker verbunden · HomePilot-Konfiguration und Profil erstmalig migriert."
-                } else {
-                    "ioBroker verbunden · gemeinsame Konfiguration und Benutzerprofil geladen."
-                }
-            }
+    /** Nach Anmeldung oder Benutzerwechsel: lokales Profil sofort anwenden, danach abgleichen. */
+    fun onHomePilotLoggedIn() {
+        userProfileLoaded = false
+        userProfileRevision = 0L
+        val username = homePilotAccount?.username ?: return
+        val local = docStore.profile(username)
+        if (local != null) {
+            if (applyProfileToUi(local)) saveUserProfile()
+        } else {
+            userProfileLoaded = true
         }
+        syncProfileWithIoBroker()
     }
 
     fun connectToIoBroker(manualDeviceSearch: Boolean = false) {
+        IoBrokerAddress.normalize(serverUrl)?.let { if (it != serverUrl) serverUrl = it }
         prefs.edit().putString("server", serverUrl).apply()
         if (connecting) return
         connecting = true
@@ -975,12 +1070,15 @@ private fun HomePilotApp() {
         ioClient.connect(serverUrl) { ok, msg ->
             connecting = false
             connected = ok
-            if (ok) loginAccepted = true
-            if (ok) loadHomePilotAccounts()
+            ioBrokerAttempted = true
             connectionStatus = if (ok) "WebSocket-Verbindung zu ioBroker hergestellt" else "Verbindung fehlgeschlagen: $msg"
-            showConnectionAlert = !ok && !msg.contains("unterbrochen", ignoreCase = true) && !msg.contains("Wiederverbindung läuft", ignoreCase = true)
+            showConnectionAlert = !ok && homePilotAuthenticated && !msg.contains("unterbrochen", ignoreCase = true) && !msg.contains("Wiederverbindung läuft", ignoreCase = true)
+            if (!ok && manualAccountImport) {
+                manualAccountImport = false
+                homePilotLoginStatus = "Keine Verbindung zu $serverUrl: $msg"
+            }
             if (ok) {
-                initializeHomePilotSync()
+                syncDocsWithIoBroker()
                 ioClient.inspectAdapterStates(serverUrl, "dreame.0") { movaIds, movaError ->
                     val expectedMovaIds = listOf(
                         "dreame.0.-112285430.status.battery-level",
@@ -1068,8 +1166,36 @@ private fun HomePilotApp() {
         }
     }
 
-    // Anonymous ioBroker WebSocket: connect automatically on app startup.
-    LaunchedEffect(Unit) { connectToIoBroker() }
+    // Lokale Konten sofort laden (Anmeldung auch ohne ioBroker), dann automatisch mit ioBroker verbinden.
+    LaunchedEffect(Unit) {
+        loadLocalAccounts()
+        connectToIoBroker()
+    }
+    LaunchedEffect(homePilotAuthenticated, homePilotAccount?.username) {
+        if (homePilotAuthenticated && homePilotAccount != null) onHomePilotLoggedIn()
+    }
+    // Abgleich mit gekoppelten Smartphones im WLAN, solange die App geöffnet ist.
+    HomePilotPeerAutoSync(enabled = homePilotAuthenticated && homePilotAccount != null)
+    LaunchedEffect(PeerSyncSignals.dataRevision) {
+        if (PeerSyncSignals.dataRevision == 0) return@LaunchedEffect
+        when (val local = accountStore.load()) {
+            is HomePilotAccountLoadResult.Loaded -> if (local.registry != homePilotRegistry) applyLocalRegistry(local.registry)
+            else -> Unit
+        }
+        docStore.config()?.let { shared -> if (shared.revision != sharedConfigRevision || !sharedConfigLoaded) applySharedToUi(shared) }
+        homePilotAccount?.username?.let { username ->
+            docStore.profile(username)?.let { profile -> if (profile.revision != userProfileRevision) applyProfileToUi(profile) }
+        }
+        // Von einem Smartphone übernommene Änderungen auch an ioBroker weitergeben.
+        syncDocsWithIoBroker()
+    }
+    // Regelmäßiger Abgleich mit ioBroker, damit Änderungen anderer Geräte auch ohne Neustart ankommen.
+    LaunchedEffect(connected) {
+        while (connected) {
+            delay(30_000)
+            syncDocsWithIoBroker()
+        }
+    }
 
     val hostActivity = context as? ComponentActivity
     DisposableEffect(hostActivity, inactivityMinutes, serverUrl) {
@@ -1116,6 +1242,69 @@ private fun HomePilotApp() {
         }
     }
 
+    /** Login: ioBroker-Adresse übernehmen und Konten von dort laden. */
+    fun connectLoginAddress() {
+        val url = IoBrokerAddress.normalize(loginAddressInput)
+        if (url == null) {
+            homePilotLoginStatus = "Bitte eine gültige Adresse eingeben, z. B. 192.168.178.54 oder 192.168.178.54:8084."
+            return
+        }
+        loginAddressInput = url
+        homePilotLoginStatus = ""
+        manualAccountImport = true
+        if (connected && url == serverUrl) {
+            syncAccountsWithIoBroker()
+            return
+        }
+        serverUrl = url
+        ioClient.disconnect()
+        connected = false
+        connecting = false
+        connectToIoBroker()
+    }
+
+    /** Login: Konten und ioBroker-Adresse per QR-Code von einem eingerichteten Smartphone übernehmen. */
+    fun scanSetupQrCode() {
+        val activity = context as? android.app.Activity
+        if (activity == null) {
+            homePilotLoginStatus = "Der QR-Scanner kann hier nicht geöffnet werden."
+            return
+        }
+        val options = com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions.Builder()
+            .setBarcodeFormats(com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE)
+            .enableAutoZoom().build()
+        runCatching { com.google.mlkit.vision.codescanner.GmsBarcodeScanning.getClient(activity, options).startScan() }
+            .onSuccess { task ->
+                task.addOnSuccessListener { barcode ->
+                    val payload = HomePilotSetupTransfer.parse(barcode.rawValue)
+                    when {
+                        payload == null ->
+                            homePilotLoginStatus = "Dieser QR-Code ist kein gültiger HomePilot-Einrichtungscode oder bereits abgelaufen. Bitte auf dem anderen Smartphone neu erzeugen."
+                        !accountStore.replaceEmptyWithImported(payload.registry) ->
+                            homePilotLoginStatus = "Auf diesem Smartphone sind bereits Konten vorhanden. Sie wurden nicht überschrieben."
+                        else -> {
+                            homePilotLoginStatus = "Konten übernommen. Du kannst dich jetzt anmelden."
+                            homePilotUsername = ""
+                            homePilotPassword = ""
+                            applyLocalRegistry(payload.registry)
+                            val url = payload.ioBrokerUrl
+                            if (url != null && url != serverUrl) {
+                                loginAddressInput = url
+                                serverUrl = url
+                                ioClient.disconnect(); connected = false; connecting = false
+                                connectToIoBroker()
+                            }
+                        }
+                    }
+                }.addOnCanceledListener {
+                    homePilotLoginStatus = ""
+                }.addOnFailureListener { error ->
+                    homePilotLoginStatus = "QR-Scanner konnte nicht gestartet werden: ${error.message ?: "unbekannter Fehler"}"
+                }
+            }
+            .onFailure { error -> homePilotLoginStatus = "QR-Scanner konnte nicht gestartet werden: ${error.message ?: "unbekannter Fehler"}" }
+    }
+
     val bg = if (dark) DarkBg else LightBg
     val panel = if (dark) Color(0xFF1B2734) else Color.White
     val text = if (dark) DarkText else LightText
@@ -1127,40 +1316,48 @@ private fun HomePilotApp() {
     ) {
     MaterialTheme(colorScheme = scheme) {
         Surface(Modifier.fillMaxSize(), color = bg) {
-            if (!loginAccepted) {
-                HomePilotLoginScreen(
-                    status = connectionStatus, loading = connecting,
-                    onLogin = {
-                        // This ioBroker instance uses an unauthenticated WebSocket.
-                        credentialStore.clear()
-                        ioClient.disconnect(); connected = false; connecting = false; loginAccepted = false
-                        connectToIoBroker()
-                    }
-                )
-            } else if (!homePilotAuthenticated) {
+            if (!homePilotAuthenticated || homePilotAccount == null) {
                 HomePilotAccountLoginScreen(
                     registry = homePilotRegistry,
+                    accountsInvalid = homePilotAccountsInvalid,
                     username = homePilotUsername, onUsername = { homePilotUsername = it },
                     password = homePilotPassword, onPassword = { homePilotPassword = it },
                     passwordConfirmation = homePilotPasswordConfirmation, onPasswordConfirmation = { homePilotPasswordConfirmation = it },
                     displayName = homePilotDisplayName, onDisplayName = { homePilotDisplayName = it },
-                    loading = homePilotAccountLoading, status = connectionStatus,
-                    onReload = { if (connected) loadHomePilotAccounts() },
+                    loading = homePilotAccountLoading || (homePilotRegistry == null && !homePilotAccountsInvalid && (connecting || !ioBrokerAttempted)) || manualAccountImport,
+                    status = homePilotLoginStatus,
+                    ioBrokerAddress = loginAddressInput, onIoBrokerAddress = { loginAddressInput = it },
+                    onConnectAddress = { connectLoginAddress() },
+                    onScanSetupQr = { scanSetupQrCode() },
                     onLogin = {
                         val registry = homePilotRegistry
-                        if (registry == null) connectionStatus = "Kontenliste noch nicht verfügbar. Bitte erneut laden."
-                        else if (registry.accounts.isEmpty()) {
-                            try {
-                                val next = registry.createInitialAdmin(homePilotUsername, homePilotDisplayName, homePilotPassword.toCharArray())
+                        val password = homePilotPassword.toCharArray()
+                        try {
+                            if (registry == null) homePilotLoginStatus = "Kontenliste noch nicht verfügbar."
+                            else if (registry.accounts.isEmpty()) {
+                                val next = registry.createInitialAdmin(homePilotUsername, homePilotDisplayName, password)
                                 saveHomePilotRegistry(registry.revision, next) { saved, error ->
-                                    if (saved) { userProfileLoaded = false; userProfileRevision = 0L; homePilotAccount = next.accounts.first(); homePilotAuthenticated = true; prefs.edit().putString("homePilotRememberedUsername", next.accounts.first().username).apply(); homePilotPassword = ""; homePilotPasswordConfirmation = ""; initializeHomePilotSync() }
-                                    else connectionStatus = "Admin konnte nicht angelegt werden: " + error
+                                    if (saved) {
+                                        val admin = next.accounts.first()
+                                        homePilotAccount = admin; homePilotAuthenticated = true
+                                        prefs.edit().putString("homePilotRememberedUsername", admin.username).apply()
+                                        homePilotPassword = ""; homePilotPasswordConfirmation = ""; homePilotLoginStatus = ""
+                                    } else homePilotLoginStatus = "Administrator konnte nicht angelegt werden: " + error
                                 }
-                            } catch (e: Exception) { connectionStatus = e.message ?: "Admin-Einrichtung fehlgeschlagen." }
-                        } else {
-                            val account = registry.authenticate(homePilotUsername, homePilotPassword.toCharArray())
-                            if (account == null) connectionStatus = "HomePilot-Benutzername oder Passwort falsch."
-                            else { userProfileLoaded = false; userProfileRevision = 0L; homePilotAccount = account; homePilotAuthenticated = true; prefs.edit().putString("homePilotRememberedUsername", account.username).apply(); homePilotPassword = ""; connectionStatus = "HomePilot angemeldet: " + account.displayName; initializeHomePilotSync() }
+                            } else {
+                                val account = registry.authenticate(homePilotUsername, password)
+                                if (account == null) homePilotLoginStatus = "HomePilot-Benutzername oder Passwort falsch."
+                                else {
+                                    homePilotAccount = account; homePilotAuthenticated = true
+                                    prefs.edit().putString("homePilotRememberedUsername", account.username).apply()
+                                    homePilotPassword = ""; homePilotLoginStatus = ""
+                                    connectionStatus = "HomePilot angemeldet: " + account.displayName
+                                }
+                            }
+                        } catch (e: Exception) {
+                            homePilotLoginStatus = e.message ?: "Anmeldung fehlgeschlagen."
+                        } finally {
+                            password.fill('\u0000')
                         }
                     }
                 )
@@ -1347,7 +1544,7 @@ private fun HomePilotApp() {
                             status = connectionStatus, connected = connected,
                             onConnect = { connectToIoBroker(manualDeviceSearch = false) },
                             onSearchDevices = { if (connected) connectToIoBroker(manualDeviceSearch = true) else { connectionStatus = "Bitte zuerst die ioBroker-Verbindung herstellen."; showConnectionAlert = true } },
-                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { userProfileLoaded = false; userProfileRevision = 0L; homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
+                            onOpenLights = { navigateTo(Tab.LIGHTS) }, onOpenDevices = { navigateTo(Tab.DEVICES) }, onOpenRooms = { navigateTo(Tab.ROOMS) }, rooms = rooms, onChooseRoom = { room -> selectedRoom = room; navigateTo(Tab.ROOMS) }, onOpenHealth = { navigateTo(Tab.DEVICE_HEALTH) }, onShowHidden = { showHiddenDevices = true }, inactivityMinutes = inactivityMinutes, onInactivityMinutes = { inactivityMinutes = it; prefs.edit().putInt("disconnectAfterMinutes", it).apply(); saveUserProfile() }, onBatterySettings = { openBatterySettings(context) }, homePilotAccount = homePilotAccount, homePilotAccounts = homePilotRegistry?.accounts ?: emptyList(), onHomePilotSwitch = { userProfileLoaded = false; userProfileRevision = 0L; prefs.edit().remove("homePilotRememberedUsername").apply(); homePilotAuthenticated = false; homePilotAccount = null; homePilotPassword = ""; homePilotUsername = ""; connectionStatus = "Bitte mit deinem HomePilot-Konto anmelden." }, onAddHomePilotAccount = { uname, display, pwd, role -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.addAccount(actor, uname, display, pwd.toCharArray(), role); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "HomePilot-Benutzer angelegt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht angelegt werden." } }, onResetHomePilotPassword = { uname, pwd -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.resetPassword(actor, uname, pwd.toCharArray()); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Passwort zurückgesetzt." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Passwort konnte nicht geändert werden." } }, onDeleteHomePilotAccount = { uname -> val reg = homePilotRegistry; val actor = homePilotAccount; if (reg != null && actor != null) try { val next = reg.deleteAccount(actor, uname); saveHomePilotRegistry(reg.revision, next) { ok, err -> connectionStatus = if (ok) "Benutzer gelöscht." else "Fehler: $err" } } catch (e: Exception) { connectionStatus = e.message ?: "Benutzer konnte nicht gelöscht werden." } })
                     }
                     }
                     }
@@ -1371,7 +1568,7 @@ private fun HomePilotApp() {
                         }
                     )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true, trailingIcon = { InputConfirmIcon() }) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
-                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else MaterialTheme.colorScheme.onSurfaceVariant) } } }, text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply(); saveUserProfile() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else MaterialTheme.colorScheme.onSurfaceVariant) } } }, text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() })
                 Text("Gerätetyp")
                 Box {
@@ -4281,29 +4478,61 @@ private fun SafetyScreen(alarm: Boolean, battery: Int, batteryKnown: Boolean, pa
 
 @Composable
 private fun HomePilotAccountLoginScreen(
-    registry: HomePilotAccountRegistry?, username: String, onUsername: (String) -> Unit,
+    registry: HomePilotAccountRegistry?, accountsInvalid: Boolean,
+    username: String, onUsername: (String) -> Unit,
     password: String, onPassword: (String) -> Unit, passwordConfirmation: String, onPasswordConfirmation: (String) -> Unit,
     displayName: String, onDisplayName: (String) -> Unit,
-    loading: Boolean, status: String, onReload: () -> Unit, onLogin: () -> Unit
+    loading: Boolean, status: String,
+    ioBrokerAddress: String, onIoBrokerAddress: (String) -> Unit,
+    onConnectAddress: () -> Unit, onScanSetupQr: () -> Unit,
+    onLogin: () -> Unit
 ) {
     val setup = registry?.accounts?.isEmpty() == true
     var showPassword by remember { mutableStateOf(false) }
     var showPasswordConfirmation by remember { mutableStateOf(false) }
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Column(
-        Modifier.fillMaxSize().statusBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
-        verticalArrangement = Arrangement.Top,
+        Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().imePadding().verticalScroll(rememberScrollState()).padding(24.dp),
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(Icons.Default.Home, contentDescription = null, tint = Blue, modifier = Modifier.size(58.dp))
         Spacer(Modifier.height(12.dp))
         Text("HomePilot", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
         Spacer(Modifier.height(8.dp))
-        Text(if (registry == null) "HomePilot-Konten werden geladen …" else if (setup) "Ersteinrichtung · Administrator erstellen" else "Mit deinem HomePilot-Konto anmelden", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+        Text(
+            when {
+                accountsInvalid -> "Kontendaten nicht lesbar"
+                registry == null && loading -> "HomePilot wird eingerichtet …"
+                registry == null -> "ioBroker nicht erreichbar"
+                setup -> "Ersteinrichtung · Administrator erstellen"
+                else -> "Mit deinem HomePilot-Konto anmelden"
+            },
+            color = muted, textAlign = TextAlign.Center
+        )
         Spacer(Modifier.height(18.dp))
         if (registry == null) {
-            CircularProgressIndicator()
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = onReload, enabled = !loading) { Text("Konten erneut laden") }
+            if (accountsInvalid) {
+                // Beschädigte lokale Daten werden nie automatisch ersetzt; der Hinweis steht unten.
+            } else if (loading) {
+                CircularProgressIndicator()
+                Spacer(Modifier.height(10.dp))
+                Text("Vorhandene Benutzerkonten werden aus ioBroker geladen.", color = muted, fontSize = 12.sp, textAlign = TextAlign.Center)
+            } else {
+                Text(
+                    "HomePilot konnte ioBroker nicht erreichen. Falls sich die Adresse geändert hat, gib sie hier ein. " +
+                        "Danach werden die vorhandenen Benutzerkonten geladen.",
+                    color = muted, fontSize = 13.sp, textAlign = TextAlign.Center
+                )
+                Spacer(Modifier.height(8.dp))
+                LoginAddressField(ioBrokerAddress, onIoBrokerAddress)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = onConnectAddress, enabled = ioBrokerAddress.isNotBlank(), modifier = Modifier.fillMaxWidth()) { Text("Verbinden") }
+                Spacer(Modifier.height(18.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+                SetupQrImportSection(onScanSetupQr)
+            }
         } else {
             OutlinedTextField(value = username, onValueChange = onUsername, label = { Text("HomePilot-Benutzername") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             if (setup) { Spacer(Modifier.height(8.dp)); OutlinedTextField(value = displayName, onValueChange = onDisplayName, label = { Text("Anzeigename (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth()) }
@@ -4317,24 +4546,71 @@ private fun HomePilotAccountLoginScreen(
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Button(onClick = onLogin, enabled = !loading && username.isNotBlank() && password.isNotBlank() && (!setup || (passwordConfirmation.isNotBlank() && password == passwordConfirmation)), modifier = Modifier.fillMaxWidth()) { Text(if (setup) "Administrator erstellen" else "Anmelden") }
-            if (!setup && status.contains("Benutzername oder Passwort falsch", ignoreCase = true)) {
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFFFE8E8)).padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(Icons.Default.Error, contentDescription = "Anmeldefehler", tint = Color(0xFFB71C1C))
-                    Text(
-                        "Anmeldung fehlgeschlagen\\nBenutzername oder Passwort ist falsch. Bitte prüfe deine Eingabe.",
-                        color = Color(0xFFB71C1C), fontSize = 15.sp, fontWeight = FontWeight.Bold
-                    )
+            Button(
+                onClick = onLogin,
+                enabled = !loading && username.isNotBlank() && password.isNotBlank() &&
+                    (!setup || (password.length >= 8 && passwordConfirmation.isNotBlank() && password == passwordConfirmation)),
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(if (setup) "Administrator erstellen" else "Anmelden") }
+            if (setup) {
+                Spacer(Modifier.height(18.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+                Text("Mit vorhandenem Benutzerkonto anmelden", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    "Gib die Adresse deines ioBroker ein. HomePilot lädt die dort gespeicherten Konten; danach meldest du dich mit deinem bisherigen Benutzernamen und Passwort an.",
+                    color = muted, fontSize = 12.sp
+                )
+                Spacer(Modifier.height(6.dp))
+                LoginAddressField(ioBrokerAddress, onIoBrokerAddress)
+                Spacer(Modifier.height(6.dp))
+                OutlinedButton(onClick = onConnectAddress, enabled = !loading && ioBrokerAddress.isNotBlank(), modifier = Modifier.fillMaxWidth()) {
+                    Text(if (loading) "Vorhandene Konten werden geladen …" else "Vorhandene Konten laden")
                 }
+                Spacer(Modifier.height(18.dp))
+                HorizontalDivider()
+                Spacer(Modifier.height(10.dp))
+                SetupQrImportSection(onScanSetupQr)
             }
         }
+        if (status.isNotBlank()) {
+            val positive = status.startsWith("Konten übernommen") || status.startsWith("Vorhandene Konten geladen")
+            Spacer(Modifier.height(14.dp))
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                    .background(if (positive) Color(0xFFE6F4EA) else Color(0xFFFFE8E8)).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(if (positive) Icons.Default.CheckCircle else Icons.Default.Error, contentDescription = null, tint = if (positive) Color(0xFF1B7F3B) else Color(0xFFB71C1C))
+                Text(status, color = if (positive) Color(0xFF1B5E20) else Color(0xFFB71C1C), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
 
+@Composable
+private fun LoginAddressField(value: String, onValueChange: (String) -> Unit) {
+    OutlinedTextField(
+        value = value, onValueChange = onValueChange,
+        label = { Text("ioBroker-Adresse") }, placeholder = { Text("192.168.178.54") },
+        singleLine = true, modifier = Modifier.fillMaxWidth()
+    )
+}
+
+@Composable
+private fun SetupQrImportSection(onScanSetupQr: () -> Unit) {
+    Text("Von einem anderen Smartphone übernehmen", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+    Text(
+        "Auf dem eingerichteten Smartphone: Einstellungen → Benutzereinstellungen → „Anderes Smartphone einrichten“. " +
+            "Dann hier den angezeigten QR-Code scannen. Konten und ioBroker-Adresse werden übernommen.",
+        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
+    )
+    Spacer(Modifier.height(6.dp))
+    OutlinedButton(onClick = onScanSetupQr, modifier = Modifier.fillMaxWidth()) {
+        Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text("QR-Code scannen")
     }
 }
 
@@ -4375,40 +4651,7 @@ private fun StartupUpdateCheck(appVersion: String, onOpenSettings: () -> Unit) {
 }
 
 @Composable
-private fun HomePilotLoginScreen(
-    status: String, loading: Boolean, onLogin: () -> Unit
-) {
-    val statusError = status.contains("fehlgeschlagen", ignoreCase = true) ||
-        status.contains("nicht authentifiziert", ignoreCase = true) || status.contains("Fehler", ignoreCase = true)
-    Column(
-        Modifier.fillMaxSize().statusBarsPadding().padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(Icons.Default.Home, contentDescription = null, tint = Blue, modifier = Modifier.size(64.dp))
-        Spacer(Modifier.height(14.dp))
-        Text("HomePilot", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-        Spacer(Modifier.height(8.dp))
-        Text("Verbindung zu ioBroker wird ohne Benutzerkonto hergestellt.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(22.dp))
-        Text("WebSocket: ws://192.168.178.54:8084", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-        Spacer(Modifier.height(14.dp))
-        if (status != "Nicht verbunden" && status.isNotBlank()) {
-            Text(status, color = if (statusError) Color(0xFFD32F2F) else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(8.dp))
-        }
-        Button(onClick = onLogin, enabled = !loading, modifier = Modifier.fillMaxWidth()) {
-            if (loading) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Icon(Icons.Default.Login, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(if (loading) "Verbindung läuft …" else "Mit ioBroker verbinden")
-        }
-        Spacer(Modifier.height(10.dp))
-        Text("Danach meldest du dich mit deinem HomePilot-Konto an.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-    }
-}
-
-@Composable
-private fun SettingsMenuSection(
+internal fun SettingsMenuSection(
     panel: Color, text: Color, title: String, subtitle: String, icon: ImageVector,
     expanded: Boolean, onClick: () -> Unit, content: @Composable ColumnScope.() -> Unit
 ) {
@@ -4446,7 +4689,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     }
 
     val context = LocalContext.current
-    val settingsSectionIds = listOf("devices", "users", "app", "weather")
+    val settingsSectionIds = listOf("devices", "users", "pairing", "app", "weather")
     val settingsSectionOrder = remember {
         mutableStateListOf<String>().apply {
             val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE)
@@ -4472,6 +4715,8 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     var resetHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
     var deleteHomePilotUser by remember { mutableStateOf<HomePilotAccount?>(null) }
     var resetHomePilotPasswordValue by remember { mutableStateOf("") }
+    var setupQrBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var setupQrError by remember { mutableStateOf("") }
     @Composable
     fun renderSettingsSection(sectionId: String) {
         when (sectionId) {
@@ -4489,7 +4734,7 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
     SettingsMenuSection(panel,text,"Benutzereinstellungen","Eigene Kontoeinstellungen und Benutzerverwaltung",Icons.Default.ManageAccounts,expandedSetting=="Benutzereinstellungen",{toggle("Benutzereinstellungen")}) {
         Text("Eigene Kontoeinstellungen",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
         Text(homePilotAccount?.let { "${it.displayName} · ${if(it.role==HomePilotAccount.ADMIN) "Administrator" else "Benutzer"}" } ?: "Nicht angemeldet",color=Muted,fontSize=12.sp)
-        Text("HomePilot-Anmeldung ist unabhängig von ioBroker.",color=Muted,fontSize=12.sp)
+        Text("Konten werden auf diesem Smartphone gespeichert und mit ioBroker und gekoppelten Smartphones abgeglichen.",color=Muted,fontSize=12.sp)
         TextButton(onClick={ownHomePilotPassword="";showOwnPassword=false;showOwnPasswordDialog=true},modifier=Modifier.fillMaxWidth()) { Text("Eigenes Passwort ändern") }
         TextButton(onClick=onHomePilotSwitch,modifier=Modifier.fillMaxWidth()) { Text("HomePilot-Benutzer wechseln") }
         if(homePilotAccount?.role==HomePilotAccount.ADMIN) {
@@ -4502,10 +4747,21 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
                     if(account.username!=homePilotAccount.username) TextButton(onClick={deleteHomePilotUser=account}) { Text("Löschen") }
                 }
             }
+            Divider()
+            Text("Anderes Smartphone einrichten",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
+            Text("Zeigt einen QR-Code mit allen Konten und der ioBroker-Adresse. Das neue Smartphone scannt ihn auf dem Anmeldebildschirm. Gültig 10 Minuten.",color=Muted,fontSize=11.sp)
+            OutlinedButton(onClick={
+                val registry = HomePilotAccountStore(context).loadedRegistry()
+                val payload = registry?.takeIf { it.accounts.isNotEmpty() }?.let { HomePilotSetupTransfer.create(it, IoBrokerAddress.saved(context.getSharedPreferences("homepilot", Context.MODE_PRIVATE))) }
+                setupQrBitmap = payload?.let { runCatching { de.homepilot.app.sync.HomePilotPairingQrCode.encode(it, 720).toSetupBitmap() }.getOrNull() }
+                setupQrError = if (setupQrBitmap == null) "QR-Code konnte nicht erzeugt werden." else ""
+            },modifier=Modifier.fillMaxWidth()) { Icon(Icons.Default.QrCode,null); Spacer(Modifier.width(8.dp)); Text("QR-Code anzeigen") }
+            if(setupQrError.isNotBlank()) Text(setupQrError,color=Color(0xFFD32F2F),fontSize=12.sp)
             Button(onClick={showNewHomePilotUser=true;newHomePilotUsername="";newHomePilotDisplayName="";newHomePilotPassword="";newHomePilotPasswordConfirmation="";newHomePilotRole=HomePilotAccount.USER},modifier=Modifier.fillMaxWidth()) { Text("Benutzer hinzufügen") }
         }
     }
             }
+            "pairing" -> HomePilotPairingSection(panel, text)
             "app" -> {
     SettingsMenuSection(panel,text,"App-Einstellungen","ioBroker-Verbindung, Hintergrund, Energiesparen und Version",Icons.Default.Settings,expandedSetting=="App-Einstellungen",{toggle("App-Einstellungen")}) {
         Text("Schriftgröße",color=text,fontWeight=FontWeight.Bold,fontSize=14.sp)
@@ -4643,6 +4899,19 @@ private fun SettingsScreen(dark: Boolean, onDark: (Boolean) -> Unit, panel: Colo
                 }
             }
         }
+    }
+    setupQrBitmap?.let { bitmap ->
+        AlertDialog(
+            onDismissRequest = { setupQrBitmap = null },
+            title = { Text("Anderes Smartphone einrichten") },
+            text = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.foundation.Image(bitmap = bitmap.asImageBitmap(), contentDescription = "HomePilot-Einrichtungs-QR-Code", modifier = Modifier.size(280.dp))
+                    Text("Auf dem neuen Smartphone HomePilot öffnen und auf dem Anmeldebildschirm „QR-Code scannen“ wählen. Nur eigenen Geräten zeigen – der Code enthält die Konten (Passwörter nur verschlüsselt als Hash).", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = { TextButton(onClick = { setupQrBitmap = null }) { Text("Fertig") } }
+        )
     }
     deleteHomePilotUser?.let { account -> AlertDialog(onDismissRequest={deleteHomePilotUser=null},title={Text("Benutzer wirklich löschen?")},text={Text("Das Konto „${account.username}“ wird dauerhaft aus HomePilot entfernt. Der ioBroker-Zugang bleibt unverändert.")},confirmButton={TextButton(onClick={onDeleteHomePilotAccount(account.username);deleteHomePilotUser=null}) { Text("Löschen") }},dismissButton={TextButton(onClick={deleteHomePilotUser=null}) { Text("Abbrechen") }}) }
     resetHomePilotUser?.let { account -> AlertDialog(onDismissRequest={resetHomePilotUser=null},title={Text("Passwort zurücksetzen")},text={Column { Text("Neues Passwort für ${account.username}"); OutlinedTextField(value=resetHomePilotPasswordValue,onValueChange={resetHomePilotPasswordValue=it},label={Text("Neues Passwort (min. 8 Zeichen)")},visualTransformation=if(showResetPassword) androidx.compose.ui.text.input.VisualTransformation.None else androidx.compose.ui.text.input.PasswordVisualTransformation(),trailingIcon={IconButton(onClick={showResetPassword=!showResetPassword}) { Icon(if(showResetPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,contentDescription=if(showResetPassword) "Passwort verbergen" else "Passwort anzeigen") }}) }},confirmButton={TextButton(onClick={onResetHomePilotPassword(account.username,resetHomePilotPasswordValue);resetHomePilotUser=null}) { Text("Speichern") }},dismissButton={TextButton(onClick={resetHomePilotUser=null}) { Text("Abbrechen") }}) }

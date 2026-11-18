@@ -1,0 +1,56 @@
+package de.homepilot.app.sync
+
+import android.util.Base64
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.security.KeyPairGenerator
+import java.security.Signature
+import java.security.spec.ECGenParameterSpec
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class HomePilotPeerIdentityStoreTest {
+    @Test
+    fun verifiesSignatureOnlyForOriginalChallenge() {
+        val generator = KeyPairGenerator.getInstance("EC")
+        generator.initialize(ECGenParameterSpec("secp256r1"))
+        val pair = generator.generateKeyPair()
+        val challenge = ByteArray(32) { (it * 7).toByte() }
+        val signature = Signature.getInstance("SHA256withECDSA").run {
+            initSign(pair.private)
+            update(challenge)
+            sign()
+        }
+        val publicKey = Base64.encodeToString(pair.public.encoded, Base64.NO_WRAP)
+
+        assertTrue(HomePilotPeerIdentityStore.verify(publicKey, challenge, signature))
+        assertFalse(HomePilotPeerIdentityStore.verify(publicKey, "different".toByteArray(), signature))
+    }
+
+    @Test
+    fun rejectsEcKeysUsingAnotherCurve() {
+        val generator = KeyPairGenerator.getInstance("EC")
+        generator.initialize(ECGenParameterSpec("secp384r1"))
+        val pair = generator.generateKeyPair()
+        val challenge = byteArrayOf(1, 2, 3)
+        val signature = Signature.getInstance("SHA256withECDSA").run {
+            initSign(pair.private)
+            update(challenge)
+            sign()
+        }
+        val publicKey = Base64.encodeToString(pair.public.encoded, Base64.NO_WRAP)
+
+        assertFalse(HomePilotPeerIdentityStore.verify(publicKey, challenge, signature))
+    }
+
+    @Test
+    fun rejectsMalformedAndOversizedPeerKeyMaterial() {
+        assertFalse(HomePilotPeerIdentityStore.verify("not-a-key", byteArrayOf(1), byteArrayOf(1)))
+        assertFalse(HomePilotPeerIdentityStore.verify("A".repeat(3000), byteArrayOf(1), byteArrayOf(1)))
+        assertFalse(HomePilotPeerIdentityStore.verify("", ByteArray(0), byteArrayOf(1)))
+    }
+}

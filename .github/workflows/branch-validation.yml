@@ -1,0 +1,57 @@
+name: HomePilot Branch-Prüfung
+
+# Reine Prüfung von Feature-Branches: Unit-Tests und Kompilierung.
+# Baut keine APK, signiert nichts, veröffentlicht nichts und läuft nie auf main.
+# Der Produktions-Workflow android.yml bleibt davon unberührt.
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths-ignore:
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: homepilot-branch-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: github.ref != 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Quellcode auschecken
+        uses: actions/checkout@v4
+
+      - name: Java 17 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Android SDK einrichten
+        uses: android-actions/setup-android@v4
+
+      - name: Android SDK Pakete installieren
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle 8.9 einrichten
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Unit-Tests und Kompilierung
+        run: gradle --no-daemon testDebugUnitTest compileReleaseKotlin
+
+      - name: Testberichte bereitstellen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homepilot-unit-test-reports
+          path: app/build/reports/tests/
+          if-no-files-found: ignore
+          retention-days: 7

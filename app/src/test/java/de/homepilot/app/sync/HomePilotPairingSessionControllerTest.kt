@@ -1,0 +1,229 @@
+package de.homepilot.app.sync
+
+import android.util.Base64
+import androidx.test.core.app.ApplicationProvider
+import android.content.Context
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.json.JSONObject
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import java.security.KeyPair
+import java.security.KeyPairGenerator
+import java.security.MessageDigest
+import java.security.Signature
+import java.security.spec.ECGenParameterSpec
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class HomePilotPairingSessionControllerTest {
+    private lateinit var storeA: HomePilotTrustedPeerStore
+    private lateinit var storeB: HomePilotTrustedPeerStore
+    private lateinit var pairA: KeyPair
+    private lateinit var pairB: KeyPair
+    private lateinit var controllerA: HomePilotPairingSessionController
+    private lateinit var controllerB: HomePilotPairingSessionController
+
+    @Before
+    fun setUp() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.getSharedPreferences("homepilot_test_peers_a", Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        context.getSharedPreferences("homepilot_test_peers_b", Context.MODE_PRIVATE)
+            .edit().clear().commit()
+        storeA = HomePilotTrustedPeerStore(context, "homepilot_test_peers_a")
+        storeB = HomePilotTrustedPeerStore(context, "homepilot_test_peers_b")
+        pairA = newPair()
+        pairB = newPair()
+        controllerA = controller(pairA, "A", storeA)
+        controllerB = controller(pairB, "B", storeB)
+    }
+
+    @Test
+    fun peersAreStoredOnlyAfterTheirLocalConfirmationAndSessionCannotBeReused() {
+        val now = 1_800_000_000_000L
+        val invitationPayload = controllerA.createOutgoingInvitation(now)
+
+        val reviewA = controllerB.prepareIncomingInvitation(invitationPayload, now)
+        assertNotNull(reviewA)
+        assertTrue(storeA.trustedPeers().isEmpty())
+        assertTrue(storeB.trustedPeers().isEmpty())
+
+        val responsePayload = controllerB.confirmIncomingInvitation(
+            reviewA!!, "Telefon A", now + 1
+        )
+        assertTrue("Responder darf vor Speicher-ACK nicht vertrauen", storeB.trustedPeers().isEmpty())
+        assertTrue(storeA.trustedPeers().isEmpty())
+
+        val reviewB = controllerA.prepareOutgoingResponse(responsePayload, now + 2)
+        assertNotNull(reviewB)
+        assertTrue(storeA.trustedPeers().isEmpty())
+
+        val ackPayload = controllerA.confirmOutgoingResponseAndCreateAcknowledgement(
+            reviewB!!, "Telefon B",
+            createAcknowledgement = { response, timestamp ->
+                signedAcknowledgement(
+                    pairA, response.sessionId, response.responderPeerId,
+                    response.responderNonceBase64, timestamp
+                )
+            },
+            nowMillis = now + 3
+        )
+        assertEquals(setOf(peerId(pairB)), storeA.trustedPeers().map { it.peerId }.toSet())
+        assertTrue(storeB.trustedPeers().isEmpty())
+        controllerB.acknowledgeIncomingInvitation(ackPayload, now + 4)
+        assertEquals(setOf(peerId(pairA)), storeB.trustedPeers().map { it.peerId }.toSet())
+        assertEquals(setOf(peerId(pairB)), storeA.trustedPeers().map { it.peerId }.toSet())
+
+        assertNull(controllerA.prepareOutgoingResponse(responsePayload, now + 4))
+        assertNull(controllerB.prepareIncomingInvitation(invitationPayload, now + 4))
+    }
+
+    @Test
+    fun responderDoesNotTrustOnWrongAckOrAfterCancellation() {
+        val now = 1_800_000_000_000L
+        val invitationPayload = controllerA.createOutgoingInvitation(now)
+        val pending = controllerB.prepareIncomingInvitation(invitationPayload, now)!!
+        val responsePayload = controllerB.confirmIncomingInvitation(pending, "Telefon A", now + 1)
+        val nonce = JSONObject(responsePayload).getString("nonce")
+
+        assertTrue(storeB.trustedPeers().isEmpty())
+        val forgedAck = signedAcknowledgement(
+            pairB, pending.sessionId, peerId(pairB), nonce, now + 2
+        )
+        assertFalse(runCatching {
+            controllerB.acknowledgeIncomingInvitation(forgedAck, now + 2)
+        }.isSuccess)
+        assertTrue(storeB.trustedPeers().isEmpty())
+
+        controllerB.cancel()
+        val validAckAfterCancel = signedAcknowledgement(
+            pairA, pending.sessionId, peerId(pairB), nonce, now + 3
+        )
+        assertFalse(runCatching {
+            controllerB.acknowledgeIncomingInvitation(validAckAfterCancel, now + 3)
+        }.isSuccess)
+        assertTrue(storeB.trustedPeers().isEmpty())
+    }
+
+    @Test
+    fun cancellationAndExpiredInvitationDoNotAddTrust() {
+        val now = 1_800_000_000_000L
+        val invitationPayload = controllerA.createOutgoingInvitation(now)
+
+        val pending = controllerB.prepareIncomingInvitation(invitationPayload, now)
+        assertNotNull(pending)
+        controllerB.cancel()
+        assertTrue(storeA.trustedPeers().isEmpty() && storeB.trustedPeers().isEmpty())
+        assertNull(controllerB.prepareIncomingInvitation(invitationPayload, now + 2))
+
+        controllerA.cancel()
+        val expiringInvitation = controllerA.createOutgoingInvitation(now + 10)
+        assertNull(controllerB.prepareIncomingInvitation(expiringInvitation, now + 130_011))
+        assertFalse(storeB.isTrusted(peerId(pairA), publicKey(pairA)))
+    }
+
+    @Test
+    fun confirmationObjectFromAnotherSessionIsRejected() {
+        val now = 1_800_000_000_000L
+        val first = controllerA.createOutgoingInvitation(now)
+        val pending = controllerB.prepareIncomingInvitation(first, now)!!
+        controllerB.cancel()
+        controllerA.cancel()
+
+        val second = controllerA.createOutgoingInvitation(now + 10)
+        val otherPending = controllerB.prepareIncomingInvitation(second, now + 10)!!
+        assertFalse(pending === otherPending)
+        assertFalse(runCatching {
+            controllerB.confirmIncomingInvitation(pending, "Fremd", now + 11)
+        }.isSuccess)
+        assertTrue(storeA.trustedPeers().isEmpty() && storeB.trustedPeers().isEmpty())
+    }
+
+    private fun controller(pair: KeyPair, label: String, store: HomePilotTrustedPeerStore) =
+        HomePilotPairingSessionController(
+            localPeerId = peerId(pair),
+            trustedPeerStore = store,
+            createInvitation = { now -> signedInvitation(pair, now, label) },
+            createResponse = { invitation, now -> signedResponse(pair, invitation, now) }
+        )
+
+    private fun signedInvitation(pair: KeyPair, now: Long, label: String): HomePilotPairingInvitation.Invitation {
+        val key = publicKey(pair)
+        val id = peerId(pair)
+        val unsigned = HomePilotPairingInvitation.Invitation(
+            sessionId = now.toString().padStart(32, '0'),
+            createdAtMillis = now,
+            expiresAtMillis = now + 120_000L,
+            peerId = id,
+            publicKeyBase64 = key,
+            fingerprint = id.chunked(4).joinToString(":"),
+            nonceBase64 = Base64.encodeToString(ByteArray(32) { (it + label.length).toByte() }, Base64.NO_WRAP),
+            signatureBase64 = ""
+        )
+        return unsigned.copy(signatureBase64 = sign(pair, unsigned.signingBytes()))
+    }
+
+    private fun signedResponse(
+        pair: KeyPair,
+        invitation: HomePilotPairingInvitation.Invitation,
+        now: Long
+    ): HomePilotPairingResponse.Response {
+        val id = peerId(pair)
+        val unsigned = HomePilotPairingResponse.Response(
+            sessionId = invitation.sessionId,
+            invitationPeerId = invitation.peerId,
+            invitationNonceBase64 = invitation.nonceBase64,
+            responderPeerId = id,
+            responderPublicKeyBase64 = publicKey(pair),
+            responderFingerprint = id.chunked(4).joinToString(":"),
+            responderNonceBase64 = Base64.encodeToString(ByteArray(32) { (it + 7).toByte() }, Base64.NO_WRAP),
+            createdAtMillis = now,
+            signatureBase64 = ""
+        )
+        return unsigned.copy(signatureBase64 = sign(pair, unsigned.signingBytes()))
+    }
+
+    private fun signedAcknowledgement(
+        pair: KeyPair,
+        sessionId: String,
+        responderPeerId: String,
+        responderNonce: String,
+        now: Long
+    ): String {
+        val unsigned = HomePilotPairingAcknowledgement.Acknowledgement(
+            sessionId = sessionId,
+            inviterPeerId = peerId(pair),
+            responderPeerId = responderPeerId,
+            responderNonceBase64 = responderNonce,
+            createdAtMillis = now,
+            signatureBase64 = ""
+        )
+        return unsigned.copy(signatureBase64 = sign(pair, unsigned.signingBytes())).toPayload()
+    }
+
+    private fun sign(pair: KeyPair, bytes: ByteArray): String =
+        Base64.encodeToString(Signature.getInstance("SHA256withECDSA").run {
+            initSign(pair.private)
+            update(bytes)
+            sign()
+        }, Base64.NO_WRAP)
+
+    private fun newPair(): KeyPair = KeyPairGenerator.getInstance("EC").run {
+        initialize(ECGenParameterSpec("secp256r1"))
+        generateKeyPair()
+    }
+
+    private fun publicKey(pair: KeyPair): String =
+        Base64.encodeToString(pair.public.encoded, Base64.NO_WRAP)
+
+    private fun peerId(pair: KeyPair): String =
+        MessageDigest.getInstance("SHA-256").digest(pair.public.encoded)
+            .joinToString("") { (it.toInt() and 0xff).toString(16).padStart(2, '0') }
+}
