@@ -14,6 +14,16 @@
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
 
+## Gerätetest Updater und Play Protect – 18.11.2026, 22:29–22:44 Uhr (bestätigt)
+
+- **22:29 Uhr – 1.30.1 einmalig manuell installiert** (APK aus Release `latest`, per Messenger aufs Smartphone): Google Play Protect meldet **„Diese App ist anscheinend sicher – Du kannst mit der Installation fortfahren“**, obwohl `REQUEST_INSTALL_PACKAGES` im Manifest steht. Installation erfolgreich, Anmeldung und Daten blieben erhalten.
+- **22:44 Uhr – Update 1.30.1 → 1.30.2 über den In-App-Updater** („Update laden“ in den Einstellungen): Der Android-Installationsdialog öffnet sich, Play Protect meldet erneut **„Diese App ist anscheinend sicher“**. Damit ist der KlimaPilot-gleiche Updater (`ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData + `REQUEST_INSTALL_PACKAGES`) auf dem Gerät bestätigt.
+- **Schlussfolgerung:** `REQUEST_INSTALL_PACKAGES` ist für den Updater nötig und nach diesen beiden Scans nicht der Auslöser der früheren Play-Protect-Blockaden. Die Begründung der Rücknahme vom 17.11.2026 (1.29.132) war falsch; ohne die Berechtigung öffnete „Update laden“ keinen Installationsdialog. Play Protect kann seine Einstufung später ändern – bei einer neuen Warnung zuerst diesen Stand vergleichen, nicht die Berechtigung entfernen.
+- **Verbindlicher, geräte-getesteter Updater-Referenzstand: HomePilot 1.30.2 / versionCode 193** (Build #442, Commit `5abe795`). Dieser Stand ist bei allen künftigen Arbeiten zu bewahren; die Updater-Sperre gilt unverändert.
+- Ebenfalls bestätigt: Nach dem Update bleibt die Anmeldung erhalten (neue lokale Kontenliste, Übernahme aus ioBroker). Die Oberfläche zeigt den Abschnitt „Smartphones koppeln“.
+- **Noch offen:** Kopplung zweier Smartphones und Abgleich von Raum, Gerät und Favorit zwischen ihnen; Einrichtung per QR-Code.
+
+
 ## Farben und Kopplungstext – 1.30.2 / 193 (18.11.2026)
 
 - Lila/Rosa entfernt: Raumauswahl-Kachel nutzt jetzt das HomePilot-Blau (wie die MOVA-Kachel); alle bisher nicht gesetzten Material-Standardfarben (Container, Navigationsmarkierung, Schalter, Dialog- und Menüflächen) im hellen und dunklen Schema auf Blau/Blaugrau abgestimmt. Farbvorgaben für Hue-Lampen („Violett“, „Pink“) bleiben, da sie echte Lampenfarben darstellen.
@@ -26,7 +36,7 @@
 - Befund: Seit 1.29.132 fehlte `REQUEST_INSTALL_PACKAGES`; „Update laden“ öffnete deshalb keinen Installationsdialog (gleiches Verhalten wie im KlimaPilot-Gerätetest vom 18.11.2026, Abschnitt 2h dort).
 - Auf ausdrückliche Anweisung des Nutzers („Mach es wie bei KlimaPilot“) an den geräte-getesteten KlimaPilot-Updater angeglichen: `REQUEST_INSTALL_PACKAGES` wieder im Manifest, Übergabe direkt per `ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData (ohne Systemauswahl/Chooser). Download, Paketprüfung, Updateprüfung und Release-Workflow unverändert.
 - **Verbindlicher Updater-Stand ab jetzt (wie KlimaPilot):** `ACTION_VIEW` + FileProvider + ClipData + `REQUEST_INSTALL_PACKAGES`. Die frühere Annahme, die Berechtigung sei überflüssig, ist durch den KlimaPilot-Gerätetest widerlegt. Play Protect kann beim Update „Trotzdem installieren“ verlangen.
-- **Einmaliger Übergang:** Installierte Versionen ohne die Berechtigung (1.29.132, 1.30.0) können 1.30.1 nicht selbst installieren. 1.30.1 einmalig manuell über den Browser installieren (gleiche Signatur, Daten bleiben erhalten); danach funktioniert der In-App-Updater wieder.
+- **Einmaliger Übergang:** Installierte Versionen ohne die Berechtigung (1.29.132, 1.30.0) konnten 1.30.1 nicht selbst installieren; 1.30.1 wurde am 18.11.2026 einmalig manuell installiert. Danach funktioniert der In-App-Updater wieder (Gerätetest siehe oben).
 - Die Updater-Sperre gilt weiter: keine weiteren Updater-Änderungen ohne ausdrückliche Nutzeranweisung.
 
 
@@ -41,7 +51,7 @@
 - **Updater unverändert:** `GithubUpdateCard.kt`, `GithubPrivateUpdates.kt`, `StartupUpdateCheck`, FileProvider, Signierung und `android.yml` sind nicht verändert.
 - **Neuer Prüf-Workflow** `.github/workflows/branch-validation.yml`: nur für Branches außer `main`, führt Unit-Tests und Release-Kotlin-Kompilierung aus, baut/signiert/veröffentlicht nichts. Lauf auf Branch `feature/smartphone-sync` (Commit `7cf4216`) erfolgreich, 65 Unit-Tests bestanden.
 - **Hinweis Übergang:** Smartphones mit älterer HomePilot-Version melden beim Speichern von Räumen/Profilen ggf. „Konflikt erkannt“, bis sie ebenfalls aktualisiert sind.
-- **Noch offen:** Gerätetest (Anmeldung nach Update, Kopplung, Abgleich Raum/Gerät/Favorit zwischen zwei Smartphones, QR-Einrichtung).
+- Anmeldung nach Update vom Nutzer bestätigt (18.11.2026). **Noch offen:** Kopplung, Abgleich Raum/Gerät/Favorit zwischen zwei Smartphones, QR-Einrichtung.
 
 
 ## Projektweiter Statusabgleich – 15.11.2026
@@ -332,10 +342,14 @@ Geschützt sind insbesondere:
 
 Diese Sperre darf nur durch eine spätere, ausdrückliche und konkrete Anweisung des Nutzers aufgehoben werden, die genau die gewünschte Updater-Änderung benennt. Allgemeine Feature-Aufträge sind niemals als Erlaubnis zur Änderung des Updaters zu verstehen.
 
-Der Nutzer hat am 17.11.2026 bestätigt, dass der Updater nach Rücknahme der Play-Protect-auslösenden Manifest-Berechtigung wieder funktioniert. Diesen funktionierenden Zustand bewahren.
+**Geräte-getesteter Referenzstand (18.11.2026): HomePilot 1.30.2 / versionCode 193.** In-App-Update 1.30.1 → 1.30.2 öffnete den Installationsdialog, Play Protect meldete „Diese App ist anscheinend sicher“. Updater wie KlimaPilot: `ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData, **`REQUEST_INSTALL_PACKAGES` im Manifest ist erforderlich** und darf nicht entfernt werden. Diesen Zustand bewahren.
+
+> Überholt: Die Angabe vom 17.11.2026, der Updater funktioniere nach Rücknahme der Berechtigung, traf nicht zu – ohne sie öffnete „Update laden“ keinen Installationsdialog. Die Berechtigung wurde am 18.11.2026 auf ausdrückliche Nutzeranweisung wieder eingetragen.
 
 
 ## Verbindliche Regeln: APK-Installer, In-App-Update und Play Protect (05.11.2026)
+
+> Aktueller Referenzstand und Gerätetest: siehe „Gerätetest Updater und Play Protect – 18.11.2026“ und „Absolute Sperre“. Ältere Abschnitte (05.11.–17.11.2026), die das Entfernen von `REQUEST_INSTALL_PACKAGES` wegen Play Protect beschreiben, sind überholt und nur noch Historie.
 
 Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geändert werden.
 
@@ -343,7 +357,7 @@ Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geä
 - Vor jeder Änderung am Installer zuerst den letzten nachweislich funktionierenden Stand, den aktuellen Code und frühere erfolgreiche Fixes vergleichen. Insbesondere den bewährten KlimaPilot-Fix prüfen und bei passender Android-Implementierung wiederverwenden.
 - Der derzeit bewährte APK-Übergabepfad ist: `ACTION_VIEW`, MIME-Type `application/vnd.android.package-archive`, FileProvider-URI, `FLAG_GRANT_READ_URI_PERMISSION`, `FLAG_ACTIVITY_NEW_TASK` und `ClipData.newUri(...)`.
 - Diesen Ablauf nicht eigenmächtig durch `ACTION_INSTALL_PACKAGE`, andere Intent-Varianten oder andere URI-/Berechtigungsübergaben ersetzen.
-- `REQUEST_INSTALL_PACKAGES` nicht ohne vorherigen Vergleich mit dem funktionierenden Referenzstand hinzufügen oder entfernen.
+- `REQUEST_INSTALL_PACKAGES` gehört zum geräte-getesteten Referenzstand (1.30.2, 18.11.2026) und bleibt im Manifest. Nicht entfernen, auch nicht bei einer Play-Protect-Warnung, ohne ausdrückliche Nutzeranweisung.
 - APK-Signierung, Zertifikat/Schlüssel, Build-Konfiguration, Manifest-Berechtigungen und Installer nur nach Prüfung der Auswirkungen auf Play Protect und Updatefähigkeit ändern.
 - Play-Protect-Warnungen nicht mit wahllosen Installer-Änderungen, neuen Intent-Varianten oder zusätzlichen Warnungsdialogen behandeln. Zuerst den letzten warnungsfreien Produktionsstand und bekannte erfolgreiche Fixes vergleichen.
 

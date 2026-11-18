@@ -1,3 +1,12 @@
+## Gerätetest Updater und Play Protect – 18.11.2026, 22:29–22:44 Uhr (bestätigt)
+
+- **22:29 Uhr – 1.30.1 einmalig manuell installiert** (APK aus Release `latest`, per Messenger aufs Smartphone): Google Play Protect meldet **„Diese App ist anscheinend sicher – Du kannst mit der Installation fortfahren“**, obwohl `REQUEST_INSTALL_PACKAGES` im Manifest steht. Installation erfolgreich, Anmeldung und Daten blieben erhalten.
+- **22:44 Uhr – Update 1.30.1 → 1.30.2 über den In-App-Updater** („Update laden“ in den Einstellungen): Der Android-Installationsdialog öffnet sich, Play Protect meldet erneut **„Diese App ist anscheinend sicher“**. Damit ist der KlimaPilot-gleiche Updater (`ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData + `REQUEST_INSTALL_PACKAGES`) auf dem Gerät bestätigt.
+- **Schlussfolgerung:** `REQUEST_INSTALL_PACKAGES` ist für den Updater nötig und nach diesen beiden Scans nicht der Auslöser der früheren Play-Protect-Blockaden. Die Begründung der Rücknahme vom 17.11.2026 (1.29.132) war falsch; ohne die Berechtigung öffnete „Update laden“ keinen Installationsdialog. Play Protect kann seine Einstufung später ändern – bei einer neuen Warnung zuerst diesen Stand vergleichen, nicht die Berechtigung entfernen.
+- **Verbindlicher, geräte-getesteter Updater-Referenzstand: HomePilot 1.30.2 / versionCode 193** (Build #442, Commit `5abe795`). Dieser Stand ist bei allen künftigen Arbeiten zu bewahren; die Updater-Sperre gilt unverändert.
+- Ebenfalls bestätigt: Nach dem Update bleibt die Anmeldung erhalten (neue lokale Kontenliste, Übernahme aus ioBroker). Die Oberfläche zeigt den Abschnitt „Smartphones koppeln“.
+- **Noch offen:** Kopplung zweier Smartphones und Abgleich von Raum, Gerät und Favorit zwischen ihnen; Einrichtung per QR-Code.
+
 ## Farben und Kopplungstext – 1.30.2 / 193 (18.11.2026)
 
 - Lila/Rosa entfernt: Raumauswahl-Kachel nutzt jetzt das HomePilot-Blau (wie die MOVA-Kachel); alle bisher nicht gesetzten Material-Standardfarben (Container, Navigationsmarkierung, Schalter, Dialog- und Menüflächen) im hellen und dunklen Schema auf Blau/Blaugrau abgestimmt. Farbvorgaben für Hue-Lampen („Violett“, „Pink“) bleiben, da sie echte Lampenfarben darstellen.
@@ -9,7 +18,7 @@
 - Befund: Seit 1.29.132 fehlte `REQUEST_INSTALL_PACKAGES`; „Update laden“ öffnete deshalb keinen Installationsdialog (gleiches Verhalten wie im KlimaPilot-Gerätetest vom 18.11.2026, Abschnitt 2h dort).
 - Auf ausdrückliche Anweisung des Nutzers („Mach es wie bei KlimaPilot“) an den geräte-getesteten KlimaPilot-Updater angeglichen: `REQUEST_INSTALL_PACKAGES` wieder im Manifest, Übergabe direkt per `ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData (ohne Systemauswahl/Chooser). Download, Paketprüfung, Updateprüfung und Release-Workflow unverändert.
 - **Verbindlicher Updater-Stand ab jetzt (wie KlimaPilot):** `ACTION_VIEW` + FileProvider + ClipData + `REQUEST_INSTALL_PACKAGES`. Die frühere Annahme, die Berechtigung sei überflüssig, ist durch den KlimaPilot-Gerätetest widerlegt. Play Protect kann beim Update „Trotzdem installieren“ verlangen.
-- **Einmaliger Übergang:** Installierte Versionen ohne die Berechtigung (1.29.132, 1.30.0) können 1.30.1 nicht selbst installieren. 1.30.1 einmalig manuell über den Browser installieren (gleiche Signatur, Daten bleiben erhalten); danach funktioniert der In-App-Updater wieder.
+- **Einmaliger Übergang:** Installierte Versionen ohne die Berechtigung (1.29.132, 1.30.0) konnten 1.30.1 nicht selbst installieren; 1.30.1 wurde am 18.11.2026 einmalig manuell installiert. Danach funktioniert der In-App-Updater wieder (Gerätetest siehe oben).
 - Die Updater-Sperre gilt weiter: keine weiteren Updater-Änderungen ohne ausdrückliche Nutzeranweisung.
 
 ## Smartphone-Kopplung, Smartphone-Sync und neue Anmeldung – 1.30.0 / 191 (18.11.2026)
@@ -23,14 +32,17 @@
 - **Updater unverändert:** `GithubUpdateCard.kt`, `GithubPrivateUpdates.kt`, `StartupUpdateCheck`, FileProvider, Signierung und `android.yml` sind nicht verändert.
 - **Neuer Prüf-Workflow** `.github/workflows/branch-validation.yml`: nur für Branches außer `main`, führt Unit-Tests und Release-Kotlin-Kompilierung aus, baut/signiert/veröffentlicht nichts. Lauf auf Branch `feature/smartphone-sync` (Commit `7cf4216`) erfolgreich, 65 Unit-Tests bestanden.
 - **Hinweis Übergang:** Smartphones mit älterer HomePilot-Version melden beim Speichern von Räumen/Profilen ggf. „Konflikt erkannt“, bis sie ebenfalls aktualisiert sind.
-- **Noch offen:** Gerätetest (Anmeldung nach Update, Kopplung, Abgleich Raum/Gerät/Favorit zwischen zwei Smartphones, QR-Einrichtung).
+- Anmeldung nach Update vom Nutzer bestätigt (18.11.2026). **Noch offen:** Kopplung, Abgleich Raum/Gerät/Favorit zwischen zwei Smartphones, QR-Einrichtung.
 
 ## Verbindliche Projektsperre: Updater bleibt unangetastet (17.11.2026)
 - Dauerhafte Nutzerregel: Der HomePilot-Updater darf bei keiner normalen Entwicklungsarbeit verändert werden – weder direkt noch indirekt. Das umfasst Updateprüfung, Download, Installer, Manifest-Berechtigungen, FileProvider/URI, Signierung/Keystore, Update-UI und Release-/Workflow-Logik.
 - Vor jedem Feature-Diff ist zu prüfen, dass der Updater unberührt bleibt. Bei möglichem Konflikt Arbeit stoppen und Nutzer informieren. Nur eine ausdrückliche, konkrete spätere Nutzeranweisung kann eine gezielte Updater-Änderung erlauben.
 - Vollständige verbindliche Regel: `PROJECT_STATUS.md`, Abschnitt **„Absolute Sperre: Updater darf nicht verändert werden“**.
+- Geräte-getesteter Referenzstand seit 18.11.2026: **1.30.2** mit `REQUEST_INSTALL_PACKAGES` (siehe „Gerätetest Updater und Play Protect“).
 
-## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026)
+## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026) – ÜBERHOLT
+
+> **Überholt seit 18.11.2026:** Die hier angenommene Ursache war falsch. Ohne `REQUEST_INSTALL_PACKAGES` öffnete der Updater keinen Installationsdialog; mit der Berechtigung stuft Play Protect HomePilot als sicher ein (Gerätetest 1.30.1/1.30.2). Maßgeblich ist der Abschnitt „Gerätetest Updater und Play Protect“.
 
 - Ursache des erneuten Play-Protect-Blocks: `android.permission.REQUEST_INSTALL_PACKAGES` war versehentlich erneut in `app/src/main/AndroidManifest.xml` eingetragen.
 - Die Berechtigung wurde im Code-Commit `2060a03e20ea` wieder entfernt. Der bewährte `ACTION_VIEW`-Übergabepfad in `GithubUpdateCard.kt` wurde ausdrücklich nicht verändert.
@@ -50,18 +62,16 @@
 - Roidmi EVE Plus: Der erklärende Satz zum global einstellbaren Saug-/Wasserlevel wurde entfernt; Modus-, Saugstufen- und Wasserstufenanzeigen bleiben erhalten.
 - Diese Änderungen sind in der aktuellen Version **1.29.132 / versionCode 190** enthalten.
 
-## Aktueller verifizierter Produktionsstand – 18.11.2026, 03:09 MEZ
+## Aktueller verifizierter Produktionsstand – 18.11.2026, 22:45 MEZ
 
-- Aktueller `main`-HEAD: `7036299771fc02327fe810e8038e7b587007acc8` (Dokumentationscommit).
-- Letzter relevanter App-Code-Commit: `2060a03e20ea` – Entfernung der erneut eingetragenen `REQUEST_INSTALL_PACKAGES`-Berechtigung. Versionscommit: `5dddd23680ef`.
-- Version aus `app/build.gradle.kts`: **1.29.132 / versionCode 190**.
-- APK-Build-Quellcommit: `73b8601c473b2a08fbe85a65c2960835a12429af` (Dokumentationscommit auf demselben Codebaum).
-- GitHub Actions [Build #439](https://github.com/Apropo1710/HomePilot/actions/runs/44147449227): **completed / success**.
-- Release `latest`: Asset `HomePilot.apk`, Asset-ID `760164758`, 12.552.576 Bytes; aktualisiert 17.11.2026, 18:30:42 UTC.
-- APK-SHA-256: `eb28ebfa36b0f697d7ec92452f3035ba2a47616f496acae15e4265b62d9140fe`; Signaturprüfung im Produktionsworkflow erfolgreich.
+- Version aus `app/build.gradle.kts`: **1.30.2 / versionCode 193**.
+- APK-Build-Quellcommit: `5abe795971b996ec7160676202b19ebaf96af7b2`; GitHub Actions Build **#442** (Run `44403463104`): **completed / success**, Signaturprüfung erfolgreich.
+- Release `latest`: Asset `HomePilot.apk`, Asset-ID `765111340`, 13.713.155 Bytes; aktualisiert 18.11.2026, 21:41:22 UTC.
+- APK-SHA-256: `17362222023b7aa9c9b5a8b3f46c3fdf7f3bb5cae943c2aa9f27ee808044d306`.
+- In-App-Update auf diese Version vom Nutzer bestätigt (siehe „Gerätetest Updater und Play Protect“).
 - APK: https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk
-- X20+: bidirektionale Zeitplansynchronisation und relevante Steuerfunktionen sind vom Nutzer praktisch bestätigt. Eve Plus: Zeitplaneditor und bidirektionale Synchronisation sind bestätigt; der gezielte Hardwaretest einer Zeitplan-Schreibänderung bleibt offen.
-- Keine HomePilot-Pull-Requests offen.
+
+> Vorheriger Stand (03:09 MEZ, 1.29.132 ohne `REQUEST_INSTALL_PACKAGES`) ist überholt.
 
 ## Branchstatus außerhalb von `main` – 18.11.2026
 
