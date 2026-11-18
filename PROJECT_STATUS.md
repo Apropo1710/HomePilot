@@ -14,6 +14,20 @@
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
 
+## Smartphone-Kopplung, Smartphone-Sync und neue Anmeldung – 1.30.0 / 191 (18.11.2026)
+
+- Übernahme der Lösung aus KlimaPilot (Stand 0.4.78), auf ausdrücklichen Wunsch des Nutzers direkt nach `main`.
+- **Kopplung:** Einstellungen → „Smartphones koppeln“: ein Gerät zeigt einen QR-Code, das andere scannt ihn einmal (signierte Einladung/Antwort/Speicherbestätigung, Android-Keystore-ECDSA, lokale Liste vertrauenswürdiger Geräte). Paket `de.homepilot.app.sync` ist eine 1:1-Portierung des KlimaPilot-Pakets mit eigenen Kennungen (`_homepilot-sync._tcp.`, Protokoll-Magic `HPT1`, Keystore-Alias `de.homepilot.peer.identity.v1`).
+- **Abgleich zwischen Smartphones:** automatisch im Vordergrund, sobald mindestens ein Gerät gekoppelt ist (DNS-SD-Suche, Abgleich beim Finden und alle 30 s). Inhalt: Benutzerkonten, gemeinsame Konfiguration (Räume, Gerätenamen, Raumzuordnung, Gerätetypen, ausgeblendete Geräte, übernommene Hue-Lampen) und Benutzerprofile (Favoriten, Reihenfolgen, Hintergrund-Timeout) sowie die ioBroker-Adresse, falls keine gespeichert ist. TCP im WLAN ist wie bei KlimaPilot unverschlüsselt, aber gegenseitig authentifiziert.
+- **ioBroker bleibt parallel:** Konten (`0_userdata.0.HomePilot.accounts`), Konfiguration (`…config`) und Profile (`…profiles.<user>`) werden jetzt lokal gespeichert und beidseitig mit ioBroker abgeglichen (beim Verbinden und alle 30 s). Regel überall gleich: höhere Revision gewinnt, bei gleicher Revision neuere Änderungszeit, danach Inhalts-Digest. Neues optionales Feld `importedLights` in der Konfiguration (ältere Dokumente bleiben lesbar).
+- **Anmeldung:** lokale Kontenliste, damit Anmeldung auch ohne ioBroker funktioniert. Ohne lokale Konten werden sie automatisch aus ioBroker übernommen (gemerkter Benutzer bleibt angemeldet). Falls ioBroker nicht erreichbar ist: Adresseingabe oder Einrichtung per QR-Code. Admins zeigen den QR unter Einstellungen → Benutzereinstellungen → „Anderes Smartphone einrichten“ (10 Minuten gültig, nur Passwort-Hashes). Der alte Bildschirm „Mit ioBroker verbinden“ entfällt.
+- **Manifest:** nur `ACCESS_NETWORK_STATE` und `CHANGE_WIFI_MULTICAST_STATE` sowie ML-Kit-Metadaten für den QR-Scanner ergänzt. Keine Installationsberechtigung.
+- **Updater unverändert:** `GithubUpdateCard.kt`, `GithubPrivateUpdates.kt`, `StartupUpdateCheck`, FileProvider, Signierung und `android.yml` sind nicht verändert.
+- **Neuer Prüf-Workflow** `.github/workflows/branch-validation.yml`: nur für Branches außer `main`, führt Unit-Tests und Release-Kotlin-Kompilierung aus, baut/signiert/veröffentlicht nichts. Lauf auf Branch `feature/smartphone-sync` (Commit `7cf4216`) erfolgreich, 65 Unit-Tests bestanden.
+- **Hinweis Übergang:** Smartphones mit älterer HomePilot-Version melden beim Speichern von Räumen/Profilen ggf. „Konflikt erkannt“, bis sie ebenfalls aktualisiert sind.
+- **Noch offen:** Gerätetest (Anmeldung nach Update, Kopplung, Abgleich Raum/Gerät/Favorit zwischen zwei Smartphones, QR-Einrichtung).
+
+
 ## Projektweiter Statusabgleich – 15.11.2026
 - Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
 - Der aktuelle APK-Build wurde aus Dokumentationscommit `32e81218b47a44988ecbdd85df7ad8c9d6990e09` erstellt; GitHub Actions Run `43666036392`: **completed / success**. Der App-Code blieb unverändert.
