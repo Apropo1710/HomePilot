@@ -86,7 +86,7 @@ class HomePilotPeerTcpJvmTest {
             Socket(InetAddress.getLoopbackAddress(), listener.localPort).use { socket ->
                 val data = java.io.DataOutputStream(socket.getOutputStream())
                 val input = java.io.DataInputStream(socket.getInputStream())
-                data.writeInt(0x4B505431)
+                data.writeInt(0x48505431)
                 data.write(ByteArray(32) { 7 })
                 data.flush()
                 input.readInt()
@@ -119,7 +119,7 @@ class HomePilotPeerTcpJvmTest {
             Socket(InetAddress.getLoopbackAddress(), listener.localPort).use {
                 val out = it.getOutputStream()
                 val data = java.io.DataOutputStream(out)
-                data.writeInt(0x4B505431)
+                data.writeInt(0x48505431)
                 data.write(ByteArray(32))
                 data.flush()
                 // Server responds with its nonce, identity, then reads this length.
@@ -154,7 +154,7 @@ class HomePilotPeerTcpJvmTest {
             }
             Socket(InetAddress.getLoopbackAddress(), listener.localPort).use {
                 val data = java.io.DataOutputStream(it.getOutputStream())
-                data.writeInt(0x4B505431)
+                data.writeInt(0x48505431)
                 data.write(byteArrayOf(1, 2, 3, 4))
                 data.flush()
             }
@@ -236,7 +236,7 @@ class HomePilotPeerTcpJvmTest {
                     // but the complete 4-byte field exceeds the 10s handshake deadline.
                     repeat(4) {
                         Thread.sleep(3_500)
-                        output.write(if (it == 0) 0x4B else if (it == 1) 0x50 else if (it == 2) 0x54 else 0x31)
+                        output.write(if (it == 0) 0x48 else if (it == 1) 0x50 else if (it == 2) 0x54 else 0x31)
                         output.flush()
                     }
                     true
