@@ -1,3 +1,11 @@
+## Updater wie KlimaPilot – 1.30.1 / 192 (18.11.2026, ausdrückliche Nutzeranweisung)
+
+- Befund: Seit 1.29.132 fehlte `REQUEST_INSTALL_PACKAGES`; „Update laden“ öffnete deshalb keinen Installationsdialog (gleiches Verhalten wie im KlimaPilot-Gerätetest vom 18.11.2026, Abschnitt 2h dort).
+- Auf ausdrückliche Anweisung des Nutzers („Mach es wie bei KlimaPilot“) an den geräte-getesteten KlimaPilot-Updater angeglichen: `REQUEST_INSTALL_PACKAGES` wieder im Manifest, Übergabe direkt per `ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData (ohne Systemauswahl/Chooser). Download, Paketprüfung, Updateprüfung und Release-Workflow unverändert.
+- **Verbindlicher Updater-Stand ab jetzt (wie KlimaPilot):** `ACTION_VIEW` + FileProvider + ClipData + `REQUEST_INSTALL_PACKAGES`. Die frühere Annahme, die Berechtigung sei überflüssig, ist durch den KlimaPilot-Gerätetest widerlegt. Play Protect kann beim Update „Trotzdem installieren“ verlangen.
+- **Einmaliger Übergang:** Installierte Versionen ohne die Berechtigung (1.29.132, 1.30.0) können 1.30.1 nicht selbst installieren. 1.30.1 einmalig manuell über den Browser installieren (gleiche Signatur, Daten bleiben erhalten); danach funktioniert der In-App-Updater wieder.
+- Die Updater-Sperre gilt weiter: keine weiteren Updater-Änderungen ohne ausdrückliche Nutzeranweisung.
+
 ## Smartphone-Kopplung, Smartphone-Sync und neue Anmeldung – 1.30.0 / 191 (18.11.2026)
 
 - Übernahme der Lösung aus KlimaPilot (Stand 0.4.78), auf ausdrücklichen Wunsch des Nutzers direkt nach `main`.

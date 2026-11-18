@@ -132,8 +132,8 @@ internal fun GithubUpdateCard(appVersion: String) {
                             busy = true
                             status = "APK wird sicher heruntergeladen …"
                             try {
-                                status = "Download abgeschlossen. APK wird geprüft …"
                                 val file = GithubPrivateUpdates.download(context, assetId!!)
+                                status = "Download abgeschlossen. APK wird geprüft …"
                                 val archive = context.packageManager.getPackageArchiveInfo(file.absolutePath, 0)
                                     ?: error("Die heruntergeladene Datei ist keine gültige Android-APK.")
                                 if (archive.packageName != context.packageName) {
@@ -147,8 +147,8 @@ internal fun GithubUpdateCard(appVersion: String) {
                                     clipData = android.content.ClipData.newUri(context.contentResolver, "HomePilot APK", uri)
                                 }
                                 status = "APK geprüft. Android-Installationsdialog wird geöffnet …"
-                                context.startActivity(Intent.createChooser(intent, "HomePilot APK installieren"))
-                                status = "Android-Installationsdialog wurde über die Systemauswahl angefordert. Bitte die Installation dort bestätigen."
+                                context.startActivity(intent)
+                                status = "Android-Installationsdialog wurde angefordert. Bitte die Installation dort bestätigen."
                             } catch (error: Exception) {
                                 status = "Update fehlgeschlagen: " + (error.message ?: error.javaClass.simpleName)
                             } finally {
