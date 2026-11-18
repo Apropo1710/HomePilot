@@ -4,36 +4,44 @@
 - Vollständige verbindliche Regel: `PROJECT_STATUS.md`, Abschnitt **„Absolute Sperre: Updater darf nicht verändert werden“**.
 
 ## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026)
-## Play-Protect-Korrektur – Rücknahme der Installer-Berechtigung (17.11.2026)
-- Ursache des erneuten Play-Protect-Blocks: In `app/src/main/AndroidManifest.xml` war `android.permission.REQUEST_INSTALL_PACKAGES` erneut eingetragen. Die Berechtigung war laut verbindlicher Updater-Dokumentation bereits am 05.11.2026 als Play-Protect-auslösend entfernt worden.
-- Die Berechtigung wurde jetzt wieder entfernt. Der vorhandene, an KlimaPilot 0.4.21 angeglichene `ACTION_VIEW`-Übergabepfad in `GithubUpdateCard.kt` wurde ausdrücklich nicht verändert.
-- Die stabile Signierung wurde geprüft: Keystore-SHA-256 und APK-Zertifikats-Fingerprint stimmen mit Build #431 (vorheriger Produktionsstand) überein.
-- Installationsversion: **1.29.132 / versionCode 190**. Build, Manifestprüfung, Release-Veröffentlichung und erneuter Play-Protect-Gerätetest stehen noch aus.
+
+- Ursache des erneuten Play-Protect-Blocks: `android.permission.REQUEST_INSTALL_PACKAGES` war versehentlich erneut in `app/src/main/AndroidManifest.xml` eingetragen.
+- Die Berechtigung wurde im Code-Commit `2060a03e20ea` wieder entfernt. Der bewährte `ACTION_VIEW`-Übergabepfad in `GithubUpdateCard.kt` wurde ausdrücklich nicht verändert.
+- Versionscommit: `5dddd23680ef`; Version **1.29.132 / versionCode 190**.
+- GitHub Actions [Build #439](https://github.com/Apropo1710/HomePilot/actions/runs/44147449227) für APK-Build-Quellcommit `73b8601c473b`: **completed / success**. Signaturprüfung erfolgreich.
+- Release `latest`: Asset `HomePilot.apk`, Asset-ID `760164758`, 12.552.576 Bytes; aktualisiert 17.11.2026, 18:30:42 UTC.
+- APK-SHA-256 laut automatisch gepflegtem Produktionsnachweis: `eb28ebfa36b0f697d7ec92452f3035ba2a47616f496acae15e4265b62d9140fe`.
+- **Noch offen:** erneuter Play-Protect-Test und Nutzer-Endtest der installierten 1.29.132.
+- Die dauerhafte Updater-Sperre bleibt bestehen: keine weiteren Änderungen an Updateprüfung, Download, Installer, Manifest-Berechtigungen, FileProvider/URI, Signierung, Update-UI oder Release-/Workflowlogik ohne ausdrückliche konkrete Nutzeranweisung.
+
 
 # Projektstatus – HomePilot
 
 ## Roboter-Rückmeldungen und Roidmi-Beschriftung (17.11.2026)
-- Xiaomi X20+: Nach erfolgreicher Annahme des Raumreinigungsbefehls wird direkt eine grüne Rückmeldung **„Reinigung gestartet“** bei den Reinigungsbereichen angezeigt. Die bisherige gelbe Meldung „Reinigungsauftrag angenommen – Start wird geprüft.“ entfällt. Eine nachgelagerte Statusprüfung überschreibt die Rückmeldung weiterhin mit einem Fehler, falls der Adapter einen fehlgeschlagenen Start meldet.
-- Roidmi EVE Plus: Der erklärende Satz „Modus wird vom Adapter nur angezeigt; Saug- und Wasserstufe sind hier global einstellbar.“ wurde entfernt. Die Modus-, Saugstufen- und Wasserstufenanzeigen bleiben bestehen.
-- Installationsversion: **1.29.131 / versionCode 189**. GitHub-Actions-Build und Release-Prüfung stehen noch aus.
 
-## Aktueller verifizierter Produktionsstand – 17.11.2026, 02:56 MEZ
+- Xiaomi X20+: Nach erfolgreicher Annahme des Raumreinigungsbefehls erscheint direkt bei den Reinigungsbereichen die grüne Rückmeldung **„Reinigung gestartet“**. Eine nachgelagerte Statusprüfung kann sie weiterhin durch einen tatsächlichen Fehler ersetzen.
+- Roidmi EVE Plus: Der erklärende Satz zum global einstellbaren Saug-/Wasserlevel wurde entfernt; Modus-, Saugstufen- und Wasserstufenanzeigen bleiben erhalten.
+- Diese Änderungen sind in der aktuellen Version **1.29.132 / versionCode 190** enthalten.
 
-- `main`-HEAD vor dieser Statuspflege: `9dc54befca048a90d031f4adf088d76c00ed9be2` (Dokumentationscommit); letzter App-Code-Commit: `c0a7740dc6a010a5c52b7f51414be4f6de7aaf62` – Rückmeldung zum Raumreinigungsstart direkt bei den Reinigungszonen.
-- Versionscommit: `c402b8e38abcda5c16e39ca602be913745ee53a1`; Paketversion aus `app/build.gradle.kts`: **1.29.130 / versionCode 188**.
-- APK-Build-Quellcommit: `0defefe727e56be727da7832ccd50f0e53c2ab87` (STATUS-Dokumentationscommit auf dem aktuellen Codebaum).
-- GitHub Actions [Build #431](https://github.com/Apropo1710/HomePilot/actions/runs/43924784448): **completed / success**, exakt für den APK-Build-Quellcommit.
-- Release `latest`: Asset `HomePilot.apk`, Asset-ID `755901350`, 12.552.612 Bytes; aktualisiert 16.11.2026, 18:11:30 UTC. APK-SHA-256 laut Produktionsnachweis: `3523e02c4fbe820f6af44b2b46d359661ec57c6a9188504be9d969cd53940412`; Signaturprüfung erfolgreich.
-- Git-Tag `latest` zeigt auf `9dc54befca048a90d031f4adf088d76c00ed9be2` (Dokumentationscommit nach dem APK-Build); kein offener HomePilot-PR.
-- `feat/roidmi-eve-plus-options`: 3 Commits voraus / 229 zurück; `fix/update-installer-result`: 0 voraus / 226 zurück. Beide bleiben unverändert und werden nicht automatisch übernommen oder gelöscht.
+## Aktueller verifizierter Produktionsstand – 18.11.2026, 03:09 MEZ
 
+- Aktueller `main`-HEAD: `7036299771fc02327fe810e8038e7b587007acc8` (Dokumentationscommit).
+- Letzter relevanter App-Code-Commit: `2060a03e20ea` – Entfernung der erneut eingetragenen `REQUEST_INSTALL_PACKAGES`-Berechtigung. Versionscommit: `5dddd23680ef`.
+- Version aus `app/build.gradle.kts`: **1.29.132 / versionCode 190**.
+- APK-Build-Quellcommit: `73b8601c473b2a08fbe85a65c2960835a12429af` (Dokumentationscommit auf demselben Codebaum).
+- GitHub Actions [Build #439](https://github.com/Apropo1710/HomePilot/actions/runs/44147449227): **completed / success**.
+- Release `latest`: Asset `HomePilot.apk`, Asset-ID `760164758`, 12.552.576 Bytes; aktualisiert 17.11.2026, 18:30:42 UTC.
+- APK-SHA-256: `eb28ebfa36b0f697d7ec92452f3035ba2a47616f496acae15e4265b62d9140fe`; Signaturprüfung im Produktionsworkflow erfolgreich.
+- APK: https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk
+- X20+: bidirektionale Zeitplansynchronisation und relevante Steuerfunktionen sind vom Nutzer praktisch bestätigt. Eve Plus: Zeitplaneditor und bidirektionale Synchronisation sind bestätigt; der gezielte Hardwaretest einer Zeitplan-Schreibänderung bleibt offen.
+- Keine HomePilot-Pull-Requests offen.
 
-## Branchstatus außerhalb von `main` – 17.11.2026
+## Branchstatus außerhalb von `main` – 18.11.2026
 
-- `feat/roidmi-eve-plus-options`: PR #1 ist gemergt, der Branch enthält danach aber weiterhin **3 Commits voraus / 229 zurück** gegenüber `main`. Die zusätzlichen Commits sind nicht automatisch als übernommen zu betrachten; Branch behalten und vor Wiederverwendung einzeln vergleichen.
-- `fix/update-installer-result`: **0 Commits voraus / 226 zurück**, kein offener PR; historischer Nebenbranch.
-- `docs/status-refresh-2026-11-16`: PR #2 wurde geschlossen, nicht gemergt. Der Branch liegt **1 Commit voraus / 35 zurück** und enthält einen abweichenden `STATUS.md`-Stand; kein offener PR. Nicht ungeprüft übernehmen.
-- Aktuell sind keine HomePilot-Pull-Requests offen. Keine Nebenbranch wurde in dieser Pflege gemergt oder gelöscht; `main` bleibt maßgeblich.
+- `feat/roidmi-eve-plus-options`: PR #1 ist gemergt; der Branch enthält weiterhin **3 Commits voraus / 252 zurück** gegenüber `main`. Zusätzliche Commits sind nicht automatisch als übernommen zu betrachten.
+- `fix/update-installer-result`: **0 Commits voraus / 249 zurück**, kein offener PR; historischer Nebenbranch.
+- `docs/status-refresh-2026-11-16`: PR #2 wurde geschlossen, nicht gemergt; abweichende Statusdatei, nicht ungeprüft übernehmen.
+- Keine Nebenbranch wurde in dieser Statuspflege gemergt oder gelöscht. `main` bleibt maßgeblich.
 
 ## Roboter-Detailseiten – Rückmeldung bei Raumreinigung direkt an den Reinigungszonen (16.11.2026)
 - Die dauerhafte Rückmeldung „Reinigung gestartet“ wurde aus der oberen Gerätestatus-Kachel entfernt.
