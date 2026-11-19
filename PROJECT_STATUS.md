@@ -14,463 +14,98 @@
 
 <!-- AUTO-PRODUCTION-STATUS:END -->
 
-## Gerätetest Updater und Play Protect – 18.11.2026, 22:29–22:44 Uhr (bestätigt)
 
-- **22:29 Uhr – 1.30.1 einmalig manuell installiert** (APK aus Release `latest`, per Messenger aufs Smartphone): Google Play Protect meldet **„Diese App ist anscheinend sicher – Du kannst mit der Installation fortfahren“**, obwohl `REQUEST_INSTALL_PACKAGES` im Manifest steht. Installation erfolgreich, Anmeldung und Daten blieben erhalten.
-- **22:44 Uhr – Update 1.30.1 → 1.30.2 über den In-App-Updater** („Update laden“ in den Einstellungen): Der Android-Installationsdialog öffnet sich, Play Protect meldet erneut **„Diese App ist anscheinend sicher“**. Damit ist der KlimaPilot-gleiche Updater (`ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData + `REQUEST_INSTALL_PACKAGES`) auf dem Gerät bestätigt.
-- **Schlussfolgerung:** `REQUEST_INSTALL_PACKAGES` ist für den Updater nötig und nach diesen beiden Scans nicht der Auslöser der früheren Play-Protect-Blockaden. Die Begründung der Rücknahme vom 17.11.2026 (1.29.132) war falsch; ohne die Berechtigung öffnete „Update laden“ keinen Installationsdialog. Play Protect kann seine Einstufung später ändern – bei einer neuen Warnung zuerst diesen Stand vergleichen, nicht die Berechtigung entfernen.
-- **Verbindlicher, geräte-getesteter Updater-Referenzstand: HomePilot 1.30.2 / versionCode 193** (Build #442, Commit `5abe795`). Dieser Stand ist bei allen künftigen Arbeiten zu bewahren; die Updater-Sperre gilt unverändert.
-- Ebenfalls bestätigt: Nach dem Update bleibt die Anmeldung erhalten (neue lokale Kontenliste, Übernahme aus ioBroker). Die Oberfläche zeigt den Abschnitt „Smartphones koppeln“.
-- **Noch offen:** Kopplung zweier Smartphones und Abgleich von Raum, Gerät und Favorit zwischen ihnen; Einrichtung per QR-Code.
+# HomePilot – verbindlicher Projektstatus
 
+**Letzter Abgleich:** 19.11.2026, 06:30 Uhr MEZ (Dokumentation bereinigt; Produktion 1.30.2)
+**Repository:** https://github.com/Apropo1710/HomePilot
 
-## Farben und Kopplungstext – 1.30.2 / 193 (18.11.2026)
+Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches, Builds, Tests, Regeln, offene Punkte). `STATUS.md` verweist nur noch hierher. Die README dient als Einstieg. Der aktuelle Code auf GitHub bleibt maßgeblich; diese Datei ersetzt nicht das Lesen des Codes.
 
-- Lila/Rosa entfernt: Raumauswahl-Kachel nutzt jetzt das HomePilot-Blau (wie die MOVA-Kachel); alle bisher nicht gesetzten Material-Standardfarben (Container, Navigationsmarkierung, Schalter, Dialog- und Menüflächen) im hellen und dunklen Schema auf Blau/Blaugrau abgestimmt. Farbvorgaben für Hue-Lampen („Violett“, „Pink“) bleiben, da sie echte Lampenfarben darstellen.
-- „Smartphones koppeln“: erklärender Hinweistext entfernt.
-- Updater unverändert.
+## 1. Produktivstand – `main`
 
+- **Aktuell in Produktion: 1.30.2 / versionCode 193** (Build #442, Code-Commit `5abe795`, Release `latest`, Asset `HomePilot.apk`, SHA-256 `17362222023b7aa9c9b5a8b3f46c3fdf7f3bb5cae943c2aa9f27ee808044d306`, Signaturprüfung erfolgreich).
+- Gerätetest 18.11.2026: 1.30.1 einmalig manuell installiert, danach Update 1.30.1 → 1.30.2 über den In-App-Updater. Installationsdialog öffnete sich, Play Protect meldete „Diese App ist anscheinend sicher“. Anmeldung und Daten blieben erhalten.
+- [Direkter APK-Download](https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk)
 
-## Updater wie KlimaPilot – 1.30.1 / 192 (18.11.2026, ausdrückliche Nutzeranweisung)
+## 2. Branches und Pull Requests
 
-- Befund: Seit 1.29.132 fehlte `REQUEST_INSTALL_PACKAGES`; „Update laden“ öffnete deshalb keinen Installationsdialog (gleiches Verhalten wie im KlimaPilot-Gerätetest vom 18.11.2026, Abschnitt 2h dort).
-- Auf ausdrückliche Anweisung des Nutzers („Mach es wie bei KlimaPilot“) an den geräte-getesteten KlimaPilot-Updater angeglichen: `REQUEST_INSTALL_PACKAGES` wieder im Manifest, Übergabe direkt per `ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData (ohne Systemauswahl/Chooser). Download, Paketprüfung, Updateprüfung und Release-Workflow unverändert.
-- **Verbindlicher Updater-Stand ab jetzt (wie KlimaPilot):** `ACTION_VIEW` + FileProvider + ClipData + `REQUEST_INSTALL_PACKAGES`. Die frühere Annahme, die Berechtigung sei überflüssig, ist durch den KlimaPilot-Gerätetest widerlegt. Play Protect kann beim Update „Trotzdem installieren“ verlangen.
-- **Einmaliger Übergang:** Installierte Versionen ohne die Berechtigung (1.29.132, 1.30.0) konnten 1.30.1 nicht selbst installieren; 1.30.1 wurde am 18.11.2026 einmalig manuell installiert. Danach funktioniert der In-App-Updater wieder (Gerätetest siehe oben).
-- Die Updater-Sperre gilt weiter: keine weiteren Updater-Änderungen ohne ausdrückliche Nutzeranweisung.
+- Offene PRs: **keine**. PR #1 (`feat/roidmi-eve-plus-options`) am 05.11.2026 gemergt; PR #2 (`docs/status-refresh-2026-11-16`) ohne Merge geschlossen.
+- Übrige Remote-Branches (nicht maßgeblich):
+  - `feature/smartphone-sync`: vollständig in `main` enthalten (Smartphone-Kopplung 1.30.0).
+  - `fix/update-installer-result`: keine eigenen Commits, historischer Vorfahrstand.
+  - `feat/roidmi-eve-plus-options`: 3 Commits, die nicht in `main` sind (Stand 1.29.91); nicht ungeprüft übernehmen.
+  - `docs/status-refresh-2026-11-16`: veralteter automatischer Dokumentationsstand; nicht verwenden, zum Löschen vorgesehen.
+- Workflows: `.github/workflows/android.yml` baut bei Push auf `main` (außer `[skip ci]`) die Release-APK, veröffentlicht sie im Release `latest` und pflegt den automatischen Block oben. `.github/workflows/branch-validation.yml` prüft andere Branches (Unit-Tests, Release-Kotlin-Kompilierung) ohne APK oder Veröffentlichung.
 
+## 3. Offene Punkte
 
-## Smartphone-Kopplung, Smartphone-Sync und neue Anmeldung – 1.30.0 / 191 (18.11.2026)
+1. Kopplung zweier realer Smartphones und Abgleich von Raum, Gerät und Favorit zwischen ihnen; Einrichtung per QR-Code.
+2. Roidmi EVE Plus: gezielter Hardwaretest einer Zeitplan-Schreibänderung (Synchronisation in beide Richtungen ist bestätigt).
+3. Wartungs-Resets (X20+ und EVE Plus) am realen Gerät verifizieren.
+4. MOVA: Anfahren des Wartungspunkts praktisch bestätigen.
 
-- Übernahme der Lösung aus KlimaPilot (Stand 0.4.78), auf ausdrücklichen Wunsch des Nutzers direkt nach `main`.
-- **Kopplung:** Einstellungen → „Smartphones koppeln“: ein Gerät zeigt einen QR-Code, das andere scannt ihn einmal (signierte Einladung/Antwort/Speicherbestätigung, Android-Keystore-ECDSA, lokale Liste vertrauenswürdiger Geräte). Paket `de.homepilot.app.sync` ist eine 1:1-Portierung des KlimaPilot-Pakets mit eigenen Kennungen (`_homepilot-sync._tcp.`, Protokoll-Magic `HPT1`, Keystore-Alias `de.homepilot.peer.identity.v1`).
-- **Abgleich zwischen Smartphones:** automatisch im Vordergrund, sobald mindestens ein Gerät gekoppelt ist (DNS-SD-Suche, Abgleich beim Finden und alle 30 s). Inhalt: Benutzerkonten, gemeinsame Konfiguration (Räume, Gerätenamen, Raumzuordnung, Gerätetypen, ausgeblendete Geräte, übernommene Hue-Lampen) und Benutzerprofile (Favoriten, Reihenfolgen, Hintergrund-Timeout) sowie die ioBroker-Adresse, falls keine gespeichert ist. TCP im WLAN ist wie bei KlimaPilot unverschlüsselt, aber gegenseitig authentifiziert.
-- **ioBroker bleibt parallel:** Konten (`0_userdata.0.HomePilot.accounts`), Konfiguration (`…config`) und Profile (`…profiles.<user>`) werden jetzt lokal gespeichert und beidseitig mit ioBroker abgeglichen (beim Verbinden und alle 30 s). Regel überall gleich: höhere Revision gewinnt, bei gleicher Revision neuere Änderungszeit, danach Inhalts-Digest. Neues optionales Feld `importedLights` in der Konfiguration (ältere Dokumente bleiben lesbar).
-- **Anmeldung:** lokale Kontenliste, damit Anmeldung auch ohne ioBroker funktioniert. Ohne lokale Konten werden sie automatisch aus ioBroker übernommen (gemerkter Benutzer bleibt angemeldet). Falls ioBroker nicht erreichbar ist: Adresseingabe oder Einrichtung per QR-Code. Admins zeigen den QR unter Einstellungen → Benutzereinstellungen → „Anderes Smartphone einrichten“ (10 Minuten gültig, nur Passwort-Hashes). Der alte Bildschirm „Mit ioBroker verbinden“ entfällt.
-- **Manifest:** nur `ACCESS_NETWORK_STATE` und `CHANGE_WIFI_MULTICAST_STATE` sowie ML-Kit-Metadaten für den QR-Scanner ergänzt. Keine Installationsberechtigung.
-- **Updater unverändert:** `GithubUpdateCard.kt`, `GithubPrivateUpdates.kt`, `StartupUpdateCheck`, FileProvider, Signierung und `android.yml` sind nicht verändert.
-- **Neuer Prüf-Workflow** `.github/workflows/branch-validation.yml`: nur für Branches außer `main`, führt Unit-Tests und Release-Kotlin-Kompilierung aus, baut/signiert/veröffentlicht nichts. Lauf auf Branch `feature/smartphone-sync` (Commit `7cf4216`) erfolgreich, 65 Unit-Tests bestanden.
-- **Hinweis Übergang:** Smartphones mit älterer HomePilot-Version melden beim Speichern von Räumen/Profilen ggf. „Konflikt erkannt“, bis sie ebenfalls aktualisiert sind.
-- Anmeldung nach Update vom Nutzer bestätigt (18.11.2026). **Noch offen:** Kopplung, Abgleich Raum/Gerät/Favorit zwischen zwei Smartphones, QR-Einrichtung.
+## 4. Funktionsumfang (Stand 1.30.2)
 
+### Grundfunktionen
+- Verbindung ausschließlich über ioBroker-WebSocket `ws.0` (Standard `ws://<IP>:8084`, `wss://` möglich). Simple API/HTTP (Port 8087) wird nicht verwendet.
+- Geräteerkennung (Shelly, Hue automatisch; Tuya u. a. per manueller Suche), Räume anlegen/umbenennen/löschen, Geräte umbenennen, zuordnen, verschieben und ausblenden, Raumauswahl-Kachel, aufklappbare Einstellungsbereiche.
+- Automatische Trennung im Hintergrund nach 15/30/60 Minuten oder nie; Wiederverbindung beim Zurückkehren in die App.
+- Appweiter Schalter „Diagnosetexte anzeigen“ (Standard aus) für technische Adapter-Rückmeldungen.
+- Startup-Updatehinweis mit „Zu Einstellungen“/„Später“; Download und Installation nur in den Einstellungen.
 
-## Projektweiter Statusabgleich – 15.11.2026
-- Maßgeblicher App-Code-Commit auf `main`: `a3c5afed22d11ef3c707fc32236d891933a25bba`; Produktionsversion **1.29.125 / versionCode 183**.
-- Der aktuelle APK-Build wurde aus Dokumentationscommit `32e81218b47a44988ecbdd85df7ad8c9d6990e09` erstellt; GitHub Actions Run `43666036392`: **completed / success**. Der App-Code blieb unverändert.
-- Release `latest` enthält `HomePilot.apk`, SHA-256 `485899947c41f4f05fdf904fec92704f6c1d7789c4a3cbfbe0cd8fa0c819fd77`; Signaturprüfung laut Produktionsnachweis erfolgreich.
-- X20+: bidirektionale Zeitplansynchronisation ist vom Nutzer bestätigt.
-- Eve Plus: Zeitplaneditor und bidirektionale Synchronisation sind bestätigt; die konkrete Hardwareprüfung einer Zeitplan-Schreibänderung bleibt offen.
-- Ältere Angaben zu Build-Quellcommit `1139405a8ff17514ba9c653e1314b9042381991b` und APK-SHA `fb49790c51b7655c257e9d55070934d37754c9964b0be33b1940406ce5414339` sind der vorherige Produktionsstand vom 13.11.2026.
+### Konten, Konfiguration und Smartphone-Abgleich (seit 1.30.0)
+- HomePilot-Konten (Administrator/Benutzer) mit lokaler Anmeldung, Passwörter nur als PBKDF2-Hash. Ohne lokale Konten automatische Übernahme aus ioBroker; sonst Adresseingabe oder QR-Einrichtung (Admin: Einstellungen → Benutzereinstellungen → „Anderes Smartphone einrichten“, 10 Minuten gültig).
+- Speicherung in ioBroker: `0_userdata.0.HomePilot.accounts`, `…config` (Räume, Gerätenamen, Zuordnungen, Gerätetypen, ausgeblendete Geräte, übernommene Hue-Lampen) und `…profiles.<user>` (Favoriten, Reihenfolgen, Hintergrund-Timeout). Abgleich beim Verbinden und alle 30 s; höhere Revision gewinnt, dann neuere Änderungszeit, dann Inhalts-Digest.
+- Smartphone-Kopplung per Ein-Scan-QR (Android-Keystore-ECDSA, signierte Speicherbestätigung), Paket `de.homepilot.app.sync` als Portierung aus KlimaPilot (`_homepilot-sync._tcp.`, Protokoll-Magic `HPT1`). Abgleich gekoppelter Geräte im Vordergrund alle 30 s; TCP authentifiziert, aber unverschlüsselt (Nutzerentscheidung, nur Heimnetz).
+- Nicht umgesetzt aus dem früheren Entwurf: getrennte Sicherungsstände `backup.*` und ioBroker-ACL-Trennung pro Benutzer. Rollen werden in der App über die HomePilot-Konten abgebildet.
 
-# HomePilot – Projektstatus
+### Saugroboter und Mähroboter
+- **Xiaomi X20+** (`roidmi.0.x20Plus.*`): Detailseite mit Start/Fortsetzen, Pause, Station, Reinigungsart (Reihenfolge wie Xiaomi Home: Saugen, Saugen und Wischen, Wischen, Saugen vor Wischen), Saugleistung, Wasserstufe, Teppich-Boost, Raumreinigung, Wartungskarte mit Reset (mit Bestätigung), Zeitpläne anzeigen, aktivieren und bearbeiten (Synchronisation in beide Richtungen bestätigt mit 1.29.120 und Adapter 0.1.63). Status kommt aus `status.statusText`; Faultcodes nur bei gemeldetem Fehler.
+- **Roidmi EVE Plus** (`roidmi.0.*`): Status, Start/Pause/Stop/Station, Saug- und Wasserstufe, Reinigungsoptionen (`individual`, `doubleClean`, `pathType`), Raumreinigung über `control.cleanRooms`, Wartungskarte mit Reset, Zeitplaneditor mit Konfliktprüfung und Readback (Hardwaretest der Schreibänderung offen).
+- Rückmeldung „Reinigung gestartet“ bei beiden Robotern direkt an den Reinigungsbereichen; bestätigte Meldung verschwindet nach 5 s, Fehler bleiben sichtbar. Kartenreihenfolge: Status → Steuerung → Einstellungen → Reinigungsbereiche → (X20+: Zeitpläne) → Wartung.
+- **MOVA**: Mäher-Kachel und Wartungsbereich (Messer- und Gerätewartung).
 
-## Aktueller Stand Eve Plus Zeitpläne (12.11.2026)
-- Zeitpläne werden beim Öffnen der Eve-Plus-Ansicht aus den vorhandenen ioBroker-Datenpunkten geladen. Dabei wird kein zusätzlicher Roboter-Refresh ausgelöst.
-- Manuelles Aktualisieren fragt die Zeitpläne gezielt über den Adapter ab; die Rückmeldung wartet auf den tatsächlichen Zeitstempel.
-- Zeitpläne können in HomePilot bearbeitet werden: Uhrzeit, Aktivierung, Wochentage, Saug-/Wasserstufe und Räume. Unbekannte Rohdaten bleiben beim Schreiben erhalten.
-- Die irreführende Erklärung zum unbekannten numerischen Reinigungsmodus wurde aus dem Bearbeitungsdialog entfernt. Der Modus selbst wird weiterhin nicht verändert.
-- Der Nutzer hat die bidirektionale Synchronisation zwischen HomePilot und Original-App ausdrücklich als funktionierend bestätigt.
-- Praktischer Gerätetest der Zeitplanänderung am Eve Plus bleibt separat zu bestätigen.
+## 5. Updater – absolute Sperre
 
-## Installer / Play Protect Rücknahme (05.11.2026)
-- Installer auf bewährten `ACTION_VIEW`-Übergabepfad zurückgestellt: APK MIME `application/vnd.android.package-archive`, FileProvider URI, Leserechte, `ClipData`.
-- `REQUEST_INSTALL_PACKAGES` entfernt. Keine `ACTION_INSTALL_PACKAGE`-Nutzung.
-- Startup-Update-Popup bleibt erhalten. Roidmi-Dock-Steuerung bleibt enthalten.
-- Version 1.29.90 / versionCode 148. Ansatz entspricht dem bereits erfolgreichen KlimaPilot-Fix (0.4.21).
+**Der HomePilot-Updater darf niemals verändert werden**, auch nicht nebenbei bei Feature-Arbeiten, Fehlerkorrekturen oder Aufräumarbeiten. Nur eine ausdrückliche, konkrete Nutzeranweisung, die genau die gewünschte Updater-Änderung benennt, hebt die Sperre auf.
 
+Geschützt sind: Updateprüfung und Versionsvergleich, GitHub-Abruf, APK-Download und Paketprüfung, Installer-Übergabe (Intent, MIME-Type, FileProvider, URI, Flags, ClipData), Manifest-Berechtigungen, Signierung/Keystore, Update-Oberfläche und Startup-Hinweis sowie die Release-Logik in `android.yml`.
 
-## Installer-Berechtigung (05.11.2026)
-- Der Installer verwendet `ACTION_INSTALL_PACKAGE`; im aktuellen Manifest fehlte die notwendige `REQUEST_INSTALL_PACKAGES`-Berechtigung, die im funktionierenden Stand 1.29.83 vorhanden war.
-- Berechtigung wieder ergänzt. Keine Play-Protect-Warnungslogik oder zusätzliche Play-Protect-Dialoge eingebaut.
-- Version 1.29.89 / versionCode 147 zur erneuten Geräteprüfung.
+**Geräte-getesteter Referenzstand: 1.30.2 / 193.** `ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + `FLAG_GRANT_READ_URI_PERMISSION` + `FLAG_ACTIVITY_NEW_TASK` + `ClipData` und **`REQUEST_INSTALL_PACKAGES` im Manifest** (identisch mit KlimaPilot). Ohne die Berechtigung öffnet „Update laden“ keinen Installationsdialog – sie darf auch bei einer Play-Protect-Warnung nicht entfernt werden.
 
+Arbeitsweise:
+- Jeden Diff auf direkte und indirekte Updater-Änderungen prüfen; bei möglichem Konflikt anhalten und den Nutzer informieren.
+- Für installierbare Versionen `versionName` und `versionCode` erhöhen; Signatur muss zur installierten App passen.
+- Download-Erfolg ist kein Nachweis für den Installationsdialog. Updater, Play Protect und Installation gelten nur durch Gerätetest des Nutzers als bestätigt, nicht durch CI.
 
-## Update-Installer Reparatur und Roidmi-Dock (05.11.2026)
-- APK-Installation in den Einstellungen auf den früheren, funktionierenden `ACTION_INSTALL_PACKAGE`-Ablauf mit FileProvider-URI zurückgesetzt. Startup-Update-Popup bleibt erhalten.
-- Keine zusätzliche Google-Play-Protect-Warnung oder eigene Play-Protect-Dialoglogik eingebaut. Die Android-Systemprüfung bleibt unverändert.
-- Roidmi-Steuerung enthält die Schaltfläche **Laden / Zur Station** (`roidmi.0.control.dock`); diese ist in Version 1.29.86 enthalten.
-- Installationsversion: **1.29.86 / versionCode 144**.
+## 6. Verbindliche Regeln
 
+- Entwicklung direkt auf `main` für die Hauptversion; größere Funktionen können vorher auf einem Feature-Branch mit `branch-validation.yml` geprüft werden. Keine separaten Testversionen.
+- Vor Änderungen aktuellen Stand von `main` und betroffenen Code lesen; Änderungen klein und gezielt; Diff vor dem Push prüfen; danach Produktionsbuild und Release kontrollieren.
+- Reine Dokumentationscommits auf `main` mit `[skip ci]` kennzeichnen.
+- Nichts als gebaut, getestet oder funktionierend darstellen, was nicht tatsächlich verifiziert ist.
+- HomePilot und KlimaPilot strikt getrennt behandeln; Klimaanlagenfunktionen nicht in HomePilot voraussetzen.
+- Neue Stände in die passenden Abschnitte dieser Datei einarbeiten und überholte Aussagen ersetzen, keine zusätzlichen Abgleich-Abschnitte anhängen.
 
-Stand: 31.10.2026  
-Repository: [Apropo1710/HomePilot](https://github.com/Apropo1710/HomePilot)  
-Produktions- und Entwicklungsbranch: `main`
+## 7. Technische Entscheidungen und Grenzen
 
-## Quelle der Wahrheit
+- `ws://` ohne Zertifikat im vertrauenswürdigen Heimnetz ist ausdrücklich gewollt; WSS/TLS wird nicht erzwungen.
+- SENEC/Energiefluss-Adapter nicht als Datenquelle einplanen (Last).
+- `mhi-wfrac` erst nach Installation der Klimaanlage berücksichtigen.
+- Hue-Bewegungsmelder im Flur vorerst nicht einplanen.
+- Waschmaschine verwaltbar, aber kein Testgerät; schaltbar ggf. später, ohne eigenen Release-Anlass.
+- Roboter: keine zusätzlichen zyklischen Abfragen; Schreib- und Prüfoperationen nur bei Nutzeraktion. Keine Werte erfinden, die der Adapter nicht liefert (z. B. m² beim EVE Plus, Wischmopp-Zähler beim EVE Plus).
+- Plugin-System nur als langfristige Idee.
 
-Der jeweils aktuelle Code auf GitHub ist maßgeblich. Vor jeder Änderung muss der aktuelle Stand des vorgesehenen Branches gelesen werden. Diese Datei dokumentiert Entscheidungen und Arbeitsstand, ersetzt aber niemals die Prüfung des aktuellen Quellcodes.
+## 8. Verlauf (kompakt)
 
-## Verbindliche Entwicklungsstrategie
-
-**Die weitere HomePilot-Entwicklung erfolgt direkt auf `main` und ist immer für die Hauptversion bestimmt.**
-
-- Keine separaten Testversionen und keine neuen Test-Branches für die normale Weiterentwicklung.
-- Änderungen werden nach Prüfung direkt auf `main` umgesetzt.
-- Die bisherigen Test-Branches stammen ausschließlich aus den abgeschlossenen GitHub-Zugriffstests und sind historische Teststände. Sie sind keine Grundlage für die weitere Entwicklung und werden nicht in die Hauptversion übernommen.
-- Vor jeder Änderung den aktuellen Stand von `main` lesen.
-- Änderungen gezielt umsetzen, den Diff prüfen und anschließend den durch den Push ausgelösten Produktionsbuild kontrollieren.
-- Eine neue APK wird erst nach erfolgreichem Build und verifizierter Verfügbarkeit als Download angeboten.
-
-## Aktueller Produktionsstand
-
-Die verbindlichen aktuellen Build-, Signatur-, Artefakt- und Release-Daten stehen im automatisch gepflegten Produktionsstatus am Dokumentanfang. Ältere Einzelstände werden nicht als aktueller Produktionsstand fortgeführt.
-
-## Build und Veröffentlichung
-
-Die verbindlichen aktuellen Build-, Signatur-, Artefakt- und Release-Daten stehen im automatisch gepflegten Produktionsstatus am Dokumentanfang. Ältere Einzelstände werden nicht als aktueller Produktionsstand fortgeführt.
-
-## Historische Branches aus den Zugriffstests
-
-- `test-project-github-check`
-- `test-project-github-write-2026-10-31`
-
-Diese Branches dienten ausschließlich den abgeschlossenen GitHub-Zugriffstests. Sie enthalten Teststände und sind nicht Teil der zukünftigen HomePilot-Entwicklung. Keine Übernahme in `main`.
-
-## Umgesetzte beziehungsweise zuletzt bearbeitete Funktionen
-
-- MOVA-Wartungsbereich mit Anzeige des Messerzustands und des Gerätewartungszustands.
-- Im MOVA-Wartungsbereich ist eine Funktion vorgesehen, die den in der originalen MOVA-App gespeicherten Wartungspunkt anfährt.
-- Die Beschriftungen der MOVA-Wartungswerte wurden im letzten bekannten App-Code-Commit korrigiert.
-
-Hinweis: Die praktische Funktion des Anfahrens des Wartungspunkts war zum Stand dieser Dokumentation noch nicht als erfolgreich getestet bestätigt.
-
-- Der untere Navigationspunkt „Zuhause“ soll unabhängig vom aktuellen Bereich immer zur Startseite führen. Den tatsächlichen Implementierungsstand bei der nächsten entsprechenden Arbeit im Code prüfen.
-
-## Geplante Weiterentwicklung
-
-Die folgenden Funktionen sollen sinnvoll gemeinsam in einer passenden Version umgesetzt werden:
-
-- Raumbasierte Navigation: Räume antippen und die zugehörigen Geräte und Sensoren anzeigen.
-- Räume in der App erstellen, umbenennen und löschen.
-- Geräte umbenennen und löschen.
-- Geräte Räumen zuweisen und zwischen Räumen verschieben.
-- Neue ioBroker-Geräte automatisch erkennen oder über einen manuellen Scan suchen.
-- Neu erkannte Geräte zur Klassifizierung und Raumzuweisung anzeigen.
-- Geräteklassifizierung und ein übersichtlicheres Dashboard integrieren.
-
-Weitere Entscheidung:
-- Die Waschmaschine kann in einer späteren Version schaltbar werden, soll aber kein Testgerät sein und keine separate Veröffentlichung auslösen.
-
-## Technische Entscheidungen und Einschränkungen
-
-- SENEC beziehungsweise der zugehörige Energiefluss-Adapter wird nicht als Datenquelle eingeplant, da häufige Abfragen den PC überlasten können.
-- Der ioBroker-Adapter `mhi-wfrac` ist noch nicht eingerichtet und soll erst nach Installation der Klimaanlage berücksichtigt werden.
-- Hue-Bewegungsmelder im Flur werden zunächst nicht für die neue Smart-Home-App eingeplant.
-
-## Arbeitsregeln
-
-- Vor Änderungen aktuellen Code und Branch-Stand auf `main` lesen.
-- Änderungen klein, gezielt und nachvollziehbar halten.
-- Vor dem Commit beziehungsweise Push den Diff prüfen.
-- Keine Test-Branches oder Testveröffentlichungen für die normale Weiterentwicklung anlegen.
-- Nach einer Änderung den zugehörigen GitHub-Actions-Produktionsbuild kontrollieren.
-- Keine Änderungen, Builds oder Tests als erledigt darstellen, solange sie nicht tatsächlich durchgeführt und verifiziert wurden.
-- Wichtige neue Entscheidungen, bestätigte Tests, Versionen und bekannte Probleme zeitnah in dieser Datei aktualisieren.
-- HomePilot und KlimaPilot strikt getrennt behandeln.
-
-## Änderungsverlauf dieser Dokumentation
-
-- 02.11.2026: Profilvalidierung korrigiert: Der Disconnect-Timer akzeptiert jetzt auch 15 Minuten (neben 30/60 Minuten und Nie). GitHub Actions Run #231 erfolgreich; Commit `05520b0`. APK erfolgreich signiert und als `latest` veröffentlicht. Ein Smartphone-Test ist noch nicht bestätigt.
-
-- 02.11.2026: Akku-Hinweis nur bei frischer Installation, nicht bei App-Updates; Einstellungen für Hintergrundverbindung kompakter; Akku-Kachel umbenannt und Text gekürzt. Version 1.29.43 (Code 101).
-
-
-- 02.11.2026: Einstellung für automatische ioBroker-Trennung nach 15/30/60 Minuten oder nie (Standard 30 Minuten); Verbindung beim Resume automatisch wiederherstellen. Einmaliger Akkuoptimierungs-Hinweis mit Link zu Android-App-Einstellungen. Version 1.29.42 (Code 100).
-
-
-- 02.11.2026: Lifecycle-Reconnect gibt einen klaren Status zurück, wenn der Socket bereits automatisch reconnectet; verhindert festhängenden „connecting“-Zustand und unterdrückt Dialog während laufendem Reconnect. Version 1.29.41 (Code 99).
-
-
-- 02.11.2026: Stabilisierung der ioBroker-WebSocket-Wiederverbindung: HomePilot ersetzt eine bereits laufende Verbindung/Reconnect-Schleife beim App-Resume nicht mehr durch einen neuen Socket. Socket-Reconnect ignoriert verspätete Fehler nach explizitem Disconnect. Version 1.29.40 (Code 98).
-
-
-- 02.11.2026: IoBroker-Verbindung wird beim Android-Lifecycle-Event ON_RESUME automatisch neu aufgebaut, falls sie getrennt ist. Reconnect-Statusdialog bei kurzem Verbindungsabbruch unterdrückt. Startverbindung wird gegen doppelte Connect-Aufrufe abgesichert. Version 1.29.39 (Code 97).
-
-
-- 02.11.2026: Einheitliche Beschriftung aller Roboter-Kacheln: „Zur Robotersteuerung“ (MOVA statt „Zur Mähersteuerung“). Für zukünftige Roboter dieselbe Bezeichnung und Gestaltung verwenden. Produktionsversion 1.29.38 (Code 96).
-
-
-- 01.11.2026: Roidmi-Status „Bereit“ auf der Zuhause-Kachel und der Detailseite erhält dieselbe dunkle Textfarbe wie beim MOVA-Mäher. Produktionsversion 1.29.37 (Code 95).
-
-
-- 01.11.2026: Roidmi-Kacheln optisch an MOVA angeglichen: bei fehlerfreiem Adapterstatus wird „Bereit“ angezeigt, redundante Statuszeile auf der Zuhause-Kachel entfällt. Roidmi-Detailkarte zeigt ebenfalls „Bereit“ statt „Adapter verbunden“ und eine kompakte Statusdarstellung; Reinigungszonen werden in drei Spalten angeordnet. Produktionsversion 1.29.36 (Code 94).
-
-
-- 01.11.2026: Roidmi-Raumliste kompakter gestaltet; Betriebsstatus, Fehler, Reinigungsart und Leistungsstufen anhand des V60-MIOT-Profils in Klartext übersetzt. Ladezustands- und einzelne Fehlercodes bleiben bei widersprüchlichen Referenzquellen ausdrücklich gekennzeichnet. WebSocket-Start wartet nicht mehr auf einen separaten Shelly-Testdatenpunkt; Wiederverbindungen melden den Status erneut und zuletzt bekannte Roidmi-Werte bleiben während kurzer Unterbrechungen sichtbar. Steuerbefehle sind bei unterbrochener ioBroker-Verbindung gesperrt.
-
-
-- 31.10.2026: Erste zentrale Projektdokumentation auf Basis des geprüften Stands von `main` und der bisher festgehaltenen Projektentscheidungen angelegt.
-- 31.10.2026: Verbindlich festgelegt, dass die weitere Entwicklung direkt auf `main` für die Hauptversion erfolgt; keine neuen Test-Branches oder separaten Testversionen.\n
-
-## Neue geplante Geräteintegration: Roidmi EVE Plus
-
-Beschluss vom 01.11.2026: Der Roidmi EVE Plus wird Bestandteil der nächsten größeren HomePilot-Version. Die Integration erfolgt über das eigenständige Projekt **Roidmi Iobroker Adapter** und nicht über eine direkte Xiaomi-Cloud- oder miIO-Implementierung in HomePilot.
-
-- Projektname: `Roidmi Iobroker Adapter`
-- ioBroker-Adapter-Repository: [Apropo1710/ioBroker.roidmi](https://github.com/Apropo1710/ioBroker.roidmi)
-- Zielgerät: Roidmi EVE Plus
-- HomePilot-Geräteklasse: `robot_vacuum`
-
-### Geplanter Funktionsumfang
-
-1. Eigene Roboter-Ansicht mit Status, Akkustand, Ladezustand und Reinigungsfortschritt, soweit die Adapter-Datenpunkte diese Werte zuverlässig liefern.
-2. Steuerung für Start, Pause/Fortsetzen und Rückkehr zur Ladestation.
-3. Saug- und Wischfunktionen sowie Absaugstation, sofern die entsprechenden Adapterbefehle implementiert und getestet sind.
-4. Später Raum- und Zonenreinigung, Kartenansicht und Reinigungsverlauf, soweit Modell und Adapter dies unterstützen.
-5. Wartungsinformationen wie Filter- und Bürstenzustand, sofern verfügbar.
-
-### Umsetzungsregeln
-
-- HomePilot bleibt ausschließlich Client des ioBroker-WebSocket-Adapters `ws.0`; keine direkte Xiaomi-Cloud-Anmeldung und keine direkte Roboterkommunikation in HomePilot.
-- Roidmi Iobroker Adapter und HomePilot bleiben getrennte Projekte mit getrennten Repositories und Builds.
-- HomePilot wird zunächst auf eine klar abgegrenzte Geräteklasse und eine robuste, datenpunktbasierte Integration vorbereitet.
-- Erste HomePilot-Integration auf `main`: eigene Roidmi-Kachel auf der Startseite und Detailansicht mit Akku, Ladezustand, Betriebsstatus, Fehlercode und Adapter-Verbindungsstatus. Die numerischen Statuswerte werden bewusst zunächst als Rohwerte angezeigt, bis ihre Bedeutung am realen Gerät bestätigt ist.
-- Roidmi-Oberfläche an das MOVA-Layout angeglichen: Produktfoto, Status-/Akku-Karte, Steuerungsbereich und Einstellungsbereich. Die Raumliste wird dynamisch aus `roidmi.0.map.roomsJson` geladen; Raumreinigung nutzt `roidmi.0.control.cleanRooms` und wird nur bei gültiger `mapId` angeboten. Die reale Ausführung bleibt bis zum Gerätetest unbestätigt.
-- In der Detailansicht sind Start, Pause, Fortsetzen und Rückkehr zur Ladestation an die Adapter-Steuerdatenpunkte angebunden. Die Oberfläche bestätigt nur die Übergabe an den Adapter, nicht die erfolgreiche Ausführung am Roboter.
-- Nicht vorhandene, unfertige oder nicht praktisch getestete Adapterfunktionen dürfen in HomePilot weder als verfügbar angezeigt noch als funktionierend ausgegeben werden.
-- Die Integration wird mit den tatsächlich vom Adapter bereitgestellten Datenpunkten umgesetzt; keine vorzeitige Festlegung auf unbestätigte IDs oder Befehlsnamen.
-- Die Roidmi-Integration wird mit der geplanten Raumverwaltung, Geräteklassifizierung und Dashboard-Überarbeitung in einer gemeinsamen größeren HomePilot-Version gebündelt. Keine separate Zwischenveröffentlichung nur für den Roboter.
-- Vor jeder Codeänderung den aktuellen Stand von `main` lesen; die normale HomePilot-Weiterentwicklung erfolgt gemäß Projektentscheidung direkt auf `main`.
-
-### Vorgehensreihenfolge
-
-1. Vorhandene HomePilot-Geräte- und Raumarchitektur prüfen und eine möglichst kleine, erweiterbare Einbindung für `robot_vacuum` entwerfen.
-2. Parallel den tatsächlichen Datenpunkt- und Befehlsumfang von Roidmi Iobroker Adapter anhand des Adaptercodes und später anhand realer ioBroker-Objekte verifizieren.
-3. Roboter-Dashboard und Statusanzeige mit tatsächlich verfügbaren Datenpunkten integrieren.
-4. Steuerbefehle einzeln anbinden und am Roidmi EVE Plus praktisch testen.
-5. Erweiterte Funktionen wie Räume/Zonen, Karte, Verlauf und Wartung erst ergänzen, wenn Adapter und Gerät sie zuverlässig bereitstellen.\n\n\n\n\n\n\n\n\n\n\n\n\n
-
-## Neue Funktion: Gemeinsame Konfiguration, Benutzerprofile und Sicherung
-
-Beschluss vom 02.11.2026 (aktualisierte vereinfachte Zielarchitektur):
-
-### ioBroker-Authentifizierung und Speicherrechte (Entscheidung)
-- HomePilot nutzt die bestehende ioBroker-Benutzerverwaltung und WebSocket-Authentifizierung, keine selbst entwickelte App-Identität.
-- Andreas und Jenny sollen jeweils mit eigenem ioBroker-Benutzer angemeldet sein.
-- ioBroker-Login-Daten werden auf Android mit Android Keystore-gestützter Verschlüsselung geschützt gespeichert; keine Klartextpasswörter in SharedPreferences.
-- Der Nutzer hat ausdrücklich entschieden, dass HomePilot im bestehenden vertrauenswürdigen Heimnetz weiterhin `ws://` ohne Zertifikat verwendet. WSS/TLS ist keine Voraussetzung und soll nicht erzwungen werden. Dabei ist bekannt und akzeptiert, dass Zugangsdaten über WS unverschlüsselt im Netzwerk übertragen werden; daher nur im vertrauenswürdigen LAN und nicht über öffentliche/gast WLANs einsetzen. Keine Zertifikatseinrichtung oder WSS-Migration als Voraussetzung einplanen.
-- Geplante ACL-Trennung: globaler Konfigurationsbereich für Jenny lesbar, aber nicht beschreibbar; eigenes Profil von Jenny les-/schreibbar; Andreas kann gemeinsame Konfiguration und beide Profile administrieren.
-- UI-Rollenanzeige ergänzt ioBroker-ACLs und ersetzt sie nicht.
-- Vor Implementation muss geprüft werden, welche Socket.IO-Methoden und Objekt-/State-ACLs im bestehenden ioBroker-Setup verfügbar sind. Keine pauschale Annahme, dass 0_userdata.0-Standard-ACLs automatisch diese Trennung erfüllen.
-
-### Speicherentwurf (noch nicht implementiert)
-- Namespace: 0_userdata.0.HomePilot
-- config: gemeinsame Räume, Gerätezuordnungen, Gerätenamen, Klassifizierung, globale ausgeblendete Geräte und Revision/Änderungsmetadaten.
-- profiles.<ioBrokerUser>: benutzerspezifische Favoriten, Reihenfolge, Disconnect-Timer und Anzeigepräferenzen.
-- backup.config und backup.profiles.<user>: getrennte Sicherungsstände bzw. Snapshots; Wiederherstellung eines Profils darf globale Konfiguration oder andere Profile nicht ersetzen.
-- Entwurf: eine versionierte JSON-Konfiguration je Bereich statt zahlreicher einzeln verstreuter State-IDs; ACLs müssen auf Objekt/State-Ebene passend geprüft und eingerichtet werden.
-- Vor Migration zuerst zentral vorhandene Konfiguration prüfen; lokale Bestandsdaten nur initial importieren, wenn noch keine globale Konfiguration existiert. Bei mehreren Smartphones mit unterschiedlichem lokalen Bestand keine automatische Überschreibung, sondern kontrollierter Import/Abgleich.
-
-### Gemeinsame Smart-Home-Konfiguration
-- Räume, Raum-/Gerätezuordnungen, Gerätenamen, Geräteklassifizierung und globale Einstellungen sind zentral in ioBroker gespeichert.
-- Andreas verwaltet die globale Konfiguration; beide Smartphones erhalten Änderungen automatisch.
-- Jenny kann Geräte bedienen, aber die administrativen Konfigurationsbereiche (z. B. Geräteeinstellungen und ausgeblendete Geräte verwalten) sind in ihrer App ausgeblendet.
-- Es wird kein zusätzlicher ioBroker-Adapter und kein weiterer dauerhaft laufender Serverdienst installiert.
-- Die vereinfachte UI-Rollenlösung ist für den normalen Haushalt gedacht, nicht als sicherheitskritische Zugriffskontrolle. UI-Ausblendung allein ist keine serverseitige Autorisierung.
-
-### Persönliche Einstellungen und Profile
-- Persönliche Einstellungen bleiben pro Benutzer getrennt, z. B. Favoriten, Anzeigeoptionen und persönliche Zeitwerte (15/30/60 Minuten bzw. Nie).
-- Jenny darf ihre persönlichen Einstellungen selbst ändern.
-- Andreas’ persönliche Einstellungen dürfen durch Jenny weder überschrieben noch gelöscht werden.
-- Persönliche Einstellungen und globale Konfiguration werden getrennt gespeichert und gesichert.
-
-### Synchronisation, Sicherung und Wiederherstellung
-- Gemeinsame Konfiguration wird über ioBroker synchronisiert und bei Änderungen auf beiden Smartphones aktualisiert.
-- Persönliche Profile (Andreas/Jenny) werden separat gespeichert.
-- Änderungen werden nach erfolgreicher Speicherung bestätigt; fehlgeschlagene/offline Änderungen dürfen nicht stillschweigend als synchronisiert gelten.
-- Sicherung erfolgt automatisiert nach relevanten Änderungen mit kurzer Verzögerung sowie zusätzlich über „Jetzt sichern“.
-- Wiederherstellung eines persönlichen Profils darf nicht die globale Raum-/Gerätekonfiguration oder das andere persönliche Profil überschreiben.
-- Konflikte bei gleichzeitig geänderten Daten müssen erkannt und nachvollziehbar behandelt werden.
-- Vorhandene lokale Einstellungen müssen beim Upgrade migriert werden, ohne sie zu verlieren. Bestehende lokale Räume, Gerätenamen, Zuordnungen, Klassifizierungen und ausgeblendete Geräte sind als Ausgangspunkt für die globale Konfiguration zu behandeln; die Migration darf keine vorhandene zentrale Konfiguration ungefragt überschreiben.
-
-### Umsetzungsreihenfolge
-1. Vorhandene WebSocket-/ioBroker-API und aktuelle Konfigurationspersistenz vollständig prüfen.
-2. Schema und Speicherorte für gemeinsame Konfiguration sowie getrennte Benutzerprofile definieren.
-3. Synchronisations- und Sicherungsmechanismus mit Fehler-/Offline-Verhalten implementieren.
-4. Migration vorhandener Einstellungen und Konfliktverhalten implementieren.
-5. Admin-/Benutzeransicht und persönliche Einstellungen sauber trennen.
-6. Code-Diff, Android-Build, GitHub Actions und Release-Artefakt prüfen.
-
-**Status:** Zielarchitektur aktualisiert. Feature-Code noch nicht implementiert; noch kein Feature-Build oder Smartphone-Test.\n\n\n
-
-## Build-Status Authentifizierungs-Grundlage (02.11.2026)
-- Commit `d16a2116e153a072eae9f9a85d93c26d3827c250` korrigiert die fehlenden ioBroker-Login-Parameter in der zweiten Einstellungsansicht.
-- GitHub Actions Run `41481137422` für diesen Commit ist erfolgreich abgeschlossen.
-- Erfolgreicher CI-Build bestätigt die Kompilierbarkeit, noch nicht die praktische ioBroker-Anmeldung oder Synchronisation auf beiden Smartphones.
-- Nächster Entwicklungsschritt: zentrale JSON-State-API und sichere Initialisierung/Existenzprüfung des globalen Konfigurationsdatensatzes sowie getrennte Profil-Datenpunkte. Vor Umsetzung ACL-Verhalten und Rechte bei `0_userdata.0` prüfen.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
-
-## Raumauswahl-Kachel (03.11.2026)
-- Gemeinsame Raumauswahl wird in einer eigenen Kachel mit der Überschrift **Raumauswahl** dargestellt.
-- Die Kachel erscheint auf der Startseite sowie in den Licht-, Geräte- und Raumansichten.
-- In den Einstellungen kann ein Raum direkt gewählt werden; HomePilot öffnet anschließend die Raumansicht.
-- Version für diese Änderung: **1.29.56 (versionCode 114)**. Smartphone-Test steht nach dem CI-Build noch aus.\n
-
-## Einstellungsseite – aufklappbare Menüpunkte (03.11.2026)
-- Alle bisherigen Einstellungen werden als kompakte, aufklappbare Menüpunkte angezeigt; beim Antippen öffnet sich jeweils der Inhalt, beim erneuten Antippen wird er geschlossen.
-- Bereiche: Darstellung, Geräte-Einstellungen, Raumauswahl, ausgeblendete Geräte, Geräteprobleme, HomePilot-Konto, HomePilot-Benutzerverwaltung (nur Admin), ioBroker-Verbindung, Verbindung im Hintergrund, Energiesparen, Wetter und App-Version.
-- Es bleibt jeweils höchstens ein Einstellungsbereich gleichzeitig geöffnet.
-- Bestehende Funktionen, Dialoge, Eingabefelder und Updateprüfung bleiben erhalten.
-- Zielversion: 1.29.57 (versionCode 115); Smartphone-Test nach Release erforderlich.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
-
-## Roidmi-Steuerung in HomePilot (05.11.2026)
-- Die bestehende Roidmi-Raum-/Zonenauswahl bleibt erhalten und lädt Räume dynamisch aus `roidmi.0.map.roomsJson`; Einzel- und Mehrraumreinigung wird weiterhin über `roidmi.0.control.cleanRooms` ausgelöst.
-- Die irreführende Schaltfläche „Weiter“ wurde durch „Stop“ ersetzt. `control.resume` wird nicht mehr angeboten, da der Adapter damit einen neuen Reinigungsstart auslöst und kein echtes Fortsetzen bestätigt ist.
-- `sweepType` wird nur noch als Status angezeigt, da der Adapter-Datenpunkt schreibgeschützt ist. Saugstufe (`fanSpeed`) und Wasserstufe (`waterLevel`) bleiben global steuerbar.
-- Produktionsversion: **1.29.83 (versionCode 141)**. Build und Smartphone-Test folgen nach GitHub Actions.\n
-
-## Startup-Updatehinweis und Installer-Anpassung (05.11.2026)
-- Beim App-Start wird bei vorhandener GitHub-Verbindung einmalig nach einer neueren Release-Version gesucht. Bei Verfügbarkeit erscheint ein Popup mit „Zu Einstellungen“ und „Später“; die Prüfung blockiert den App-Start nicht.
-- Der bestehende Download-/Updatebereich in den Einstellungen bleibt die einzige Update-Download- und Installationsoberfläche.
-- APK-Installation nutzt den Android-Standarddialog über `ACTION_VIEW` + APK-MIME-Type und FileProvider-URI. Die Berechtigung `REQUEST_INSTALL_PACKAGES` sowie der vorherige `ACTION_INSTALL_PACKAGE`-Pfad werden entfernt.
-- Version **1.29.84 / versionCode 142**. Play Protect muss auf dem Zielgerät erneut überprüft werden; CI kann diese Google-Prüfung nicht garantieren.\n\n\n\n\n\n\n
-
-## Absolute Sperre: Updater darf nicht verändert werden (17.11.2026)
-
-**Verbindliche, dauerhafte Projektregel auf ausdrückliche Anweisung des Nutzers: Der HomePilot-Updater darf niemals verändert werden.** Das gilt ausnahmslos für normale Feature-Arbeiten, Fehlerkorrekturen, Refactorings, Aufräumarbeiten und Nebenwirkungen anderer Änderungen.
-
-Geschützt sind insbesondere:
-- Updateprüfung, Versionsvergleich und Ermittlung der verfügbaren Version
-- GitHub-Verbindung, Authentifizierung und Abruf der Release-Metadaten
-- APK-Download, Downloadziel, Dateiname, Speicherung und Paketprüfung
-- Installer-Übergabe: Intent-Aktion, MIME-Type, FileProvider, URI, Flags, ClipData und Chooser
-- Manifest-Berechtigungen und sonstige Installer-/Android-Einstellungen
-- Signierung, Keystore, Alias, Zertifikat und zugehörige Build-Konfiguration
-- Update-Oberfläche, Update-Schaltflächen, Statusmeldungen und Start-/Wiederaufnahmeverhalten
-- GitHub-Actions-Schritte, Release-Veröffentlichung und sonstige für den Updater relevante Build-/Release-Logik
-
-**Arbeitsfolge für jede künftige Änderung:** Vor Änderungen am HomePilot-Code ist sicherzustellen, dass keine der geschützten Updater-Dateien oder -Bereiche mitbearbeitet werden. Diffs sind ausdrücklich auf direkte und indirekte Updater-Änderungen zu prüfen. Bei unvermeidbarem Konflikt oder möglicher Auswirkung auf den Updater: Arbeit anhalten und den Nutzer informieren, statt den Updater anzupassen. Auch keine vermeintliche Verbesserung, Anpassung oder Wiederherstellung eigenständig vornehmen.
-
-Diese Sperre darf nur durch eine spätere, ausdrückliche und konkrete Anweisung des Nutzers aufgehoben werden, die genau die gewünschte Updater-Änderung benennt. Allgemeine Feature-Aufträge sind niemals als Erlaubnis zur Änderung des Updaters zu verstehen.
-
-**Geräte-getesteter Referenzstand (18.11.2026): HomePilot 1.30.2 / versionCode 193.** In-App-Update 1.30.1 → 1.30.2 öffnete den Installationsdialog, Play Protect meldete „Diese App ist anscheinend sicher“. Updater wie KlimaPilot: `ACTION_VIEW` + `application/vnd.android.package-archive` + FileProvider + URI-Leseberechtigung + ClipData, **`REQUEST_INSTALL_PACKAGES` im Manifest ist erforderlich** und darf nicht entfernt werden. Diesen Zustand bewahren.
-
-> Überholt: Die Angabe vom 17.11.2026, der Updater funktioniere nach Rücknahme der Berechtigung, traf nicht zu – ohne sie öffnete „Update laden“ keinen Installationsdialog. Die Berechtigung wurde am 18.11.2026 auf ausdrückliche Nutzeranweisung wieder eingetragen.
-
-
-## Verbindliche Regeln: APK-Installer, In-App-Update und Play Protect (05.11.2026)
-
-> Aktueller Referenzstand und Gerätetest: siehe „Gerätetest Updater und Play Protect – 18.11.2026“ und „Absolute Sperre“. Ältere Abschnitte (05.11.–17.11.2026), die das Entfernen von `REQUEST_INSTALL_PACKAGES` wegen Play Protect beschreiben, sind überholt und nur noch Historie.
-
-Diese Regeln sind kritisch und dürfen nicht ohne ausdrückliche Zustimmung geändert werden.
-
-### Referenzstand und Installer
-- Vor jeder Änderung am Installer zuerst den letzten nachweislich funktionierenden Stand, den aktuellen Code und frühere erfolgreiche Fixes vergleichen. Insbesondere den bewährten KlimaPilot-Fix prüfen und bei passender Android-Implementierung wiederverwenden.
-- Der derzeit bewährte APK-Übergabepfad ist: `ACTION_VIEW`, MIME-Type `application/vnd.android.package-archive`, FileProvider-URI, `FLAG_GRANT_READ_URI_PERMISSION`, `FLAG_ACTIVITY_NEW_TASK` und `ClipData.newUri(...)`.
-- Diesen Ablauf nicht eigenmächtig durch `ACTION_INSTALL_PACKAGE`, andere Intent-Varianten oder andere URI-/Berechtigungsübergaben ersetzen.
-- `REQUEST_INSTALL_PACKAGES` gehört zum geräte-getesteten Referenzstand (1.30.2, 18.11.2026) und bleibt im Manifest. Nicht entfernen, auch nicht bei einer Play-Protect-Warnung, ohne ausdrückliche Nutzeranweisung.
-- APK-Signierung, Zertifikat/Schlüssel, Build-Konfiguration, Manifest-Berechtigungen und Installer nur nach Prüfung der Auswirkungen auf Play Protect und Updatefähigkeit ändern.
-- Play-Protect-Warnungen nicht mit wahllosen Installer-Änderungen, neuen Intent-Varianten oder zusätzlichen Warnungsdialogen behandeln. Zuerst den letzten warnungsfreien Produktionsstand und bekannte erfolgreiche Fixes vergleichen.
-
-### In-App-Update vollständig prüfen
-- Bei Änderungen am Updateprozess den gesamten Ablauf berücksichtigen: Download, tatsächliche APK-Datei und Speicherort, FileProvider-URI, URI-Berechtigungen, Intent, ClipData und Übergabe an den Android-Systeminstaller.
-- Ein erfolgreicher Download ist **kein** Nachweis dafür, dass der Android-Installationsdialog gestartet wurde.
-- Statusmeldungen dürfen den Installationsstart nicht behaupten, solange die Übergabe nicht tatsächlich erfolgt ist. Download, Übergabe an den Systeminstaller und erfolgreiche Installation sind getrennte Zustände.
-- Den Installer nicht ändern, nur um ein anderes Problem (z. B. Startup-Update-Popup oder Updateprüfung) zu beheben.
-
-### Pflichtprüfung vor Änderung und Release
-- Vor dem Editieren aktuellen Branch, Code und letzten funktionierenden Referenzstand lesen; den Diff gezielt auf Änderungen an Installer, Manifest, Signierung und Updatepfad prüfen.
-- Nach dem Build Build-Ergebnis, APK-Version/versionCode, Signatur/Zertifikat, Manifest-Berechtigungen und Release-Datei kontrollieren.
-- GitHub-Actions-Ergebnis und tatsächliche Verfügbarkeit des APK-Assets prüfen. APK-Link nur nach verifiziertem Release nennen.
-- Play Protect, Installationsdialog und In-App-Update auf einem Gerät nur dann als getestet oder funktionierend bezeichnen, wenn der Nutzer-/Gerätetest dies bestätigt hat. CI allein kann das nicht nachweisen.
-- Keine wiederholten Experimente mit Installer-Varianten, wenn bereits eine bekannte erfolgreiche Lösung existiert. Bestehende Fixes zuerst recherchieren und anwenden.
-- Änderungen an Installer oder Updateprozess müssen ausdrücklich darauf geprüft werden, dass die funktionierende Installation und In-App-Aktualisierung nicht regressieren.\n
-
-## Roidmi Eve Plus option wiring (05.11.2026)
-- HomePilot cleaning-option controls now use the confirmed ioBroker state IDs `roidmi.0.individual`, `roidmi.0.doubleClean`, and `roidmi.0.pathType` (instead of obsolete `customizeRooms` / `moppingPath`).
-- Y-Weg-Moppen is shown as a two-state toggle, matching the Original-App switch; `pathType` writes 1 for on and 0 for off. Double-clean remains a separate toggle.
-- Version: **1.29.91 (versionCode 149)**. Branch `feat/roidmi-eve-plus-options`; device/build validation pending.\n
-
-## Installer-Fix 1.29.92 (05.11.2026)
-- In-App-Updater nutzt wieder `ACTION_INSTALL_PACKAGE` (bewährter Stand aus 1.29.86) statt `ACTION_VIEW`.
-- `REQUEST_INSTALL_PACKAGES` ist im Manifest wieder gesetzt. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, öffnet die App zuerst die zugehörige Android-Einstellung und zeigt eine klare Statusmeldung; danach muss Update laden erneut angetippt werden.
-- URI-Berechtigung und `ClipData` bleiben gesetzt; Download, Paketname-Prüfung, Signierung/Keystore und FileProvider wurden nicht verändert.
-- Version 1.29.92 / versionCode 150. Build und Smartphone-Test noch ausstehend.\n\n\n
-
-## Updater handoff 1.29.95 (05.11.2026)
-- APK wird nach Download und Paketnamenprüfung zusätzlich in den öffentlichen Android-Downloads (Downloads/HomePilot) geschrieben.
-- Installations-Intent wird mit der MediaStore-Content-URI statt der privaten FileProvider-Cache-URI gestartet; damit soll MIUI/Android den Paketinstaller zuverlässig öffnen.
-- Fallback-Hinweis: Wenn kein Dialog automatisch aufpoppt, APK in Downloads/HomePilot manuell antippen.
-- Kein REQUEST_INSTALL_PACKAGES im Manifest, um den Play-Protect-Alarm aus 1.29.92 nicht wieder einzuführen.
-- Version 1.29.95 / versionCode 153. Build und Gerätetest ausstehend.\n\n
-
-## Updater installer intent 1.29.97 (05.11.2026)
-- Git-Historie geprüft: KlimaPilot 0.4.19 hatte ACTION_INSTALL_PACKAGE mit FileProvider-URI und EXTRA_RETURN_RESULT.
-- HomePilot 1.29.97 stellt diesen Intent-Typ wieder her, inklusive URI-Leserechten, ClipData und NEW_TASK.
-- REQUEST_INSTALL_PACKAGES bleibt aus dem Manifest entfernt, um den Play-Protect-Alarm nicht erneut auszulösen.
-- Die nicht funktionierende ACTION_VIEW-/MediaStore-Variante wird verworfen. Gerätetest nach Build erforderlich.\n\n
-
-## Updater 1.29.99 (05.11.2026)
-- APK-Übergabe exakt an KlimaPilot 0.4.21 angeglichen: ACTION_VIEW, application/vnd.android.package-archive, FileProvider, URI-Leserechte, NEW_TASK, ClipData.
-- ACTION_INSTALL_PACKAGE entfernt; REQUEST_INSTALL_PACKAGES bleibt nicht im Manifest (Play Protect).
-- Versionssprung 1.29.98 -> 1.29.99 (versionCode 156 -> 157) für erneuten Updatetest.\n\n\n\n\n\n
-
-## Verbindliche Updater-Arbeitsweise (05.11.2026)
-
-Der Nutzer hat die aktuellen In-App-Updates von HomePilot und KlimaPilot erfolgreich installiert. Die folgende Vorgehensweise ist künftig verbindlich, damit die Android-Installer-Übergabe nicht durch unkoordinierte Änderungen erneut regressiert:
-
-1. **Vor jeder Änderung zuerst den aktuellen Stand auf `main` lesen.** Betroffene Update-UI, Download-/Installationsfunktion, Manifest, FileProvider-Konfiguration, Gradle-Signierung und Workflow gemeinsam prüfen.
-2. **Historie prüfen, bevor etwas geändert wird.** Git-Historie und die bekannte funktionierende Umsetzung beider Apps vergleichen. Nicht aus dem Gedächtnis zwischen `ACTION_VIEW` und `ACTION_INSTALL_PACKAGE`, URI-Typen oder Permissions wechseln.
-3. **Keine parallelen/mehrfachen Installer-Experimente.** Nur eine gezielte Änderung pro Testschritt. Keine fremden Updater-Fixes übernehmen, ohne Unterschiede (Package-ID, FileProvider, Signing und App-spezifische Einstellungen) zu prüfen.
-4. **Signierung ist Update-kritisch.** Für installierbare Updates muss die APK mit demselben Zertifikat wie die bereits installierte App signiert sein. Keystore, Alias, Secrets und Signierkonfiguration niemals beiläufig ändern. Zertifikats-Fingerprint von Bestands- und Test-APK vergleichen, falls ein Update mit „App nicht installiert“ oder Signaturfehler scheitert.
-5. **Versionsprüfung:** Für jede installierbare Test-APK sowohl `versionName` als auch `versionCode` erhöhen. Der `versionCode` muss höher als der installierte sein. Nicht allein die Versionsanzeige in Release-Notes oder GitHub als Nachweis nehmen.
-6. **Workflow/Release-Notes:** Die vom In-App-Updater gelesene Version muss aus der tatsächlichen Gradle-Version stammen und darf nicht hartcodiert veraltet sein. APK-Asset und `latest` erst nach erfolgreichem Build/Prüfung aktualisieren.
-7. **CI-Prüfung:** GitHub Actions muss erfolgreich sein. Paketname/Application-ID, Version, Signatur, Manifest, APK-Artefakt und Release-Asset verifizieren. Fehlgeschlagene oder abgebrochene Builds dürfen nicht als bereitgestellte APK ausgegeben werden.
-8. **Gerätetest ist entscheidend:** In-App-Update auf dem Gerät starten, Android-System-Installer muss tatsächlich erscheinen und ein Update über die bestehende Installation durchführen. Download-Erfolg/Statusmeldung allein zählt nicht. Nach dem Test installierte Version prüfen.
-9. **Play Protect und Berechtigungen:** Nicht eigenmächtig `REQUEST_INSTALL_PACKAGES`, Unknown-Apps-Einstellungen oder andere Installer-Varianten hinzufügen/entfernen. Vorher Historie und Auswirkungen auf Play Protect prüfen; Änderungen ausdrücklich mit Nutzer abstimmen.
-10. Nach erfolgreichem Test kurz dokumentieren: Version/versionCode, Commit, Actions-Run, verwendete APK/Release und Nutzerbestätigung. Installer-/Updater-Code bei anderen Aufgaben nicht anfassen.
-
-**Ergebnis 05.11.2026:** Nutzer bestätigt, dass die Updates beider Apps erfolgreich installiert wurden. Dies bestätigt den Updateablauf in diesem Test, aber nicht automatisch jede Android-/Gerätevariante.\n
-
-## Bewährte Updater-Lösung – Gerätetest 05.11.2026
-
-**Erfolgreich auf dem Nutzergerät bestätigt:** HomePilot **1.29.103 / versionCode 161**. Der getestete Stand verwendet `ACTION_INSTALL_PACKAGE`, die Manifest-Berechtigung `REQUEST_INSTALL_PACKAGES` und prüft `canRequestPackageInstalls()`. Wenn Android die Installation unbekannter Apps für HomePilot nicht erlaubt, wird die entsprechende Android-Einstellungsseite geöffnet; nach Freigabe muss der Nutzer den Updatevorgang erneut starten. URI-Leserecht, `ClipData` und `NEW_TASK` bleiben Teil der Installer-Übergabe. Der Nutzer bestätigte, dass das Update erfolgreich installiert wurde.
-
-Dies ist der konkrete erfolgreiche Teststand – ältere Zwischenversuche (u. a. `ACTION_VIEW`/MediaStore, 1.29.95 bis 1.29.99) nicht als erfolgreiche Lösung behandeln. Wegen der Play-Protect-/Berechtigungsauswirkungen diesen Ablauf künftig nicht ungeprüft verändern. Die Bestätigung gilt für den getesteten Stand und das Nutzergerät.\n\n\n\n
-
-## Xiaomi X20+ Zeitpläne in HomePilot (12.11.2026)
-- Eigener HomePilot-Einstieg **Xiaomi X20+** als separate Kachel und eigener Bildschirm. Der vorhandene Roidmi-EVE-Plus-Bereich bleibt unverändert; die beiden Geräte werden nicht vermischt.
-- HomePilot liest die bestehenden ioBroker-Datenpunkte `roidmi.0.x20Plus.timing.parsed` und `roidmi.0.x20Plus.timing.status`. Es werden keine zusätzlichen Roboter- oder Xiaomi-Abfragen im App-Hintergrund eingerichtet.
-- Anzeige pro Zeitplan: Uhrzeit, Wochentage, Reinigungsmodus, Saugstufe, Wasserstufe, Räume und Aktivierungsstatus.
-- Ein/Aus-Schalter sendet `{id, enabled}` an `roidmi.0.x20Plus.control.setScheduleEnabled`. Der Schalter wird erst nach Adapter-Readback als abgeschlossen angezeigt. Eine manuelle Aktualisieren-Schaltfläche nutzt `roidmi.0.x20Plus.control.refreshSchedules`.
-- Version **1.29.105 / versionCode 163**. Build und APK-Veröffentlichung noch ausstehend; Smartphone-Test ebenfalls offen.\n\n\n\n\n\n\n\n\n\n
-
-## Xiaomi X20+ – bestehende Zeitpläne bearbeiten (12.11.2026)
-- Bearbeitungsdialog überarbeitet: Wochentage per Checkbox, Reinigungsmodus/Saugleistung/Wasserstufe per Auswahlfeld und Räume per Checkbox statt numerischer Eingaben.
-- Einmalig/Wiederholen bleibt als Schalter; keine Neuanlage oder Löschung.
-- Fehlerursache des ersten Speicherversuchs: Adapter-State `x20Plus.control.updateSchedule` war nicht angelegt und nicht abonniert. Daher erreichte der Auftrag den Handler nicht; kein Roboter-Schreibversuch fand statt.
-- Adapter legt den Befehl jetzt an und abonniert ihn. Bestehender direkter Read/Write/Readback- und Verifikationspfad bleibt bestehen.
-- Version **1.29.118 / versionCode 176**. Build und Hardwaretest nach CI offen.\n\n
-
-## Xiaomi X20+ Zeitplaneditor – Korrekturen nach Praxistest (12.11.2026)
-- Wochentagsänderung wurde im ersten Praxistest nachweislich in Xiaomi Home übernommen. Der anschließende Adapter-Readback endete jedoch mit Timeout und HomePilot zeigte irrtümlich „fehlgeschlagen“.
-- Adapterstatus unterscheidet jetzt zwischen angenommener Änderung und abgeschlossener direkter Bestätigung; HomePilot akzeptiert den Status „von Xiaomi angenommen“ als erfolgreiche Übernahme mit noch ausstehendem Readback.
-- Reinigungsmodi auf fünf Auswahlwerte aus Xiaomi Home angepasst: automatische Anpassung, nur Saugen, Saugen und Wischen, nur Wischen, Saugen vor Wischen.
-- Uhrzeit wird künftig über den Android-Uhrzeitdialog (Stunden/Minuten) gewählt, nicht mehr frei als Text eingegeben.
-- Version **1.29.119 / versionCode 177**. CI-Build und Release-Prüfung stehen noch aus.\n
-
-## Xiaomi X20+ Zeitplanfeld-Zuordnung (12.11.2026)
-- Xiaomi-Rohdatenvergleich zeigt: Feld 5 Wasserstufe (0 automatisch, 1 niedrig, 2 mittel, 3 hoch), Feld 6 Saugleistung, Feld 7 Reinigungsart (16 Saugen, 32 Saugen/Wischen, 48 Wischen, 64 Saugen vor Wischen).
-- Zeitplan-Editor und Anzeige verwenden die korrigierten Werte; Bitmap `1001011` entspricht So, Mi, Fr, Sa.
-- Version **1.29.120 / versionCode 178**. CI und Gerätetest noch ausstehend.\n
-
-## Xiaomi X20+ Zeitplanbearbeitung – Synchronisation beidseitig bestätigt (12.11.2026)
-- Nutzer bestätigt nach Installation von HomePilot **1.29.120 / versionCode 178** und Adapter **0.1.63**, dass die Synchronisation der Zeitpläne jetzt in beide Richtungen funktioniert.
-- Die Feldzuordnung und Bearbeitung bestehender Zeitpläne ist damit im Zusammenspiel mit dem echten X20+ bestätigt.
-- Keine Zeitplan-Neuanlage oder -Löschung; bestehende Aktivieren/Deaktivieren-Funktion bleibt erhalten.
-- Weiterer Schritt: normale Alltagsbeobachtung. Keine zusätzlichen zyklischen Abfragen einführen.\n
-
-## Nächster Entwicklungsschritt: Roidmi Eve Plus Zeitplanbearbeitung (12.11.2026)
-- Geplant ist, die auf dem Xiaomi X20+ erfolgreich getestete bidirektionale Zeitplanbearbeitung auch für den **Roidmi Eve Plus** umzusetzen.
-- Eve Plus und X20+ sind unterschiedliche Geräte. Keine Übernahme von X20+-Feldcodierungen oder MIoT-Properties ohne Verifikation.
-- Zuerst Adapter-/MIoT-Bestand und Eve-Plus-Zeitplanformat untersuchen, dann einen gerätespezifischen Schreibpfad mit Readback/Verifikation umsetzen.
-- HomePilot soll danach die Bearbeitung für den Eve Plus passend zum Adapter-Datenpfad unterstützen. Zunächst nur bestehende Zeitpläne bearbeiten, keine Neuanlage/Löschung.
-- Bestehende X20+-Funktion nicht verändern. Last gering halten: keine unnötigen zyklischen Abfragen, Schreib-/Prüfoperationen nur bei manueller Nutzeraktion.
-- Status: geplant, noch nicht begonnen.\n\n\n
-
-## Aktueller Produktionsstand – Roidmi EVE Plus Zeitpläne (12.11.2026)
-- Adapter-Branch `feature/xiaomi-x20plus`, Version **0.1.64**: Tests und Build in beiden GitHub-Prüfungen erfolgreich.
-- HomePilot `main`, Version **1.29.121 / versionCode 179**: Release-APK erfolgreich gebaut, Paket und Signatur geprüft und im Release `latest` veröffentlicht.
-- Download: https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk
-- Eve-Plus-Zeitplaneditor: Adapter-Schreibpfad mit Konfliktprüfung und Readback sowie HomePilot-Bedienoberfläche implementiert. Echter Hardwaretest steht noch aus. Bis dahin keine Zeitpläne am Roboter ändern.
-- X20+-Zeitplansynchronisierung bleibt separat und wurde zuvor mit Adapter 0.1.63 und HomePilot 1.29.120 bidirektional bestätigt.
-- Keine neuen zyklischen Abfragen eingeführt.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+- **18.11.2026 – 1.30.2:** Lila/Rosa durch HomePilot-Blau ersetzt, Kopplungshinweis entfernt.
+- **18.11.2026 – 1.30.1:** Updater an KlimaPilot angeglichen, `REQUEST_INSTALL_PACKAGES` wieder eingetragen (ausdrückliche Nutzeranweisung). Versionen ohne Berechtigung (1.29.132, 1.30.0) mussten einmalig manuell aktualisiert werden.
+- **18.11.2026 – 1.30.0:** Smartphone-Kopplung, Smartphone-Sync und neue Anmeldung aus KlimaPilot übernommen.
+- **17.11.2026 – 1.29.132:** Berechtigung wegen Play Protect entfernt – Annahme war falsch, durch 1.30.1 überholt. Rückmeldung „Reinigung gestartet“ (X20+), Roidmi-Beschriftung bereinigt.
+- **16.11.2026 – 1.29.126–1.29.130:** „m² bearbeitet“ (X20+), Startrückmeldung an den Reinigungszonen, X20+-Status aus `statusText`.
+- **12.11.2026 – 1.29.105–1.29.121:** X20+-Detailseite, Zeitpläne und Wartung, Diagnoseschalter, Wartungs-Resets, EVE-Plus-Zeitplaneditor.
+- **05.11.2026 – 1.29.83–1.29.103:** Roidmi-Steuerung und -Optionen, mehrere Updater-Versuche (`ACTION_INSTALL_PACKAGE`, MediaStore, `ACTION_VIEW`) – alle überholt durch den Referenzstand 1.30.2.
+- **01.–03.11.2026 – bis 1.29.57:** Roidmi-Integration über den eigenen Adapter, ioBroker-Wiederverbindung, Hintergrundtrennung, Raumauswahl, Einstellungsseite.
+- **31.10.2026:** Erste zentrale Projektdokumentation.
