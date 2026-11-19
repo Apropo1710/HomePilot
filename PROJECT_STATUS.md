@@ -17,14 +17,14 @@
 
 # HomePilot – verbindlicher Projektstatus
 
-**Letzter Abgleich:** 19.11.2026, 06:30 Uhr MEZ (Dokumentation bereinigt; Produktion 1.30.2)
+**Letzter Abgleich:** 19.11.2026, 06:55 Uhr MEZ (Dokumentation bereinigt)
 **Repository:** https://github.com/Apropo1710/HomePilot
 
 Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches, Builds, Tests, Regeln, offene Punkte). `STATUS.md` verweist nur noch hierher. Die README dient als Einstieg. Der aktuelle Code auf GitHub bleibt maßgeblich; diese Datei ersetzt nicht das Lesen des Codes.
 
 ## 1. Produktivstand – `main`
 
-- **Aktuell in Produktion: 1.30.2 / versionCode 193** (Build #442, Code-Commit `5abe795`, Release `latest`, Asset `HomePilot.apk`, SHA-256 `17362222023b7aa9c9b5a8b3f46c3fdf7f3bb5cae943c2aa9f27ee808044d306`, Signaturprüfung erfolgreich).
+- Version, Quellcommit, APK-Hash und Release-Stand stehen ausschließlich im automatisch gepflegten Block am Dateianfang (wird vom Produktionsbuild geschrieben) und werden hier nicht wiederholt.
 - Gerätetest 18.11.2026: 1.30.1 einmalig manuell installiert, danach Update 1.30.1 → 1.30.2 über den In-App-Updater. Installationsdialog öffnete sich, Play Protect meldete „Diese App ist anscheinend sicher“. Anmeldung und Daten blieben erhalten.
 - [Direkter APK-Download](https://github.com/Apropo1710/HomePilot/releases/download/latest/HomePilot.apk)
 
@@ -45,7 +45,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 3. Wartungs-Resets (X20+ und EVE Plus) am realen Gerät verifizieren.
 4. MOVA: Anfahren des Wartungspunkts praktisch bestätigen.
 
-## 4. Funktionsumfang (Stand 1.30.2)
+## 4. Funktionsumfang
 
 ### Grundfunktionen
 - Verbindung ausschließlich über ioBroker-WebSocket `ws.0` (Standard `ws://<IP>:8084`, `wss://` möglich). Simple API/HTTP (Port 8087) wird nicht verwendet.
@@ -87,6 +87,7 @@ Arbeitsweise:
 - Nichts als gebaut, getestet oder funktionierend darstellen, was nicht tatsächlich verifiziert ist.
 - HomePilot und KlimaPilot strikt getrennt behandeln; Klimaanlagenfunktionen nicht in HomePilot voraussetzen.
 - Neue Stände in die passenden Abschnitte dieser Datei einarbeiten und überholte Aussagen ersetzen, keine zusätzlichen Abgleich-Abschnitte anhängen.
+- Version, Build und Release-Stand nicht von Hand pflegen – sie stehen nur im automatischen Block.
 
 ## 7. Technische Entscheidungen und Grenzen
 
