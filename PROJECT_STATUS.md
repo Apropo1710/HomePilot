@@ -20,7 +20,7 @@
 **Letzter Abgleich:** 19.11.2026, 06:55 Uhr MEZ (Dokumentation bereinigt)
 **Repository:** https://github.com/Apropo1710/HomePilot
 
-Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches, Builds, Tests, Regeln, offene Punkte). `STATUS.md` verweist nur noch hierher. Die README dient als Einstieg. Der aktuelle Code auf GitHub bleibt maßgeblich; diese Datei ersetzt nicht das Lesen des Codes.
+Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches, Builds, Tests, Regeln, offene Punkte); es gibt keine weitere Statusdatei. Die README dient als Einstieg. Der aktuelle Code auf GitHub bleibt maßgeblich; diese Datei ersetzt nicht das Lesen des Codes.
 
 ## 1. Produktivstand – `main`
 
@@ -31,11 +31,10 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 ## 2. Branches und Pull Requests
 
 - Offene PRs: **keine**. PR #1 (`feat/roidmi-eve-plus-options`) am 05.11.2026 gemergt; PR #2 (`docs/status-refresh-2026-11-16`) ohne Merge geschlossen.
-- Übrige Remote-Branches (nicht maßgeblich):
-  - `feature/smartphone-sync`: vollständig in `main` enthalten (Smartphone-Kopplung 1.30.0).
-  - `fix/update-installer-result`: keine eigenen Commits, historischer Vorfahrstand.
-  - `feat/roidmi-eve-plus-options`: 3 Commits, die nicht in `main` sind (Stand 1.29.91); nicht ungeprüft übernehmen.
-  - `docs/status-refresh-2026-11-16`: veralteter automatischer Dokumentationsstand; nicht verwenden, zum Löschen vorgesehen.
+- Übrige Remote-Branches (nicht maßgeblich, zum Löschen vorgesehen):
+  - `feat/roidmi-eve-plus-options`: 3 Commits vom Stand 1.29.91, die nicht in `main` sind; überholt.
+  - `docs/status-refresh-2026-11-16`: veralteter automatischer Dokumentationsstand.
+- `feature/smartphone-sync`, `fix/update-installer-result` und `STATUS.md` wurden am 19.11.2026 gelöscht.
 - Workflows: `.github/workflows/android.yml` baut bei Push auf `main` (außer `[skip ci]`) die Release-APK, veröffentlicht sie im Release `latest` und pflegt den automatischen Block oben. `.github/workflows/branch-validation.yml` prüft andere Branches (Unit-Tests, Release-Kotlin-Kompilierung) ohne APK oder Veröffentlichung.
 
 ## 3. Offene Punkte
