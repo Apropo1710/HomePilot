@@ -1,3 +1,14 @@
+## GitHub-Abgleich – 19.11.2026, 03:12 MEZ
+
+- `main` HEAD vor diesem Statuscommit: `b5ae0289647fc369cc56eb287eb6788642f5d570` (Dokumentation, 18.11.2026, 21:46 UTC). Letzter Laufzeitcode-/APK-Quellcommit: `5abe795971b996ec7160676202b19ebaf96af7b2`; Version **1.30.2 / 193**. Build #442 / Run [44403463104](https://github.com/Apropo1710/HomePilot/actions/runs/44403463104) erfolgreich. Release `latest` enthält `HomePilot.apk`, SHA-256 `17362222023b7aa9c9b5a8b3f46c3fdf7f3bb5cae943c2aa9f27ee808044d306`.
+- Gerätetest 18.11.2026, 22:29–22:44 MEZ bestätigt: 1.30.1 manuell installiert, danach 1.30.2 über den In-App-Updater; Android-Installationsdialog öffnete sich, Play Protect meldete „Diese App ist anscheinend sicher“. **Updater bleibt gesperrt für Änderungen**; Referenzstand 1.30.2 /193.
+- Branchinventar gegenüber `main`:
+  - `feature/smartphone-sync` HEAD `4463a88a`: **0 voraus / 9 zurück**; keine einzigartigen Commits mehr, Smartphone-Sync-Code ist in `main` enthalten. Kein offener PR.
+  - `feat/roidmi-eve-plus-options` HEAD `18b47b5d`: **3 voraus / 265 zurück**; drei isolierte Commits (davon zuletzt nur Dokumentation), kein offener PR und keine Push-CI-Läufe für diesen Branch beobachtet. Nicht als aktueller Produktionsstand behandeln.
+  - `fix/update-installer-result` HEAD `fd8cd1a0`: **0 voraus / 262 zurück**; keine einzigartigen Commits gegenüber `main`, kein offener PR.
+- Für `main` sind keine offenen PRs vorhanden. Die letzten APK-Workflows sind abgeschlossen; aktuell ist kein Workflow aktiv.
+- Smartphone-Pairing und vollständige Datenübernahme zwischen zwei realen HomePilot-Geräten bleiben als Hardware-/Praxistest offen. Der Updater-Gerätetest ist davon getrennt und bestätigt.
+
 ## Gerätetest Updater und Play Protect – 18.11.2026, 22:29–22:44 Uhr (bestätigt)
 
 - **22:29 Uhr – 1.30.1 einmalig manuell installiert** (APK aus Release `latest`, per Messenger aufs Smartphone): Google Play Protect meldet **„Diese App ist anscheinend sicher – Du kannst mit der Installation fortfahren“**, obwohl `REQUEST_INSTALL_PACKAGES` im Manifest steht. Installation erfolgreich, Anmeldung und Daten blieben erhalten.
