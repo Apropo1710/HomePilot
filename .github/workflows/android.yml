@@ -145,7 +145,7 @@ jobs:
                   "Ältere Einzelstände werden nicht als aktueller Produktionsstand fortgeführt.\n\n"
               )
               old, _ = re.subn(pattern, note, old, count=1)
-          p.write_text(old.rstrip() + "\\n")
+          p.write_text(old.rstrip() + "\n")
           PY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
