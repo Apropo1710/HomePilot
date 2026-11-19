@@ -31,10 +31,8 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 ## 2. Branches und Pull Requests
 
 - Offene PRs: **keine**. PR #1 (`feat/roidmi-eve-plus-options`) am 05.11.2026 gemergt; PR #2 (`docs/status-refresh-2026-11-16`) ohne Merge geschlossen.
-- Übrige Remote-Branches (nicht maßgeblich, zum Löschen vorgesehen):
-  - `feat/roidmi-eve-plus-options`: 3 Commits vom Stand 1.29.91, die nicht in `main` sind; überholt.
-  - `docs/status-refresh-2026-11-16`: veralteter automatischer Dokumentationsstand.
-- `feature/smartphone-sync`, `fix/update-installer-result` und `STATUS.md` wurden am 19.11.2026 gelöscht.
+- Remote-Branches: nur `main`. Alle alten Feature- und Dokumentationsbranches sowie `STATUS.md` wurden am 19.11.2026 gelöscht.
+- Releases: nur `latest` (Produktion, `HomePilot.apk`).
 - Workflows: `.github/workflows/android.yml` baut bei Push auf `main` (außer `[skip ci]`) die Release-APK, veröffentlicht sie im Release `latest` und pflegt den automatischen Block oben. `.github/workflows/branch-validation.yml` prüft andere Branches (Unit-Tests, Release-Kotlin-Kompilierung) ohne APK oder Veröffentlichung.
 
 ## 3. Offene Punkte
