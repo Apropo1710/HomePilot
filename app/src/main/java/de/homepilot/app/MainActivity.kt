@@ -5096,9 +5096,17 @@ private fun bambuStateLabel(printer: BambuPrinterUi): String = when {
 private fun bambuStateColor(printer: BambuPrinterUi, text: Color): Color = when {
     printer.online == false -> MaterialTheme.colorScheme.onSurfaceVariant
     printer.hmsErrors.isNotEmpty() || printer.gcodeState == "FAILED" -> Color(0xFFD62828)
-    printer.gcodeState == "RUNNING" || printer.gcodeState == "FINISH" -> Green
-    printer.gcodeState == "PAUSE" -> Color(0xFFE29A25)
+    printer.online == true -> Green
     else -> text
+}
+
+/** Fließender Farbverlauf über den Druckfortschritt: Rot → Orange → Gelb → Grün, ohne feste Stufen. */
+private val BambuProgressPalette = listOf(Color(0xFFD62828), Color(0xFFF77F00), Color(0xFFF2C230), Color(0xFF2E9B57))
+
+private fun bambuProgressColor(t: Float): Color {
+    val clamped = t.coerceIn(0f, 1f) * (BambuProgressPalette.size - 1)
+    val index = clamped.toInt().coerceAtMost(BambuProgressPalette.size - 2)
+    return androidx.compose.ui.graphics.lerp(BambuProgressPalette[index], BambuProgressPalette[index + 1], clamped - index)
 }
 
 private fun parseBambuHmsErrors(raw: String?): List<String> = runCatching {
@@ -5167,12 +5175,15 @@ private fun refreshBambuPrinter(client: IoBrokerClient, serverUrl: String, id: S
 }
 
 @Composable
-private fun BambuProgress(printer: BambuPrinterUi, text: Color) {
-    val percent = printer.percent ?: return
-    if (!bambuActive(printer.gcodeState)) return
-    LinearProgressIndicator(progress = { (percent / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = if (printer.gcodeState == "PAUSE") Color(0xFFE29A25) else Green)
-    val parts = listOfNotNull("${percent.toInt()} %", printer.remaining?.takeIf { it != "00:00" }?.let { "Restzeit $it h" })
-    Text(parts.joinToString(" · "), color = text, fontSize = 12.sp)
+private fun BambuProgressBar(fraction: Float, paused: Boolean, track: Color) {
+    val f = fraction.coerceIn(0f, 1f)
+    Box(Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(track)) {
+        if (f > 0f) {
+            // Der gefüllte Teil zeigt den Verlauf von 0 % bis zum aktuellen Stand; die Endfarbe wandert mit dem Fortschritt.
+            val stops = (0..8).map { step -> val t = step / 8f; t to bambuProgressColor(t * f) }.toTypedArray()
+            Box(Modifier.fillMaxWidth(f).fillMaxHeight().clip(RoundedCornerShape(4.dp)).background(androidx.compose.ui.graphics.Brush.horizontalGradient(*stops)).graphicsLayer { alpha = if (paused) 0.45f else 1f })
+        }
+    }
 }
 
 @Composable
@@ -5210,25 +5221,40 @@ private fun BambuScreen(serverUrl: String, connected: Boolean, client: IoBrokerC
         if (!connected) Text("Bitte zuerst die ioBroker-Verbindung herstellen.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         else if (sortedPrinters.isEmpty()) Text(if (!listed) "Drucker werden geladen …" else "Keine Drucker im Adapter BambuLab Connect gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (showDiagnostics) listError?.let { DiagnosticText(it) }
+        val muted = MaterialTheme.colorScheme.onSurfaceVariant
         sortedPrinters.forEach { printer ->
-            CardBlock(panel, text, printer.name, "Nur Anzeige · keine Steuerung", Icons.Default.Print) {
-                Text(bambuStateLabel(printer), color = bambuStateColor(printer, text), fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                if (bambuActive(printer.gcodeState)) {
-                    printer.jobName?.let { Text(it, color = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
-                    BambuProgress(printer, text)
-                    val details = listOfNotNull(
-                        if (printer.layer != null && printer.totalLayers != null && printer.totalLayers > 0) "Schicht ${printer.layer.toInt()} / ${printer.totalLayers.toInt()}" else null,
-                        printer.finishTime?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }?.let { "fertig ca. ${bambuLocalTime(it, "HH:mm")} Uhr" }
-                    )
-                    if (details.isNotEmpty()) Text(details.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Blue.copy(alpha = if (panel == Color.White) 0.14f else 0.24f)).padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(printer.name, color = text, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    Text(bambuStateLabel(printer), color = bambuStateColor(printer, text), fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
                 }
-                if (printer.online != false) {
+                val percent = printer.percent
+                // Offline: letzter Auftragsstand ist veraltet und wird nicht angezeigt.
+                if (printer.online != false && bambuActive(printer.gcodeState)) {
+                    printer.jobName?.let { Text(it, color = text, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    if (percent != null) BambuProgressBar((percent / 100.0).toFloat(), printer.gcodeState == "PAUSE", muted.copy(alpha = 0.18f))
+                    val finish = printer.finishTime?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
+                    val left = listOfNotNull(
+                        percent?.let { "${it.toInt()} %" },
+                        printer.remaining?.takeIf { it != "00:00" }?.let { "noch $it h" },
+                        finish?.let { "fertig ${bambuLocalTime(it, "HH:mm")}" }
+                    )
+                    Row(Modifier.fillMaxWidth()) {
+                        Text(left.joinToString(" · "), color = muted, fontSize = 12.sp, modifier = Modifier.weight(1f), maxLines = 1)
+                        if (printer.layer != null && printer.totalLayers != null && printer.totalLayers > 0) Text("Schicht ${printer.layer.toInt()}/${printer.totalLayers.toInt()}", color = muted, fontSize = 12.sp, maxLines = 1)
+                    }
+                }
+                if (printer.online == true) {
                     val temps = listOfNotNull(
                         printer.nozzle?.let { "Düse ${it.toInt()} °C" },
                         printer.bed?.let { "Bett ${it.toInt()} °C" },
                         printer.chamber?.takeIf { it > 0 }?.let { "Kammer ${it.toInt()} °C" }
                     )
-                    if (temps.isNotEmpty()) Text(temps.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    if (temps.isNotEmpty()) Text(temps.joinToString(" · "), color = muted, fontSize = 12.sp, maxLines = 1)
                 }
                 printer.hmsErrors.forEach { Text("⚠ $it", color = Color(0xFFD62828), fontSize = 12.sp) }
             }
@@ -5236,7 +5262,7 @@ private fun BambuScreen(serverUrl: String, connected: Boolean, client: IoBrokerC
         if (connected && sortedPrinters.isNotEmpty()) {
             val entries = histories.values.flatten().sortedByDescending { it.endedAt ?: java.time.Instant.EPOCH }
             val visible = if (showAllHistory) entries else entries.take(15)
-            CardBlock(panel, text, "Druckverlauf", "Beendete und abgebrochene Drucke aller Drucker", Icons.Default.History) {
+            CardBlock(panel, text, "Druckverlauf", "", Icons.Default.History) {
                 val missing = sortedPrinters.filter { historyMissing[it.id] == true }
                 if (missing.isNotEmpty()) Text("Kein Verlauf vom Adapter für: ${missing.joinToString { it.name }}. Dafür wird BambuLab Connect mit Druckverlauf benötigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 if (entries.isEmpty() && missing.size < sortedPrinters.size) Text("Noch keine Drucke aufgezeichnet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)

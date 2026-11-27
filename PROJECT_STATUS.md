@@ -106,6 +106,7 @@ Arbeitsweise:
 
 ## 8. Verlauf (kompakt)
 
+- **27.11.2026 – 1.31.2:** Druckerkarten kompakter (Status oben rechts, online grün), Fortschrittsbalken mit fließendem Farbverlauf Rot → Grün; offline kein veralteter Auftrag. Online-Status braucht BambuLab Connect mit Fix für `info.connection` (PR #24).
 - **27.11.2026 – 1.31.1:** 3D-Drucker als eigener Menüpunkt unten statt Startseiten-Kachel; feststehender Kopfbereich beim Scrollen.
 - **27.11.2026 – 1.31.0:** BambuLab-Drucker als reine Statusanzeige mit Druckverlauf (Kachel und Detailseite).
 - **18.11.2026 – 1.30.2:** Lila/Rosa durch HomePilot-Blau ersetzt, Kopplungshinweis entfernt.
