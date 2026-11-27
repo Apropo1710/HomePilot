@@ -487,6 +487,28 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
         })
     }
 
+    /** Lists device objects (id to display name) directly below an adapter instance, e.g. printers of bambulab-connect.0. */
+    fun listDevices(adapter: String, callback: (List<Pair<String, String>>, String?) -> Unit) {
+        val client = try { requireSocket() } catch (e: Exception) { post { callback(emptyList(), e.message) }; return }
+        client.emit("getObjectView", "system", "device", JSONObject().put("startkey", "$adapter.").put("endkey", "$adapter.\u9999"), IoBrokerAck { args ->
+            val (objects, replyError) = decodeObjectsReply(args)
+            if (replyError != null || objects == null) {
+                post { callback(emptyList(), "$adapter getObjectView(device): $replyError") }
+                return@IoBrokerAck
+            }
+            val devices = mutableListOf<Pair<String, String>>()
+            val iterator = objects.keys()
+            while (iterator.hasNext()) {
+                val id = iterator.next().toString()
+                if (id.removePrefix("$adapter.").contains('.')) continue
+                val rawName = objects.optJSONObject(id)?.optJSONObject("common")?.opt("name")
+                val name = when (rawName) { is JSONObject -> rawName.optString("de").ifBlank { rawName.optString("en") }; else -> rawName?.toString().orEmpty() }
+                devices.add(id to name.ifBlank { id.substringAfterLast('.') }.replace('_', ' '))
+            }
+            post { callback(devices, null) }
+        })
+    }
+
     fun setState(baseUrl: String, id: String, value: Boolean, callback: (Boolean, String) -> Unit) {
         val client = try { requireSocket() } catch (e: Exception) { callback(false, e.message ?: "Nicht verbunden"); return }
         client.emit("setState", id, JSONObject().put("val", value).put("ack", false), IoBrokerAck { args ->
@@ -547,7 +569,8 @@ private enum class Tab(val label: String, val icon: ImageVector) {
     SETTINGS("Einstellungen", Icons.Default.Settings),
     MOVA("MOVA 1000", Icons.Default.Park),
     ROIDMI("Roidmi EVE Plus", Icons.Default.CleaningServices),
-    X20PLUS("Xiaomi X20+", Icons.Default.CleaningServices)
+    X20PLUS("Xiaomi X20+", Icons.Default.CleaningServices),
+    BAMBU("3D-Drucker", Icons.Default.Print)
 }
 
 private data class DeviceItem(
@@ -1424,7 +1447,7 @@ private fun HomePilotApp() {
                     ) {
                     key(displayedTab, homePilotAccount?.username, userProfileSyncToken) {
                     when (displayedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onOpenX20Plus = { selectedTab = Tab.X20PLUS }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onOpenX20Plus = { selectedTab = Tab.X20PLUS }, onOpenBambu = { selectedTab = Tab.BAMBU }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -1437,6 +1460,7 @@ private fun HomePilotApp() {
                         Tab.MOVA -> MovaDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.ROIDMI -> RoidmiDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.X20PLUS -> X20PlusDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
+                        Tab.BAMBU -> BambuDetailScreen(serverUrl, connected, ioClient, panel, text, showDiagnostics) { selectedTab = Tab.HOME }
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -3566,7 +3590,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit, onOpenRoidmi: () -> Unit, onOpenX20Plus: () -> Unit,
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit, onOpenRoidmi: () -> Unit, onOpenX20Plus: () -> Unit, onOpenBambu: () -> Unit,
     onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
 ) {
     if (selectedRoom != null) {
@@ -3652,7 +3676,7 @@ private fun HomeScreen(
     }
     RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
     val context = LocalContext.current
-    val homeCardIds = listOf("weather", "mova", "roidmi", "x20plus", "safety")
+    val homeCardIds = listOf("weather", "mova", "roidmi", "x20plus", "bambu", "safety")
     val homeCardOrder = remember { mutableStateListOf<String>().apply {
         val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("homeCardOrder", null)
         val stored = saved?.split("|")?.filter { it in homeCardIds }.orEmpty()
@@ -3699,6 +3723,7 @@ private fun HomeScreen(
                 "mova" -> MovaHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenMova)
                 "roidmi" -> RoidmiHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenRoidmi)
                 "x20plus" -> X20PlusHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenX20Plus)
+                "bambu" -> BambuHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenBambu)
                 "safety" -> CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
                     if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
                     else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
@@ -5006,6 +5031,261 @@ private fun ScheduleRoomPicker(raw: String?, selected: Set<Int>, onChange: (Set<
                 onChange(when { id == 0 && checked -> setOf(0); id == 0 -> emptySet(); checked -> (selected - 0) + id; else -> selected - id })
             })
             Text(name, fontSize = 13.sp)
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// BambuLab-Drucker (Adapter bambulab-connect.0) – reine Statusanzeige, keine Steuerung.
+// ---------------------------------------------------------------------------
+
+private const val BAMBU_ADAPTER = "bambulab-connect.0"
+
+private data class BambuPrinterUi(
+    val id: String,
+    val name: String,
+    val online: Boolean? = null,
+    val gcodeState: String? = null,
+    val percent: Double? = null,
+    val remaining: String? = null,
+    val finishTime: String? = null,
+    val jobName: String? = null,
+    val layer: Double? = null,
+    val totalLayers: Double? = null,
+    val nozzle: Double? = null,
+    val bed: Double? = null,
+    val chamber: Double? = null,
+    val hmsErrors: List<String> = emptyList()
+)
+
+private data class BambuHistoryEntry(
+    val printerName: String,
+    val name: String,
+    val result: String,
+    val startedAt: java.time.Instant?,
+    val endedAt: java.time.Instant?,
+    val durationMinutes: Int?,
+    val percent: Int?
+)
+
+private fun bambuActive(state: String?): Boolean = state in setOf("PREPARE", "SLICING", "RUNNING", "PAUSE")
+
+private fun bambuStateLabel(printer: BambuPrinterUi): String = when {
+    printer.online == false -> "Offline"
+    printer.hmsErrors.isNotEmpty() && bambuActive(printer.gcodeState) -> "Störung"
+    else -> when (printer.gcodeState) {
+        "IDLE" -> "Bereit"
+        "PREPARE" -> "Vorbereitung"
+        "SLICING" -> "Wird vorbereitet"
+        "RUNNING" -> "Druckt"
+        "PAUSE" -> "Pausiert"
+        "FINISH" -> "Fertig"
+        "FAILED" -> "Abgebrochen / Fehler"
+        null -> "Status wird geladen"
+        else -> printer.gcodeState
+    }
+}
+
+@Composable
+private fun bambuStateColor(printer: BambuPrinterUi, text: Color): Color = when {
+    printer.online == false -> MaterialTheme.colorScheme.onSurfaceVariant
+    printer.hmsErrors.isNotEmpty() || printer.gcodeState == "FAILED" -> Color(0xFFD62828)
+    printer.gcodeState == "RUNNING" || printer.gcodeState == "FINISH" -> Green
+    printer.gcodeState == "PAUSE" -> Color(0xFFE29A25)
+    else -> text
+}
+
+private fun parseBambuHmsErrors(raw: String?): List<String> = runCatching {
+    val array = JSONArray(raw ?: return emptyList())
+    (0 until array.length()).mapNotNull { index ->
+        val entry = array.optJSONObject(index) ?: return@mapNotNull null
+        val description = entry.optString("description").trim()
+        val code = entry.optString("code").trim()
+        when {
+            description.isNotBlank() && !description.startsWith("No description") -> description
+            code.isNotBlank() -> "Fehlercode $code"
+            else -> null
+        }
+    }
+}.getOrDefault(emptyList())
+
+private fun parseBambuHistory(printerName: String, raw: String?): List<BambuHistoryEntry> = runCatching {
+    val array = JSONArray(raw ?: return emptyList())
+    fun instant(value: String): java.time.Instant? = value.takeIf { it.isNotBlank() && it != "null" }?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }
+    (0 until array.length()).mapNotNull { index ->
+        val entry = array.optJSONObject(index) ?: return@mapNotNull null
+        BambuHistoryEntry(
+            printerName = printerName,
+            name = entry.optString("name").takeIf { it.isNotBlank() && it != "null" } ?: "Unbekannter Druck",
+            result = entry.optString("result"),
+            startedAt = instant(entry.optString("startedAt")),
+            endedAt = instant(entry.optString("endedAt")),
+            durationMinutes = if (entry.isNull("durationMinutes")) null else entry.optInt("durationMinutes"),
+            percent = if (entry.isNull("percent")) null else entry.optInt("percent")
+        )
+    }
+}.getOrDefault(emptyList())
+
+private fun bambuDuration(minutes: Int?): String? = minutes?.takeIf { it >= 0 }?.let { if (it >= 60) "${it / 60} h ${it % 60} min" else "$it min" }
+
+private fun bambuLocalTime(instant: java.time.Instant?, pattern: String): String? = instant?.let {
+    java.time.format.DateTimeFormatter.ofPattern(pattern, java.util.Locale.GERMANY).format(it.atZone(java.time.ZoneId.systemDefault()))
+}
+
+/** Lädt die Liste der Drucker (Geräteobjekte des Adapters) und danach deren Statuswerte aus ioBroker. */
+private fun loadBambuPrinters(client: IoBrokerClient, serverUrl: String, printers: androidx.compose.runtime.snapshots.SnapshotStateMap<String, BambuPrinterUi>, onListed: (String?) -> Unit) {
+    client.listDevices(BAMBU_ADAPTER) { devices, error ->
+        if (error == null) {
+            devices.forEach { (id, name) -> if (printers[id] == null) printers[id] = BambuPrinterUi(id, name) }
+            printers.keys.toList().filter { key -> devices.none { it.first == key } }.forEach { printers.remove(it) }
+        }
+        printers.keys.toList().forEach { id -> refreshBambuPrinter(client, serverUrl, id, printers) }
+        onListed(error)
+    }
+}
+
+private fun refreshBambuPrinter(client: IoBrokerClient, serverUrl: String, id: String, printers: androidx.compose.runtime.snapshots.SnapshotStateMap<String, BambuPrinterUi>) {
+    fun update(change: (BambuPrinterUi) -> BambuPrinterUi) { printers[id]?.let { printers[id] = change(it) } }
+    client.getState(serverUrl, "$id.info.connection") { value, _ -> if (value != null) update { it.copy(online = value) } }
+    client.getTextState(serverUrl, "$id.status.gcode_state") { value -> update { it.copy(gcodeState = value?.uppercase()) } }
+    client.getNumericState(serverUrl, "$id.print.mc_percent") { value -> update { it.copy(percent = value) } }
+    client.getTextState(serverUrl, "$id.print.mc_remaining_time") { value -> update { it.copy(remaining = value) } }
+    client.getTextState(serverUrl, "$id.print.finishTime") { value -> update { it.copy(finishTime = value) } }
+    client.getTextState(serverUrl, "$id.print.subtask_name") { value -> update { it.copy(jobName = value) } }
+    client.getNumericState(serverUrl, "$id.print.layer_num") { value -> update { it.copy(layer = value) } }
+    client.getNumericState(serverUrl, "$id.print.total_layer_num") { value -> update { it.copy(totalLayers = value) } }
+    client.getNumericState(serverUrl, "$id.temperature.nozzle_temper") { value -> update { it.copy(nozzle = value) } }
+    client.getNumericState(serverUrl, "$id.temperature.bed_temper") { value -> update { it.copy(bed = value) } }
+    client.getNumericState(serverUrl, "$id.temperature.chamber_temper") { value -> update { it.copy(chamber = value) } }
+    client.getTextState(serverUrl, "$id.hms.hmsErrorCode") { value -> update { it.copy(hmsErrors = parseBambuHmsErrors(value)) } }
+}
+
+@Composable
+private fun BambuProgress(printer: BambuPrinterUi, text: Color) {
+    val percent = printer.percent ?: return
+    if (!bambuActive(printer.gcodeState)) return
+    LinearProgressIndicator(progress = { (percent / 100.0).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(), color = if (printer.gcodeState == "PAUSE") Color(0xFFE29A25) else Green)
+    val parts = listOfNotNull("${percent.toInt()} %", printer.remaining?.takeIf { it != "00:00" }?.let { "Restzeit $it h" })
+    Text(parts.joinToString(" · "), color = text, fontSize = 12.sp)
+}
+
+@Composable
+private fun BambuHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
+    val printers = remember { mutableStateMapOf<String, BambuPrinterUi>() }
+    var listError by remember { mutableStateOf<String?>(null) }
+    var listed by remember { mutableStateOf(false) }
+    LaunchedEffect(serverUrl, connected) {
+        if (connected) while (true) {
+            loadBambuPrinters(client, serverUrl, printers) { listError = it; listed = true }
+            delay(30_000)
+        }
+    }
+    CardBlock(panel, text, "3D-Drucker", "BambuLab · Status und Druckverlauf öffnen", Icons.Default.Print, action = onOpen) {
+        Column(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            when {
+                !connected -> Text("Verbindung fehlt", color = Color(0xFFD62828), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                printers.isEmpty() && listed -> Text(if (listError != null) "Drucker konnten nicht geladen werden." else "Keine Drucker im Adapter BambuLab Connect gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                printers.isEmpty() -> Text("Drucker werden geladen …", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+            }
+            printers.values.sortedBy { it.name.lowercase() }.forEach { printer ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(printer.name, color = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 1)
+                    Text(bambuStateLabel(printer), color = bambuStateColor(printer, text), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                BambuProgress(printer, MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Text("Zu Status und Verlauf  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun BambuDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, showDiagnostics: Boolean, onBack: () -> Unit) {
+    val printers = remember { mutableStateMapOf<String, BambuPrinterUi>() }
+    val histories = remember { mutableStateMapOf<String, List<BambuHistoryEntry>>() }
+    val historyMissing = remember { mutableStateMapOf<String, Boolean>() }
+    var listError by remember { mutableStateOf<String?>(null) }
+    var listed by remember { mutableStateOf(false) }
+    var showAllHistory by remember { mutableStateOf(false) }
+    LaunchedEffect(serverUrl, connected) {
+        if (connected) {
+            var round = 0
+            while (true) {
+                // Verlauf nur beim Öffnen und danach jede Minute neu lesen.
+                val loadHistory = round % 6 == 0
+                loadBambuPrinters(client, serverUrl, printers) { error ->
+                    listError = error; listed = true
+                    histories.keys.toList().filter { it !in printers }.forEach { histories.remove(it); historyMissing.remove(it) }
+                    if (loadHistory) printers.values.toList().forEach { printer ->
+                        client.getTextState(serverUrl, "${printer.id}.history.jobs") { raw ->
+                            historyMissing[printer.id] = raw == null
+                            histories[printer.id] = parseBambuHistory(printer.name, raw)
+                        }
+                    }
+                }
+                round++
+                delay(10_000)
+            }
+        }
+    }
+    val sortedPrinters = printers.values.sortedBy { it.name.lowercase() }
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }
+            Text("3D-Drucker", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
+        }
+        if (!connected) Text("Bitte zuerst die ioBroker-Verbindung herstellen.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        else if (sortedPrinters.isEmpty()) Text(if (!listed) "Drucker werden geladen …" else "Keine Drucker im Adapter BambuLab Connect gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (showDiagnostics) listError?.let { DiagnosticText(it) }
+        sortedPrinters.forEach { printer ->
+            CardBlock(panel, text, printer.name, "Nur Anzeige · keine Steuerung", Icons.Default.Print) {
+                Text(bambuStateLabel(printer), color = bambuStateColor(printer, text), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                if (bambuActive(printer.gcodeState)) {
+                    printer.jobName?.let { Text(it, color = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold) }
+                    BambuProgress(printer, text)
+                    val details = listOfNotNull(
+                        if (printer.layer != null && printer.totalLayers != null && printer.totalLayers > 0) "Schicht ${printer.layer.toInt()} / ${printer.totalLayers.toInt()}" else null,
+                        printer.finishTime?.let { runCatching { java.time.Instant.parse(it) }.getOrNull() }?.let { "fertig ca. ${bambuLocalTime(it, "HH:mm")} Uhr" }
+                    )
+                    if (details.isNotEmpty()) Text(details.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+                if (printer.online != false) {
+                    val temps = listOfNotNull(
+                        printer.nozzle?.let { "Düse ${it.toInt()} °C" },
+                        printer.bed?.let { "Bett ${it.toInt()} °C" },
+                        printer.chamber?.takeIf { it > 0 }?.let { "Kammer ${it.toInt()} °C" }
+                    )
+                    if (temps.isNotEmpty()) Text(temps.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+                printer.hmsErrors.forEach { Text("⚠ $it", color = Color(0xFFD62828), fontSize = 12.sp) }
+            }
+        }
+        if (connected && sortedPrinters.isNotEmpty()) {
+            val entries = histories.values.flatten().sortedByDescending { it.endedAt ?: java.time.Instant.EPOCH }
+            val visible = if (showAllHistory) entries else entries.take(15)
+            CardBlock(panel, text, "Druckverlauf", "Beendete und abgebrochene Drucke aller Drucker", Icons.Default.History) {
+                val missing = sortedPrinters.filter { historyMissing[it.id] == true }
+                if (missing.isNotEmpty()) Text("Kein Verlauf vom Adapter für: ${missing.joinToString { it.name }}. Dafür wird BambuLab Connect mit Druckverlauf benötigt.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                if (entries.isEmpty() && missing.size < sortedPrinters.size) Text("Noch keine Drucke aufgezeichnet.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                visible.forEach { entry ->
+                    val ok = entry.result == "finished"
+                    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (ok) Icons.Default.CheckCircle else Icons.Default.Cancel, null, tint = if (ok) Green else Color(0xFFD62828), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(entry.name, color = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                            val info = listOfNotNull(
+                                entry.printerName,
+                                bambuLocalTime(entry.endedAt, "dd.MM.yyyy HH:mm"),
+                                bambuDuration(entry.durationMinutes),
+                                if (!ok) (entry.percent?.let { "abgebrochen bei $it %" } ?: "abgebrochen / Fehler") else null
+                            )
+                            Text(info.joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                        }
+                    }
+                }
+                if (entries.size > 15) TextButton(onClick = { showAllHistory = !showAllHistory }) { Text(if (showAllHistory) "Weniger anzeigen" else "Alle ${entries.size} anzeigen") }
+            }
         }
     }
 }
