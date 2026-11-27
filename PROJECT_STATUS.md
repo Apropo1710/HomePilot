@@ -31,7 +31,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 ## 2. Branches und Pull Requests
 
 - Offene PRs: **keine**. PR #1 (`feat/roidmi-eve-plus-options`) am 05.11.2026 gemergt; PR #2 (`docs/status-refresh-2026-11-16`) ohne Merge geschlossen.
-- Remote-Branches: nur `main`. Alle alten Feature- und Dokumentationsbranches sowie `STATUS.md` wurden am 19.11.2026 gelöscht.
+- Remote-Branches: `main`; `feature/bambu-status` nur bis zur Übernahme der 3D-Drucker-Anzeige. Alle alten Feature- und Dokumentationsbranches sowie `STATUS.md` wurden am 19.11.2026 gelöscht.
 - Releases: nur `latest` (Produktion, `HomePilot.apk`).
 - Workflows: `.github/workflows/android.yml` baut bei Push auf `main` (außer `[skip ci]`) die Release-APK, veröffentlicht sie im Release `latest` und pflegt den automatischen Block oben. `.github/workflows/branch-validation.yml` prüft andere Branches (Unit-Tests, Release-Kotlin-Kompilierung) ohne APK oder Veröffentlichung. `.github/workflows/docs-guard.yml` prüft bei jedem Push und täglich, dass `PROJECT_STATUS.md` die einzige Statusdatei bleibt.
 
@@ -41,6 +41,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 2. Roidmi EVE Plus: gezielter Hardwaretest einer Zeitplan-Schreibänderung (Synchronisation in beide Richtungen ist bestätigt).
 3. Wartungs-Resets (X20+ und EVE Plus) am realen Gerät verifizieren.
 4. MOVA: Anfahren des Wartungspunkts praktisch bestätigen.
+5. BambuLab-Drucker (1.31.0): Statusanzeige und Druckverlauf am Gerät prüfen. Der Verlauf braucht den Adapter-Branch `feature/print-history` (BambuLab Connect, PR #23), der noch nicht am Drucker getestet ist.
 
 ## 4. Funktionsumfang
 
@@ -62,6 +63,11 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 - **Roidmi EVE Plus** (`roidmi.0.*`): Status, Start/Pause/Stop/Station, Saug- und Wasserstufe, Reinigungsoptionen (`individual`, `doubleClean`, `pathType`), Raumreinigung über `control.cleanRooms`, Wartungskarte mit Reset, Zeitplaneditor mit Konfliktprüfung und Readback (Hardwaretest der Schreibänderung offen).
 - Rückmeldung „Reinigung gestartet“ bei beiden Robotern direkt an den Reinigungsbereichen; bestätigte Meldung verschwindet nach 5 s, Fehler bleiben sichtbar. Kartenreihenfolge: Status → Steuerung → Einstellungen → Reinigungsbereiche → (X20+: Zeitpläne) → Wartung.
 - **MOVA**: Mäher-Kachel und Wartungsbereich (Messer- und Gerätewartung).
+
+### 3D-Drucker (BambuLab, seit 1.31.0)
+- Nur Anzeige, keine Steuerung (Nutzerentscheidung). Drucker werden aus den Geräteobjekten von `bambulab-connect.0` gelesen; Kachel „3D-Drucker“ auf der Startseite (alle 30 s), Detailseite (alle 10 s, Verlauf beim Öffnen und jede Minute). Es werden nur ioBroker-Zustände gelesen, keine Druckerabfragen ausgelöst.
+- Angezeigt: `status.gcode_state`, `info.connection`, `print.mc_percent`, `print.mc_remaining_time`, `print.finishTime`, `print.subtask_name`, `print.layer_num`/`total_layer_num`, `temperature.nozzle_temper`/`bed_temper`/`chamber_temper`, `hms.hmsErrorCode`.
+- Druckverlauf aller Drucker aus `<Drucker>.history.jobs` (vom Adapter geschrieben, letzte 50 pro Drucker). Fehlt der Datenpunkt, zeigt die App einen Hinweis statt eines leeren Verlaufs. Drucke, die enden, während der Adapter nicht läuft, fehlen im Verlauf.
 
 ## 5. Updater – absolute Sperre
 
@@ -99,6 +105,7 @@ Arbeitsweise:
 
 ## 8. Verlauf (kompakt)
 
+- **27.11.2026 – 1.31.0:** BambuLab-Drucker als reine Statusanzeige mit Druckverlauf (Kachel und Detailseite).
 - **18.11.2026 – 1.30.2:** Lila/Rosa durch HomePilot-Blau ersetzt, Kopplungshinweis entfernt.
 - **18.11.2026 – 1.30.1:** Updater an KlimaPilot angeglichen, `REQUEST_INSTALL_PACKAGES` wieder eingetragen (ausdrückliche Nutzeranweisung). Versionen ohne Berechtigung (1.29.132, 1.30.0) mussten einmalig manuell aktualisiert werden.
 - **18.11.2026 – 1.30.0:** Smartphone-Kopplung, Smartphone-Sync und neue Anmeldung aus KlimaPilot übernommen.
