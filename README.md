@@ -25,7 +25,7 @@ HomePilot kommuniziert mit ioBroker ausschließlich über den WebSocket-Adapter 
 - Persönliche Benutzerprofile (Favoriten, Kachel-Reihenfolgen, Hintergrund-Timeout) pro Konto, ebenfalls abgeglichen.
 - Ausgeblendete Geräte können später wieder eingeblendet werden.
 - Die Waschmaschine kann als Gerät verwaltet werden, wird aber nicht als Testgerät verwendet.
-- BambuLab-3D-Drucker (Adapter `bambulab-connect.0`) als reine Statusanzeige ohne Steuerung: Startseiten-Kachel und Detailseite mit Status, Fortschritt, Restzeit, Schicht, Temperaturen, HMS-Fehlern und Druckverlauf (`<Drucker>.history.jobs`, benötigt BambuLab Connect mit Druckverlauf).
+- BambuLab-3D-Drucker (Adapter `bambulab-connect.0`) als reine Statusanzeige ohne Steuerung: eigene Seite „3D-Drucker“ in der unteren Menüleiste mit Status, Fortschritt, Restzeit, Schicht, Temperaturen, HMS-Fehlern und Druckverlauf (`<Drucker>.history.jobs`, benötigt BambuLab Connect mit Druckverlauf).
 
 ## Smartphone-Kopplung und Abgleich
 

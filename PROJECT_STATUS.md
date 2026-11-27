@@ -31,7 +31,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 ## 2. Branches und Pull Requests
 
 - Offene PRs: **keine**. PR #1 (`feat/roidmi-eve-plus-options`) am 05.11.2026 gemergt; PR #2 (`docs/status-refresh-2026-11-16`) ohne Merge geschlossen.
-- Remote-Branches: `main`; `feature/bambu-status` nur bis zur Übernahme der 3D-Drucker-Anzeige. Alle alten Feature- und Dokumentationsbranches sowie `STATUS.md` wurden am 19.11.2026 gelöscht.
+- Remote-Branches: `main`; `feature/bambu-status` ist vollständig in `main` enthalten und wird gelöscht (Löschen aus der Claude-Sitzung war nicht möglich). Alle alten Feature- und Dokumentationsbranches sowie `STATUS.md` wurden am 19.11.2026 gelöscht.
 - Releases: nur `latest` (Produktion, `HomePilot.apk`).
 - Workflows: `.github/workflows/android.yml` baut bei Push auf `main` (außer `[skip ci]`) die Release-APK, veröffentlicht sie im Release `latest` und pflegt den automatischen Block oben. `.github/workflows/branch-validation.yml` prüft andere Branches (Unit-Tests, Release-Kotlin-Kompilierung) ohne APK oder Veröffentlichung. `.github/workflows/docs-guard.yml` prüft bei jedem Push und täglich, dass `PROJECT_STATUS.md` die einzige Statusdatei bleibt.
 
@@ -41,7 +41,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 2. Roidmi EVE Plus: gezielter Hardwaretest einer Zeitplan-Schreibänderung (Synchronisation in beide Richtungen ist bestätigt).
 3. Wartungs-Resets (X20+ und EVE Plus) am realen Gerät verifizieren.
 4. MOVA: Anfahren des Wartungspunkts praktisch bestätigen.
-5. BambuLab-Drucker (1.31.0): Statusanzeige und Druckverlauf am Gerät prüfen. Der Verlauf braucht den Adapter-Branch `feature/print-history` (BambuLab Connect, PR #23), der noch nicht am Drucker getestet ist.
+5. BambuLab-Drucker: Statusseite und Druckverlauf am Gerät prüfen; der Druckverlauf im Adapter BambuLab Connect (auf `main`, PR #23) ist noch nicht am Drucker getestet.
 
 ## 4. Funktionsumfang
 
@@ -49,6 +49,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 - Verbindung ausschließlich über ioBroker-WebSocket `ws.0` (Standard `ws://<IP>:8084`, `wss://` möglich). Simple API/HTTP (Port 8087) wird nicht verwendet.
 - Geräteerkennung (Shelly, Hue automatisch; Tuya u. a. per manueller Suche), Räume anlegen/umbenennen/löschen, Geräte umbenennen, zuordnen, verschieben und ausblenden, Raumauswahl-Kachel, aufklappbare Einstellungsbereiche.
 - Automatische Trennung im Hintergrund nach 15/30/60 Minuten oder nie; Wiederverbindung beim Zurückkehren in die App.
+- Kopfbereich (HomePilot-Titel, Verbindungsstatus, Zurück) bleibt auf allen Seiten beim Scrollen oben stehen (seit 1.31.1).
 - Appweiter Schalter „Diagnosetexte anzeigen“ (Standard aus) für technische Adapter-Rückmeldungen.
 - Startup-Updatehinweis mit „Zu Einstellungen“/„Später“; Download und Installation nur in den Einstellungen.
 
@@ -65,7 +66,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 - **MOVA**: Mäher-Kachel und Wartungsbereich (Messer- und Gerätewartung).
 
 ### 3D-Drucker (BambuLab, seit 1.31.0)
-- Nur Anzeige, keine Steuerung (Nutzerentscheidung). Drucker werden aus den Geräteobjekten von `bambulab-connect.0` gelesen; Kachel „3D-Drucker“ auf der Startseite (alle 30 s), Detailseite (alle 10 s, Verlauf beim Öffnen und jede Minute). Es werden nur ioBroker-Zustände gelesen, keine Druckerabfragen ausgelöst.
+- Nur Anzeige, keine Steuerung (Nutzerentscheidung). Eigene Seite „3D-Drucker“ über einen eigenen Menüpunkt in der unteren Leiste (seit 1.31.1; keine Startseiten-Kachel mehr). Drucker werden aus den Geräteobjekten von `bambulab-connect.0` gelesen; Aktualisierung alle 10 s, solange die Seite offen ist, Verlauf beim Öffnen und jede Minute. Es werden nur ioBroker-Zustände gelesen, keine Druckerabfragen ausgelöst.
 - Angezeigt: `status.gcode_state`, `info.connection`, `print.mc_percent`, `print.mc_remaining_time`, `print.finishTime`, `print.subtask_name`, `print.layer_num`/`total_layer_num`, `temperature.nozzle_temper`/`bed_temper`/`chamber_temper`, `hms.hmsErrorCode`.
 - Druckverlauf aller Drucker aus `<Drucker>.history.jobs` (vom Adapter geschrieben, letzte 50 pro Drucker). Fehlt der Datenpunkt, zeigt die App einen Hinweis statt eines leeren Verlaufs. Drucke, die enden, während der Adapter nicht läuft, fehlen im Verlauf.
 
@@ -105,6 +106,7 @@ Arbeitsweise:
 
 ## 8. Verlauf (kompakt)
 
+- **27.11.2026 – 1.31.1:** 3D-Drucker als eigener Menüpunkt unten statt Startseiten-Kachel; feststehender Kopfbereich beim Scrollen.
 - **27.11.2026 – 1.31.0:** BambuLab-Drucker als reine Statusanzeige mit Druckverlauf (Kachel und Detailseite).
 - **18.11.2026 – 1.30.2:** Lila/Rosa durch HomePilot-Blau ersetzt, Kopplungshinweis entfernt.
 - **18.11.2026 – 1.30.1:** Updater an KlimaPilot angeglichen, `REQUEST_INSTALL_PACKAGES` wieder eingetragen (ausdrückliche Nutzeranweisung). Versionen ohne Berechtigung (1.29.132, 1.30.0) mussten einmalig manuell aktualisiert werden.

@@ -1420,11 +1420,17 @@ private fun HomePilotApp() {
                                 onDragCancel = { horizontalDrag = 0f }
                             )
                         }
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Header(dark = dark, text = text, connected = connected, status = connectionStatus, showBack = selectedTab != Tab.HOME || selectedRoom != null, onBack = { navigateBack() })
+                    // Kopfbereich bleibt beim Scrollen stehen; nur der Inhalt darunter scrollt.
+                    Box(Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 8.dp)) {
+                        Header(dark = dark, text = text, connected = connected, status = connectionStatus, showBack = selectedTab != Tab.HOME || selectedRoom != null, onBack = { navigateBack() })
+                    }
+                    Column(
+                        Modifier.weight(1f).fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(start = 18.dp, end = 18.dp, top = 4.dp, bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
                     if (showDemoNotice) {
                         Row(
                             Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
@@ -1447,7 +1453,7 @@ private fun HomePilotApp() {
                     ) {
                     key(displayedTab, homePilotAccount?.username, userProfileSyncToken) {
                     when (displayedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onOpenX20Plus = { selectedTab = Tab.X20PLUS }, onOpenBambu = { selectedTab = Tab.BAMBU }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onOpenX20Plus = { selectedTab = Tab.X20PLUS }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -1460,7 +1466,7 @@ private fun HomePilotApp() {
                         Tab.MOVA -> MovaDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.ROIDMI -> RoidmiDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
                         Tab.X20PLUS -> X20PlusDetailScreen(serverUrl, connected, ioClient, panel, text) { selectedTab = Tab.HOME }
-                        Tab.BAMBU -> BambuDetailScreen(serverUrl, connected, ioClient, panel, text, showDiagnostics) { selectedTab = Tab.HOME }
+                        Tab.BAMBU -> BambuScreen(serverUrl, connected, ioClient, panel, text, showDiagnostics)
                         Tab.LIGHTS -> LightsScreen(lights, rooms, panel, text, connected, selectedRoom, onSelectRoom = { selectedRoom = it },
                             onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind },
                             onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } },
@@ -1796,13 +1802,14 @@ private fun HomePilotApp() {
                         confirmButton = { TextButton(onClick = { showHiddenDevices = false }) { Text("Fertig") } }
                     )
                     Spacer(Modifier.height(10.dp))
+                    }
                 }
                 NavigationBar(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).height(64.dp),
                     containerColor = panel,
                     windowInsets = WindowInsets(0.dp)
                 ) {
-                    listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY, Tab.SETTINGS).forEach { tab ->
+                    listOf(Tab.HOME, Tab.FAVORITES, Tab.ENERGY, Tab.BAMBU, Tab.SETTINGS).forEach { tab ->
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = {
@@ -3590,7 +3597,7 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
 @Composable
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
-    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit, onOpenRoidmi: () -> Unit, onOpenX20Plus: () -> Unit, onOpenBambu: () -> Unit,
+    panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit, onOpenRoidmi: () -> Unit, onOpenX20Plus: () -> Unit,
     onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
 ) {
     if (selectedRoom != null) {
@@ -3676,7 +3683,7 @@ private fun HomeScreen(
     }
     RoomMenu(rooms, selectedRoom, panel, text, { room -> onOpenRoom(room) }, listOf("Ohne Raum" to { onOpenRoom("Nicht zugeordnet") }))
     val context = LocalContext.current
-    val homeCardIds = listOf("weather", "mova", "roidmi", "x20plus", "bambu", "safety")
+    val homeCardIds = listOf("weather", "mova", "roidmi", "x20plus", "safety")
     val homeCardOrder = remember { mutableStateListOf<String>().apply {
         val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("homeCardOrder", null)
         val stored = saved?.split("|")?.filter { it in homeCardIds }.orEmpty()
@@ -3723,7 +3730,6 @@ private fun HomeScreen(
                 "mova" -> MovaHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenMova)
                 "roidmi" -> RoidmiHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenRoidmi)
                 "x20plus" -> X20PlusHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenX20Plus)
-                "bambu" -> BambuHomeTile(serverUrl = serverUrl, connected = connected, client = ioClient, panel = panel, text = text, onOpen = onOpenBambu)
                 "safety" -> CardBlock(panel, text, "Sicherheit", "Wassermelder Küche", Icons.Default.WaterDrop, action = { onTab(Tab.SAFETY) }) {
                     if (floodAlarm) Text("WASSERALARM – Wasser erkannt!", color = Color(0xFFD62828), fontWeight = FontWeight.Bold)
                     else if (floodKnown) Text("Letzter gemeldeter Zustand: kein Wasser erkannt.", color = Green, fontSize = 12.sp)
@@ -5170,37 +5176,7 @@ private fun BambuProgress(printer: BambuPrinterUi, text: Color) {
 }
 
 @Composable
-private fun BambuHomeTile(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, onOpen: () -> Unit) {
-    val printers = remember { mutableStateMapOf<String, BambuPrinterUi>() }
-    var listError by remember { mutableStateOf<String?>(null) }
-    var listed by remember { mutableStateOf(false) }
-    LaunchedEffect(serverUrl, connected) {
-        if (connected) while (true) {
-            loadBambuPrinters(client, serverUrl, printers) { listError = it; listed = true }
-            delay(30_000)
-        }
-    }
-    CardBlock(panel, text, "3D-Drucker", "BambuLab · Status und Druckverlauf öffnen", Icons.Default.Print, action = onOpen) {
-        Column(Modifier.fillMaxWidth().clickable(onClick = onOpen).padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            when {
-                !connected -> Text("Verbindung fehlt", color = Color(0xFFD62828), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                printers.isEmpty() && listed -> Text(if (listError != null) "Drucker konnten nicht geladen werden." else "Keine Drucker im Adapter BambuLab Connect gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                printers.isEmpty() -> Text("Drucker werden geladen …", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-            }
-            printers.values.sortedBy { it.name.lowercase() }.forEach { printer ->
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(printer.name, color = text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), maxLines = 1)
-                    Text(bambuStateLabel(printer), color = bambuStateColor(printer, text), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                }
-                BambuProgress(printer, MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Text("Zu Status und Verlauf  ›", color = Blue, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun BambuDetailScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, showDiagnostics: Boolean, onBack: () -> Unit) {
+private fun BambuScreen(serverUrl: String, connected: Boolean, client: IoBrokerClient, panel: Color, text: Color, showDiagnostics: Boolean) {
     val printers = remember { mutableStateMapOf<String, BambuPrinterUi>() }
     val histories = remember { mutableStateMapOf<String, List<BambuHistoryEntry>>() }
     val historyMissing = remember { mutableStateMapOf<String, Boolean>() }
@@ -5230,10 +5206,7 @@ private fun BambuDetailScreen(serverUrl: String, connected: Boolean, client: IoB
     }
     val sortedPrinters = printers.values.sortedBy { it.name.lowercase() }
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, "Zurück", tint = Blue) }
-            Text("3D-Drucker", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-        }
+        Text("3D-Drucker", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
         if (!connected) Text("Bitte zuerst die ioBroker-Verbindung herstellen.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         else if (sortedPrinters.isEmpty()) Text(if (!listed) "Drucker werden geladen …" else "Keine Drucker im Adapter BambuLab Connect gefunden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (showDiagnostics) listError?.let { DiagnosticText(it) }
