@@ -61,6 +61,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 
 private val Blue = Color(0xFF1769AA)
 private val Green = Color(0xFF16845B)
@@ -402,6 +403,7 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
             val allIds = mutableListOf<String>()
             val iterator = objects.keys()
             while (iterator.hasNext()) allIds.add(iterator.next().toString())
+            val objectIds = allIds.toHashSet()
             val candidates = mutableListOf<DeviceItem>()
             for (id in allIds) {
                 val obj = objects.optJSONObject(id) ?: continue
@@ -412,7 +414,11 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
                 val name = when (rawName) { is JSONObject -> rawName.optString("de").ifBlank { rawName.optString("en") }; else -> rawName?.toString().orEmpty() }
                 val isOutput = when (adapter) {
                     "shelly.0" -> id.matches(Regex("shelly\\.0\\..*(?:Relay\\d*\\.(?:Switch|Output)|\\.Switch)$", RegexOption.IGNORE_CASE))
-                    "hue.0" -> type == "boolean" && (id.substringAfterLast('.').lowercase() in setOf("on", "all_on", "state", "switch") || role.contains("switch") || role.contains("light"))
+                    // Nur der echte Ein/Aus-Schalter einer Lampe oder Gruppe. anyOn/allOn, Szenen und Sensor-Schalter
+                    // tragen sonst denselben Namen und schalten die Lampe nicht.
+                    "hue.0" -> type == "boolean" && id.substringAfterLast('.') == "on" && id.substringBeforeLast('.').let { p ->
+                        role == "switch.light" || "$p.anyOn" in objectIds || "$p.bri" in objectIds || "$p.level" in objectIds
+                    }
                     else -> type == "boolean" && common.optBoolean("write", false) && (id.substringAfterLast('.').lowercase() in setOf("on", "switch", "state", "power", "light", "relay") || role.contains("switch") || role.contains("light") || role.contains("button"))
                 }
                 if (!isOutput) continue
@@ -433,9 +439,11 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
                     ancestor = next
                 }
                 val fallback = friendly.ifBlank { name.trim().takeIf { it.isNotBlank() && !it.startsWith("{") && !it.equals("switch", true) } ?: when(adapter) { "hue.0" -> "Hue-Licht"; "tuya" -> "Tuya-Gerät"; else -> "Shelly-Gerät" } }
-                fun related(vararg endings: String): String? = allIds.firstOrNull { candidate ->
-                    candidate.startsWith("$parent.", true) && candidate.substringAfterLast('.').lowercase() in endings.map { it.lowercase() } &&
-                        objects.optJSONObject(candidate)?.optJSONObject("common")?.optBoolean("write", false) == true
+                fun related(vararg endings: String): String? = endings.firstNotNullOfOrNull { ending ->
+                    allIds.firstOrNull { candidate ->
+                        candidate.substringBeforeLast('.') == parent && candidate.substringAfterLast('.').equals(ending, true) &&
+                            objects.optJSONObject(candidate)?.optJSONObject("common")?.optBoolean("write", false) == true
+                    }
                 }
                 val power = allIds.firstOrNull { candidate -> candidate.substringBeforeLast('.') == parent &&
                     (candidate.substringAfterLast('.').contains("power", true) || objects.optJSONObject(candidate)?.optJSONObject("common")?.optString("unit") == "W") }
@@ -728,6 +736,11 @@ private fun HomePilotApp() {
     var connected by remember { mutableStateOf(false) }
     var connecting by remember { mutableStateOf(false) }
     var showConnectionAlert by remember { mutableStateOf(false) }
+    // Fehlgeschlagene Schalt- und Lichtbefehle sichtbar machen, statt sie nur im Status zu speichern.
+    LaunchedEffect(connectionStatus) {
+        if (connectionStatus.startsWith("Schalten fehlgeschlagen") || connectionStatus.startsWith("Lichtwert konnte nicht gesetzt werden"))
+            android.widget.Toast.makeText(context, connectionStatus, android.widget.Toast.LENGTH_LONG).show()
+    }
     var washOn by remember { mutableStateOf(false) }
     var waterOn by remember { mutableStateOf(false) }
     val credentialStore = remember { IoBrokerCredentialsStore(context).also { it.clear() } }
@@ -1063,6 +1076,32 @@ private fun HomePilotApp() {
     fun persistDeviceKinds() { prefs.edit().putString("deviceKinds", JSONObject(deviceKinds as Map<*, *>).toString()).apply(); saveSharedConfiguration() }
     fun persistHiddenItems() { prefs.edit().putString("hiddenDeviceItems", writeHiddenItems(hiddenItems)).apply(); saveSharedConfiguration() }
 
+    /**
+     * Frühere Versionen konnten bei Hue statt des Ein/Aus-Schalters einen gleichnamigen Nebendatenpunkt
+     * (anyOn, allOn, Szene) übernehmen. Solche Lampen werden auf den `on`-Datenpunkt daneben umgestellt;
+     * Name, Raum, Art und Favorit wandern mit.
+     */
+    fun migrateImportedHueLights(found: List<DeviceItem>) {
+        val foundIds = found.mapNotNull { it.stateId }.toSet()
+        val moves = importedLightIds.filter { it.startsWith("hue.0.") && it !in foundIds }
+            .mapNotNull { old -> "${old.substringBeforeLast('.')}.on".takeIf { it in foundIds }?.let { old to it } }
+        if (moves.isEmpty()) return
+        fun <V> moveKeys(map: Map<String, V>): Map<String, V> = map.toMutableMap().apply {
+            moves.forEach { (old, new) -> remove(old)?.let { value -> putIfAbsent(new, value) } }
+        }
+        customNames = moveKeys(customNames); deviceRooms = moveKeys(deviceRooms); deviceKinds = moveKeys(deviceKinds)
+        importedLightIds = importedLightIds - moves.map { it.first }.toSet() + moves.map { it.second }
+        favoriteIds = favoriteIds.map { id -> moves.firstOrNull { it.first == id }?.second ?: id }.toSet()
+        favoriteOrder = favoriteOrder.map { id -> moves.firstOrNull { it.first == id }?.second ?: id }.distinct()
+        prefs.edit()
+            .putStringSet("importedLights", importedLightIds)
+            .putStringSet("favoriteDevices", favoriteIds)
+            .putString("favoriteOrder", favoriteOrder.joinToString("|"))
+            .apply()
+        persistNames(); persistDeviceRooms(); persistDeviceKinds()
+        saveUserProfile()
+    }
+
     /** Kompletter Abgleich mit ioBroker: Konten, gemeinsame Konfiguration und eigenes Profil. */
     fun syncDocsWithIoBroker() {
         syncAccountsWithIoBroker()
@@ -1160,6 +1199,7 @@ private fun HomePilotApp() {
                 }
                 ioClient.discoverSwitches(serverUrl, "hue.0") { found, err ->
                     if (err == null) {
+                        migrateImportedHueLights(found)
                         val candidates = found.filter { it.stateId !in hiddenIds && it.stateId !in importedLightIds }
                         if (manualDeviceSearch) {
                             discoveredLights.clear()
@@ -1612,7 +1652,7 @@ private fun HomePilotApp() {
                         }
                     )
                     if (showRoomDialog) AlertDialog(onDismissRequest = { showRoomDialog = false }, title = { Text("Raum hinzufügen") }, text = { OutlinedTextField(value = roomNameInput, onValueChange = { roomNameInput = it }, label = { Text("Raumname") }, singleLine = true, trailingIcon = { InputConfirmIcon() }) }, confirmButton = { TextButton(onClick = { val n = roomNameInput.trim(); if (n.isNotBlank() && n !in rooms) { rooms = (rooms.filterNot { it == "Nicht zugeordnet" } + n + "Nicht zugeordnet").toMutableList(); persistRooms() }; showRoomDialog = false }) { Text("Hinzufügen") } }, dismissButton = { TextButton(onClick = { showRoomDialog = false }) { Text("Abbrechen") } })
-                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply(); saveUserProfile() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else MaterialTheme.colorScheme.onSurfaceVariant) } } }, text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (editDevice != null) AlertDialog(onDismissRequest = { editDevice = null }, title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("Gerät bearbeiten", modifier = Modifier.weight(1f)); IconButton(onClick = { editDevice?.stateId?.let { id -> favoriteIds = if (id in favoriteIds) favoriteIds - id else favoriteIds + id; prefs.edit().putStringSet("favoriteDevices", favoriteIds).apply(); saveUserProfile() } }) { Icon(Icons.Default.Star, "Favorit", tint = if (editDevice?.stateId in favoriteIds) Blue else MaterialTheme.colorScheme.onSurfaceVariant) } } }, text = { Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) { editDevice?.stateId?.let { Text("Datenpunkt: $it", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp) };
                 OutlinedTextField(value = editName, onValueChange = { editName = it }, label = { Text("Gerätename") }, singleLine = true, trailingIcon = { InputConfirmIcon() })
                 Text("Gerätetyp")
                 Box {
@@ -3617,8 +3657,12 @@ private fun HomeScreen(
             var expanded by remember(item.stateId) { mutableStateOf(false) }
             var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
             var colorTemp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.toFloat() ?: 285f) }
-            var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.toFloat() ?: 0f) }
-            var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.toFloat() ?: 254f) }
+            var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.toFloat()?.coerceIn(0f, 360f) ?: 0f) }
+            var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 2.54).toFloat().coerceIn(0f, 100f) } ?: 100f) }
+            LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightness = it.toFloat() } }
+            LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { colorTemp = it.toFloat() } }
+            LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = it.toFloat().coerceIn(0f, 360f) } }
+            LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 2.54).toFloat().coerceIn(0f, 100f) } }
             CardBlock(panel, text, item.name, item.room + " · " + if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet",
                 if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -3641,20 +3685,20 @@ private fun HomeScreen(
                                 onValueChangeFinished = { onSetNumeric(item, id, brightness.toDouble() * 2.54) })
                         }
                         item.colorTempId?.let { id ->
-                            Text("Farbtemperatur: ${colorTemp.toInt()} mired", color = text, fontWeight = FontWeight.SemiBold)
+                            Text("Farbtemperatur: ${(1_000_000f / colorTemp.coerceIn(153f, 500f)).roundToInt()} K", color = text, fontWeight = FontWeight.SemiBold)
                             Slider(value = colorTemp.coerceIn(153f, 500f), onValueChange = { colorTemp = it },
                                 valueRange = 153f..500f, enabled = item.writable,
-                                onValueChangeFinished = { onSetNumeric(item, id, colorTemp.toDouble()) })
+                                onValueChangeFinished = { onSetNumeric(item, id, (1_000_000.0 / colorTemp).roundToInt().toDouble()) })
                         }
                         if (item.hueId != null && item.saturationId != null) {
-                            Text("Farbton: ${hue.toInt()}", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = hue.coerceIn(0f, 65535f), onValueChange = { hue = it },
-                                valueRange = 0f..65535f, enabled = item.writable,
+                            Text("Farbton: ${hue.toInt()}°", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = hue.coerceIn(0f, 360f), onValueChange = { hue = it },
+                                valueRange = 0f..360f, enabled = item.writable,
                                 onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
-                            Text("Sättigung: ${saturation.toInt()}", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = saturation.coerceIn(0f, 254f), onValueChange = { saturation = it },
-                                valueRange = 0f..254f, enabled = item.writable,
-                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble()) })
+                            Text("Sättigung: ${saturation.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
+                            Slider(value = saturation.coerceIn(0f, 100f), onValueChange = { saturation = it },
+                                valueRange = 0f..100f, enabled = item.writable,
+                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
                         }
                     }
                 }
@@ -3918,11 +3962,11 @@ private fun LightsScreen(
                 var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
                 var temp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.let { ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } ?: 50f) }
-                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } ?: 180f) }
+                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { it.toFloat().coerceIn(0f, 360f) } ?: 180f) }
                 var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } ?: 100f) }
                 LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightnessPercent = it.toFloat().coerceIn(1f, 100f) } }
                 LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
-                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
+                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = it.toFloat().coerceIn(0f, 360f) } }
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier
                     .then(if (isDraggingLight) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(18.dp)) else Modifier)
@@ -4053,7 +4097,7 @@ private fun LightsScreen(
                         Text("Farbtemperatur einstellen", color = text, fontWeight = FontWeight.SemiBold)
                         if (currentMired != null) {
                             Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + temp.toDouble() / 100.0 * 347.0) })
+                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, (1_000_000.0 / (153.0 + temp.toDouble() / 100.0 * 347.0)).roundToInt().toDouble()) })
                         }
                     }
                     if (item.hueId != null && item.saturationId != null) {
@@ -4077,7 +4121,7 @@ private fun LightsScreen(
                         Text("Farbton einstellen", color = text, fontWeight = FontWeight.SemiBold)
                         if (hueAvailable) {
                             Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
+                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
                             Text("Farbsättigung einstellen", color = text, fontWeight = FontWeight.SemiBold)
                             Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
                                 onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
@@ -4245,11 +4289,11 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
                 var temp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.let { ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } ?: 50f) }
-                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } ?: 180f) }
+                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { it.toFloat().coerceIn(0f, 360f) } ?: 180f) }
                 var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } ?: 100f) }
                 LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightness = it.toFloat().coerceIn(1f, 100f) } }
                 LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
-                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = (it / 65535.0 * 360.0).toFloat().coerceIn(0f, 360f) } }
+                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = it.toFloat().coerceIn(0f, 360f) } }
                 LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(roomItemId_Lamp, ordered_Lamp.size) {
                     detectVerticalDragGestures(onDragStart = { roomDragOffset_Lamp = 0f }, onVerticalDrag = { change, amount ->
@@ -4292,12 +4336,12 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                             Text(if (item.currentColorTemp != null && item.currentColorTemp > 0.0) "Aktuelle Farbtemperatur: ${(1_000_000.0 / item.currentColorTemp).toInt()} K" else "Farbtemperatur wird geladen …", color = text, fontWeight = FontWeight.SemiBold)
                             Text("Farbtemperatur einstellen", color = text, fontWeight = FontWeight.SemiBold)
                             if (item.currentColorTemp != null) Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, 153.0 + temp.toDouble() / 100.0 * 347.0) })
+                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, (1_000_000.0 / (153.0 + temp.toDouble() / 100.0 * 347.0)).roundToInt().toDouble()) })
                         }
                         if (item.hueId != null && item.saturationId != null) {
                             Text("Farbton einstellen: ${hue.toInt()}°", color = text, fontWeight = FontWeight.SemiBold)
                             Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble() / 360.0 * 65535.0) })
+                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
                             Text("Farbsättigung einstellen: ${saturation.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
                             Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
                                 onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
@@ -4462,7 +4506,8 @@ private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableL
         }
         val colorTempId = item.colorTempId
         if (colorTempId != null) client.getNumericState(url, colorTempId) { value ->
-            if (value != null) updateNumericDeviceValue(devices, lights, id, "colorTemp", value)
+            // ioBroker.hue liefert die Farbtemperatur in Kelvin, die App rechnet intern in mired.
+            if (value != null && value > 0.0) updateNumericDeviceValue(devices, lights, id, "colorTemp", if (value > 1000.0) 1_000_000.0 / value else value)
         }
         val hueId = item.hueId
         if (hueId != null) client.getNumericState(url, hueId) { value ->
