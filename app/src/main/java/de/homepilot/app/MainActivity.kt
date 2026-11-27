@@ -3678,6 +3678,7 @@ private fun HomeScreen(
                         }
                     }
                     if (expanded) {
+                        LightColorPresetMenu(item, item.writable, onToggle, onSetNumeric)
                         item.brightnessId?.let { id ->
                             Text("Helligkeit: ${brightness.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
                             Slider(value = brightness.coerceIn(1f, 100f), onValueChange = { brightness = it },
@@ -3907,6 +3908,65 @@ private fun DeviceRow(item: DeviceItem, panel: Color, text: Color, compact: Bool
     }
 }
 
+/** Lichtfarbe per Namen wie bei Alexa. Werte in den Einheiten von ioBroker.hue: ct in Kelvin, hue in Grad, sat 0–254. */
+private data class LightColorPreset(val name: String, val kelvin: Int? = null, val hueDegrees: Int? = null, val swatch: Color)
+
+private val lightColorPresets = listOf(
+    LightColorPreset("Warmweiß", kelvin = 2700, swatch = Color(0xFFFFB74D)),
+    LightColorPreset("Weiß", kelvin = 4000, swatch = Color(0xFFFFF3D0)),
+    LightColorPreset("Kaltweiß", kelvin = 6500, swatch = Color(0xFFB3D9FF)),
+    LightColorPreset("Rot", hueDegrees = 0, swatch = Color(0xFFE53935)),
+    LightColorPreset("Orange", hueDegrees = 30, swatch = Color(0xFFFF9800)),
+    LightColorPreset("Gelb", hueDegrees = 55, swatch = Color(0xFFFFD600)),
+    LightColorPreset("Grün", hueDegrees = 120, swatch = Color(0xFF43A047)),
+    LightColorPreset("Türkis", hueDegrees = 180, swatch = Color(0xFF00ACC1)),
+    LightColorPreset("Blau", hueDegrees = 230, swatch = Color(0xFF1E88E5)),
+    LightColorPreset("Violett", hueDegrees = 275, swatch = Color(0xFF8E24AA)),
+    LightColorPreset("Pink", hueDegrees = 320, swatch = Color(0xFFEC407A))
+)
+
+@Composable
+private fun LightColorPresetMenu(
+    item: DeviceItem, enabled: Boolean,
+    onToggle: (DeviceItem, Boolean) -> Unit,
+    onSetNumeric: (DeviceItem, String, Double) -> Unit
+) {
+    val presets = lightColorPresets.filter { p ->
+        (p.kelvin != null && item.colorTempId != null) || (p.hueDegrees != null && item.hueId != null && item.saturationId != null)
+    }
+    if (presets.isEmpty()) return
+    var expanded by remember(item.stateId) { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }, enabled = enabled) {
+            Icon(Icons.Default.Palette, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Lichtfarbe auswählen")
+            Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            presets.forEach { preset ->
+                DropdownMenuItem(
+                    text = { Text(preset.name) },
+                    leadingIcon = { Icon(if (preset.kelvin != null) Icons.Default.LightMode else Icons.Default.Circle, contentDescription = null, tint = preset.swatch) },
+                    onClick = {
+                        expanded = false
+                        // Wie bei Alexa: eine ausgeschaltete Lampe wird mit der Farbe eingeschaltet.
+                        if (!item.initialOn) onToggle(item, true)
+                        val ct = item.colorTempId
+                        val hue = item.hueId
+                        val sat = item.saturationId
+                        if (preset.kelvin != null && ct != null) onSetNumeric(item, ct, preset.kelvin.toDouble())
+                        if (preset.hueDegrees != null && hue != null && sat != null) {
+                            onSetNumeric(item, hue, preset.hueDegrees.toDouble())
+                            onSetNumeric(item, sat, 254.0)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun LightsScreen(
     lights: List<DeviceItem>, rooms: List<String>, panel: Color, text: Color, connected: Boolean,
@@ -4021,71 +4081,7 @@ private fun LightsScreen(
                         Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
                             onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble() * 2.54) })
                     }
-                    if (item.colorTempId != null || (item.hueId != null && item.saturationId != null)) {
-                        var colorMenuExpanded by remember(item.stateId) { mutableStateOf(false) }
-                        val colorPresets = listOf<Triple<String, Double?, Double?>>(
-                            Triple("Warmweiß", null, 450.0),
-                            Triple("Neutralweiß", null, 285.0),
-                            Triple("Kaltweiß", null, 170.0),
-                            Triple("Rot", 0.0, null),
-                            Triple("Orange", 6000.0, null),
-                            Triple("Gelb", 11000.0, null),
-                            Triple("Grün", 26000.0, null),
-                            Triple("Türkis", 34000.0, null),
-                            Triple("Blau", 44000.0, null),
-                            Triple("Violett", 50000.0, null),
-                            Triple("Pink", 60000.0, null)
-                        ).filter { preset ->
-                            (preset.second == null || (item.hueId != null && item.saturationId != null)) &&
-                            (preset.third == null || item.colorTempId != null)
-                        }
-                        Box {
-                            OutlinedButton(onClick = { colorMenuExpanded = true }, enabled = connected && colorPresets.isNotEmpty()) {
-                                Icon(Icons.Default.Palette, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Lichtfarbe auswählen")
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                            }
-                            DropdownMenu(expanded = colorMenuExpanded, onDismissRequest = { colorMenuExpanded = false }) {
-                                colorPresets.forEach { preset ->
-                                    DropdownMenuItem(
-                                        text = { Text(preset.first) },
-                                        onClick = {
-                                            colorMenuExpanded = false
-                                            val temperatureValue = preset.third
-                                            val hueValue = preset.second
-                                            if (temperatureValue != null && item.colorTempId != null) {
-                                                onSetNumeric(item, item.colorTempId, temperatureValue)
-                                            }
-                                            if (hueValue != null && item.hueId != null && item.saturationId != null) {
-                                                onSetNumeric(item, item.hueId, hueValue)
-                                                onSetNumeric(item, item.saturationId, 254.0)
-                                            }
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                if (preset.third != null) Icons.Default.LightMode else Icons.Default.Circle,
-                                                contentDescription = null,
-                                                tint = when (preset.first) {
-                                                    "Warmweiß" -> Color(0xFFFFB74D)
-                                                    "Neutralweiß" -> Color(0xFFFFF3D0)
-                                                    "Kaltweiß" -> Color(0xFFB3D9FF)
-                                                    "Rot" -> Color(0xFFE53935)
-                                                    "Orange" -> Color(0xFFFF9800)
-                                                    "Gelb" -> Color(0xFFFFD600)
-                                                    "Grün" -> Color(0xFF43A047)
-                                                    "Türkis" -> Color(0xFF00ACC1)
-                                                    "Blau" -> Color(0xFF1E88E5)
-                                                    "Violett" -> Color(0xFF8E24AA)
-                                                    else -> Color(0xFFEC407A)
-                                                }
-                                            )
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    LightColorPresetMenu(item, connected, onToggle, onSetNumeric)
                     if (item.colorTempId != null) {
                         val currentMired = item.currentColorTemp
                         Text(
@@ -4324,6 +4320,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                         }
                     }
                     if (expanded) {
+                        LightColorPresetMenu(item, connected, onToggle, onSetNumeric)
                         if (item.brightnessId != null) {
                             Text(if (item.currentBrightness != null) "Aktuelle Helligkeit: ${brightness.toInt()}%" else "Aktuelle Helligkeit wird geladen …", color = if (item.currentBrightness != null) text else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold)
                             if (item.currentBrightness != null) Slider(value = brightness, onValueChange = { brightness = it }, valueRange = 1f..100f, enabled = connected,

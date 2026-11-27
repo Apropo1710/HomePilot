@@ -41,7 +41,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 2. Roidmi EVE Plus: gezielter Hardwaretest einer Zeitplan-Schreibänderung (Synchronisation in beide Richtungen ist bestätigt).
 3. Wartungs-Resets (X20+ und EVE Plus) am realen Gerät verifizieren.
 4. MOVA: Anfahren des Wartungspunkts praktisch bestätigen.
-5. Hue-Lampen (1.31.3): Schalten, Helligkeit, Farbtemperatur und Farbe am Gerät prüfen (Fall „Schrank“/`hue.0.Anrichte`).
+5. Hue-Lampen (1.31.3/1.31.4): Schalten, Helligkeit, Farbtemperatur, Farbe und Farbauswahl am Gerät prüfen (Fall „Schrank“/`hue.0.Anrichte`).
 6. BambuLab-Drucker: Statusseite und Druckverlauf am Gerät prüfen; der Druckverlauf im Adapter BambuLab Connect (auf `main`, PR #23) ist noch nicht am Drucker getestet.
 
 ## 4. Funktionsumfang
@@ -97,7 +97,7 @@ Arbeitsweise:
 
 ## 7. Technische Entscheidungen und Grenzen
 
-- Hue (`hue.0`, seit 1.31.3): Als Lampe gilt nur der `on`-Datenpunkt einer Lampe (`switch.light`) oder Gruppe (mit `anyOn`/`bri`); `anyOn`, `allOn`, Szenen und Sensor-Schalter werden nicht mehr als Lampen angeboten. Früher übernommene Nebendatenpunkte werden beim Verbinden auf `on` daneben umgestellt (Name, Raum, Art, Favorit wandern mit). Der Adapter führt `ct` in Kelvin, `hue` in 0–360°, `sat` und `bri` in 0–254; die App rechnet entsprechend um. Im Dialog „Gerät bearbeiten“ steht der verwendete Datenpunkt.
+- Hue (`hue.0`, seit 1.31.3): Als Lampe gilt nur der `on`-Datenpunkt einer Lampe (`switch.light`) oder Gruppe (mit `anyOn`/`bri`); `anyOn`, `allOn`, Szenen und Sensor-Schalter werden nicht mehr als Lampen angeboten. Früher übernommene Nebendatenpunkte werden beim Verbinden auf `on` daneben umgestellt (Name, Raum, Art, Favorit wandern mit). Der Adapter führt `ct` in Kelvin, `hue` in 0–360°, `sat` und `bri` in 0–254; die App rechnet entsprechend um. Im Dialog „Gerät bearbeiten“ steht der verwendete Datenpunkt. Seit 1.31.4 gibt es bei Hue-Lampen auf Startseite, Raum- und Lichtseite ein Auswahlmenü „Lichtfarbe auswählen“ (Warmweiß 2700 K, Weiß 4000 K, Kaltweiß 6500 K, Rot, Orange, Gelb, Grün, Türkis, Blau, Violett, Pink); eine ausgeschaltete Lampe wird dabei eingeschaltet.
 
 - `ws://` ohne Zertifikat im vertrauenswürdigen Heimnetz ist ausdrücklich gewollt; WSS/TLS wird nicht erzwungen.
 - SENEC/Energiefluss-Adapter nicht als Datenquelle einplanen (Last).
