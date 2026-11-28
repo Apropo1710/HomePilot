@@ -601,6 +601,8 @@ private data class DeviceItem(
     val currentColorTemp: Double? = null,
     val currentHue: Double? = null,
     val currentSaturation: Double? = null,
+    /** Hue: "ct" (Weißton) oder "hs"/"xy" (Farbe), aus dem Datenpunkt colormode neben on. */
+    val currentColorMode: String? = null,
     val energyId: String? = null,
     val energyUnit: String? = null,
     val energyValue: Double? = null
@@ -3906,6 +3908,29 @@ private val lightColorPresets = listOf(
     LightColorPreset("Pink", hueDegrees = 320, swatch = Color(0xFFEC407A))
 )
 
+/**
+ * Die Voreinstellung, der die Lampe gerade am nächsten ist: im Weißton-Modus (colormode ct) nach
+ * Kelvin, sonst nach Farbton; kaum gesättigte Farben gelten als Weiß. Null, solange nichts geladen ist.
+ */
+private fun currentLightColorPreset(item: DeviceItem, presets: List<LightColorPreset>): LightColorPreset? {
+    val whites = presets.filter { it.kelvin != null }
+    val colors = presets.filter { it.hueDegrees != null }
+    val mired = item.currentColorTemp
+    val hue = item.currentHue
+    val sat = item.currentSaturation
+    fun nearestWhite(): LightColorPreset? {
+        val kelvin = mired?.takeIf { it > 0.0 }?.let { 1_000_000.0 / it } ?: return whites.firstOrNull { it.name == "Weiß" }
+        return whites.minByOrNull { kotlin.math.abs(it.kelvin!! - kelvin) }
+    }
+    val colorMode = item.currentColorMode
+    return when {
+        colorMode == "ct" || (colorMode == null && hue == null) -> nearestWhite()
+        hue == null || sat == null -> null
+        sat < 40.0 -> nearestWhite()
+        else -> colors.minByOrNull { p -> kotlin.math.abs(((p.hueDegrees!! - hue) % 360.0 + 540.0) % 360.0 - 180.0) }
+    }
+}
+
 @Composable
 private fun LightColorPresetMenu(
     item: DeviceItem, enabled: Boolean,
@@ -3917,11 +3942,17 @@ private fun LightColorPresetMenu(
     }
     if (presets.isEmpty()) return
     var expanded by remember(item.stateId) { mutableStateOf(false) }
+    // Gerade gewählte Farbe sofort zeigen, bis die Lampe ihre neuen Werte gemeldet hat.
+    val current = currentLightColorPreset(item, presets)
+    var picked by remember(item.stateId) { mutableStateOf<LightColorPreset?>(null) }
+    LaunchedEffect(current) { picked = null }
+    val shown = picked ?: current
     Box {
         OutlinedButton(onClick = { expanded = true }, enabled = enabled) {
-            Icon(Icons.Default.Palette, contentDescription = null)
+            if (shown != null) Icon(if (shown.kelvin != null) Icons.Default.LightMode else Icons.Default.Circle, contentDescription = null, tint = shown.swatch)
+            else Icon(Icons.Default.Palette, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Lichtfarbe auswählen")
+            Text(shown?.let { "Lichtfarbe: ${it.name}" } ?: "Lichtfarbe auswählen")
             Icon(Icons.Default.ArrowDropDown, contentDescription = null)
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
@@ -3931,6 +3962,7 @@ private fun LightColorPresetMenu(
                     leadingIcon = { Icon(if (preset.kelvin != null) Icons.Default.LightMode else Icons.Default.Circle, contentDescription = null, tint = preset.swatch) },
                     onClick = {
                         expanded = false
+                        picked = preset
                         // Wie bei Alexa: eine ausgeschaltete Lampe wird mit der Farbe eingeschaltet.
                         if (!item.initialOn) onToggle(item, true)
                         val ct = item.colorTempId
@@ -4429,6 +4461,9 @@ private fun refreshStates(client: IoBrokerClient, url: String, devices: MutableL
         val saturationId = item.saturationId
         if (saturationId != null) client.getNumericState(url, saturationId) { value ->
             if (value != null) updateNumericDeviceValue(devices, lights, id, "saturation", value)
+        }
+        if (id.startsWith("hue.0.") && (item.colorTempId != null || hueId != null)) client.getTextState(url, "${id.substringBeforeLast('.')}.colormode") { mode ->
+            if (mode != null) updateDeviceMeasurement(devices, lights, id) { it.copy(currentColorMode = mode.trim().lowercase()) }
         }
         val powerId = item.powerId
         if (powerId != null) client.getNumericState(url, powerId) { watts ->
