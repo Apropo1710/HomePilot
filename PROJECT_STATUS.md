@@ -31,7 +31,7 @@ Diese Datei ist die **einzige maßgebliche Statusquelle** (Produktion, Branches,
 ## 2. Branches und Pull Requests
 
 - Offene PRs: **keine**. PR #1 (`feat/roidmi-eve-plus-options`) am 05.11.2026 gemergt; PR #2 (`docs/status-refresh-2026-11-16`) ohne Merge geschlossen.
-- Remote-Branches: `main`; `feature/bambu-status` ist vollständig in `main` enthalten und wird gelöscht (Löschen aus der Claude-Sitzung war nicht möglich). Alle alten Feature- und Dokumentationsbranches sowie `STATUS.md` wurden am 19.11.2026 gelöscht.
+- Remote-Branches: nur `main` (`feature/bambu-status` am 28.11.2026 gelöscht).
 - Releases: nur `latest` (Produktion, `HomePilot.apk`).
 - Workflows: `.github/workflows/android.yml` baut bei Push auf `main` (außer `[skip ci]`) die Release-APK, veröffentlicht sie im Release `latest` und pflegt den automatischen Block oben. `.github/workflows/branch-validation.yml` prüft andere Branches (Unit-Tests, Release-Kotlin-Kompilierung) ohne APK oder Veröffentlichung. `.github/workflows/docs-guard.yml` prüft bei jedem Push und täglich, dass `PROJECT_STATUS.md` die einzige Statusdatei bleibt.
 
