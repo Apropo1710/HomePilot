@@ -4140,7 +4140,7 @@ private fun DevicesScreen(devices: List<DeviceItem>, rooms: List<String>, panel:
     val visibleDevices = devices.filter { selectedRoom == null || it.room == selectedRoom }
     val unassigned = devices.filter { it.room.isBlank() || it.room == "Nicht zugeordnet" }
     Text("Geräte", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
+    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom, listOf("Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }))
     if (selectedRoom == "Nicht zugeordnet") {
         CardBlock(panel, text, "Noch keinem Raum zugeordnet", "${unassigned.size} ${if (unassigned.size == 1) "Gerät" else "Geräte"}", Icons.Default.RoomPreferences) {
             if (unassigned.isEmpty()) {
