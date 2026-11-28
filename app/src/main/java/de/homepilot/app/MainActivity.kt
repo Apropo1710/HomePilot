@@ -438,7 +438,8 @@ private class IoBrokerClient(private val credentialStore: IoBrokerCredentialsSto
                     if (next.isBlank() || next == ancestor || next == adapter) break
                     ancestor = next
                 }
-                val fallback = friendly.ifBlank { name.trim().takeIf { it.isNotBlank() && !it.startsWith("{") && !it.equals("switch", true) } ?: when(adapter) { "hue.0" -> "Hue-Licht"; "tuya" -> "Tuya-Gerät"; else -> "Shelly-Gerät" } }
+                val stateName = if (adapter == "hue.0") name.trim().removeSuffix(".on") else name
+                val fallback = friendly.ifBlank { stateName.trim().takeIf { it.isNotBlank() && !it.startsWith("{") && !it.equals("switch", true) } ?: when(adapter) { "hue.0" -> "Hue-Licht"; "tuya" -> "Tuya-Gerät"; else -> "Shelly-Gerät" } }
                 fun related(vararg endings: String): String? = endings.firstNotNullOfOrNull { ending ->
                     allIds.firstOrNull { candidate ->
                         candidate.substringBeforeLast('.') == parent && candidate.substringAfterLast('.').equals(ending, true) &&
@@ -1493,7 +1494,7 @@ private fun HomePilotApp() {
                     ) {
                     key(displayedTab, homePilotAccount?.username, userProfileSyncToken) {
                     when (displayedTab) {
-                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onOpenX20Plus = { selectedTab = Tab.X20PLUS }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
+                        Tab.HOME -> HomeScreen(rooms, lights, devices, floodAlarm, floodBattery, floodKnown, floodBatteryKnown, panel, text, selectedRoom, searchQuery, weatherCity, serverUrl, connected, ioClient, onOpenMova = { selectedTab = Tab.MOVA }, onOpenRoidmi = { selectedTab = Tab.ROIDMI }, onOpenX20Plus = { selectedTab = Tab.X20PLUS }, onSearch = { searchQuery = it }, onSelectRoom = { selectedRoom = it.takeIf { room -> room.isNotBlank() } }, onOpenRoom = { room -> selectedRoom = room }, onTab = { navigateTo(it) }, onEditDevice = { item -> editDevice = item; editName = item.name; editRoom = item.room; editKind = deviceKinds[item.stateId] ?: item.kind }, onSetNumeric = { item, id, value -> ioClient.setNumericState(serverUrl, id, value) { ok, message -> connectionStatus = message } }, onToggle = { item, value ->
                             val id = item.stateId
                             if (id != null && item.writable) ioClient.setState(serverUrl, id, value) { ok, message ->
                                 connectionStatus = message
@@ -3638,7 +3639,8 @@ private fun X20PlusDetailScreen(serverUrl: String, connected: Boolean, client: I
 private fun HomeScreen(
     rooms: List<String>, lights: List<DeviceItem>, devices: List<DeviceItem>, floodAlarm: Boolean, floodBattery: Int, floodKnown: Boolean, floodBatteryKnown: Boolean,
     panel: Color, text: Color, selectedRoom: String?, searchQuery: String, weatherCity: String, serverUrl: String, connected: Boolean, ioClient: IoBrokerClient, onOpenMova: () -> Unit, onOpenRoidmi: () -> Unit, onOpenX20Plus: () -> Unit,
-    onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit
+    onSearch: (String) -> Unit, onSelectRoom: (String) -> Unit, onOpenRoom: (String) -> Unit, onTab: (Tab) -> Unit, onToggle: (DeviceItem, Boolean) -> Unit, onSetNumeric: (DeviceItem, String, Double) -> Unit,
+    onEditDevice: (DeviceItem) -> Unit = {}
 ) {
     if (selectedRoom != null) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3664,7 +3666,8 @@ private fun HomeScreen(
             LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = it.toFloat().coerceIn(0f, 360f) } }
             LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 2.54).toFloat().coerceIn(0f, 100f) } }
             CardBlock(panel, text, item.name, item.room + " · " + if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet",
-                if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power) {
+                if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power,
+                action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text(if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet", color = if (item.initialOn) Green else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
                     Switch(checked = item.initialOn, enabled = item.writable && item.stateId != null, onCheckedChange = { onToggle(item, it) })
@@ -3978,7 +3981,7 @@ private fun LightsScreen(
     defaultBrightness: (DeviceItem) -> Int
 ) {
     Text("Licht", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = text)
-    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom)
+    RoomMenu(rooms, selectedRoom, panel, text, onSelectRoom, listOf("Ohne Raum" to { onSelectRoom("Nicht zugeordnet") }))
     if (!connected) Text("Bitte zuerst unter Einstellungen verbinden.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     else if (lights.isEmpty()) Text("Keine schaltbaren Hue-Zustände gefunden. Prüfe die Hue-Objekte unter hue.0.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     val context = LocalContext.current
@@ -3986,9 +3989,11 @@ private fun LightsScreen(
         val saved = context.getSharedPreferences("homepilot", Context.MODE_PRIVATE).getString("lightCardOrder", null)
         addAll(saved?.split("|").orEmpty())
     } }
-    val visibleLights = lights.filter { selectedRoom == null || it.room == selectedRoom }
+    val visibleLights = lights.filter { selectedRoom == null || it.room.ifBlank { "Nicht zugeordnet" } == selectedRoom }
     val grouped = visibleLights.groupBy { it.room.ifBlank { "Nicht zugeordnet" } }
-    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" }).distinct()
+    // Lampen ohne Raum stehen am Ende, damit frisch übernommene Lampen auffindbar bleiben.
+    val roomOrder = (rooms.filter { it != "Nicht zugeordnet" } + grouped.keys.filter { it !in rooms && it != "Nicht zugeordnet" } + "Nicht zugeordnet").distinct()
+    if (connected && lights.isNotEmpty() && visibleLights.isEmpty()) Text("In diesem Raum sind keine Lampen.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     roomOrder.filter { grouped[it].orEmpty().isNotEmpty() }.forEachIndexed { roomIndex, room ->
         val rawRoomItems = grouped[room].orEmpty()
         val roomIds = rawRoomItems.map { it.stateId ?: it.name }
