@@ -3658,13 +3658,7 @@ private fun HomeScreen(
         roomItems.forEach { item ->
             var expanded by remember(item.stateId) { mutableStateOf(false) }
             var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
-            var colorTemp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.toFloat() ?: 285f) }
-            var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.toFloat()?.coerceIn(0f, 360f) ?: 0f) }
-            var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 2.54).toFloat().coerceIn(0f, 100f) } ?: 100f) }
             LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightness = it.toFloat() } }
-            LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { colorTemp = it.toFloat() } }
-            LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = it.toFloat().coerceIn(0f, 360f) } }
-            LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 2.54).toFloat().coerceIn(0f, 100f) } }
             CardBlock(panel, text, item.name, item.room + " · " + if (item.initialOn) "Eingeschaltet" else "Ausgeschaltet",
                 if (item.kind == "light") Icons.Default.Lightbulb else Icons.Default.Power,
                 action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit) {
@@ -3687,22 +3681,6 @@ private fun HomeScreen(
                             Slider(value = brightness.coerceIn(1f, 100f), onValueChange = { brightness = it },
                                 valueRange = 1f..100f, enabled = item.writable,
                                 onValueChangeFinished = { onSetNumeric(item, id, brightness.toDouble() * 2.54) })
-                        }
-                        item.colorTempId?.let { id ->
-                            Text("Farbtemperatur: ${(1_000_000f / colorTemp.coerceIn(153f, 500f)).roundToInt()} K", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = colorTemp.coerceIn(153f, 500f), onValueChange = { colorTemp = it },
-                                valueRange = 153f..500f, enabled = item.writable,
-                                onValueChangeFinished = { onSetNumeric(item, id, (1_000_000.0 / colorTemp).roundToInt().toDouble()) })
-                        }
-                        if (item.hueId != null && item.saturationId != null) {
-                            Text("Farbton: ${hue.toInt()}°", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = hue.coerceIn(0f, 360f), onValueChange = { hue = it },
-                                valueRange = 0f..360f, enabled = item.writable,
-                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
-                            Text("Sättigung: ${saturation.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = saturation.coerceIn(0f, 100f), onValueChange = { saturation = it },
-                                valueRange = 0f..100f, enabled = item.writable,
-                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
                         }
                     }
                 }
@@ -4026,13 +4004,7 @@ private fun LightsScreen(
                 var expanded by remember(item.stateId) { mutableStateOf(false) }
                 var brightnessPercent by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
-                var temp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.let { ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } ?: 50f) }
-                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { it.toFloat().coerceIn(0f, 360f) } ?: 180f) }
-                var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } ?: 100f) }
                 LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightnessPercent = it.toFloat().coerceIn(1f, 100f) } }
-                LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
-                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = it.toFloat().coerceIn(0f, 360f) } }
-                LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier
                     .then(if (isDraggingLight) Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)).border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(18.dp)) else Modifier)
                     .pointerInput(item.stateId, roomItems.size) {
@@ -4087,47 +4059,6 @@ private fun LightsScreen(
                             onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble() * 2.54) })
                     }
                     LightColorPresetMenu(item, connected, onToggle, onSetNumeric)
-                    if (item.colorTempId != null) {
-                        val currentMired = item.currentColorTemp
-                        Text(
-                            if (currentMired != null && currentMired > 0.0) "Aktuelle Farbtemperatur: ${(1_000_000.0 / currentMired).toInt()} K"
-                            else "Aktuelle Farbtemperatur wird geladen …",
-                            color = if (currentMired != null && currentMired > 0.0) text else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text("Farbtemperatur einstellen", color = text, fontWeight = FontWeight.SemiBold)
-                        if (currentMired != null) {
-                            Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, (1_000_000.0 / (153.0 + temp.toDouble() / 100.0 * 347.0)).roundToInt().toDouble()) })
-                        }
-                    }
-                    if (item.hueId != null && item.saturationId != null) {
-                        val hueAvailable = item.currentHue != null && item.currentSaturation != null
-                        if (hueAvailable) {
-                            val previewColor = Color(android.graphics.Color.HSVToColor(floatArrayOf(
-                                hue.coerceIn(0f, 360f),
-                                (saturation / 100f).coerceIn(0f, 1f),
-                                (brightnessPercent / 100f).coerceIn(0.05f, 1f)
-                            )))
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Box(Modifier.size(28.dp).clip(CircleShape).background(previewColor))
-                                Column {
-                                    Text("Aktuelle Farbe", color = text, fontWeight = FontWeight.SemiBold)
-                                    Text("Farbton ${hue.toInt()}° · Sättigung ${saturation.toInt()}%", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                                }
-                            }
-                        } else {
-                            Text("Aktuelle Farbe wird geladen …", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                        }
-                        Text("Farbton einstellen", color = text, fontWeight = FontWeight.SemiBold)
-                        if (hueAvailable) {
-                            Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
-                            Text("Farbsättigung einstellen", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
-                        }
-                    }
                     }
                 }
             }
@@ -4289,13 +4220,7 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                 var expanded by remember(item.stateId) { mutableStateOf(false) }
                 var brightness by remember(item.stateId) { mutableFloatStateOf(item.currentBrightness?.toFloat() ?: 100f) }
                 var turnOnPercent by remember(item.stateId) { mutableIntStateOf(defaultBrightness(item)) }
-                var temp by remember(item.stateId) { mutableFloatStateOf(item.currentColorTemp?.let { ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } ?: 50f) }
-                var hue by remember(item.stateId) { mutableFloatStateOf(item.currentHue?.let { it.toFloat().coerceIn(0f, 360f) } ?: 180f) }
-                var saturation by remember(item.stateId) { mutableFloatStateOf(item.currentSaturation?.let { (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } ?: 100f) }
                 LaunchedEffect(item.currentBrightness) { item.currentBrightness?.let { brightness = it.toFloat().coerceIn(1f, 100f) } }
-                LaunchedEffect(item.currentColorTemp) { item.currentColorTemp?.let { temp = ((it - 153.0) / 347.0 * 100.0).toFloat().coerceIn(1f, 100f) } }
-                LaunchedEffect(item.currentHue) { item.currentHue?.let { hue = it.toFloat().coerceIn(0f, 360f) } }
-                LaunchedEffect(item.currentSaturation) { item.currentSaturation?.let { saturation = (it / 254.0 * 100.0).toFloat().coerceIn(0f, 100f) } }
                 CardBlock(panel, text, item.name, "", Icons.Default.Lightbulb, action = { onEditDevice(item) }, actionIcon = Icons.Default.Edit, modifier = Modifier.pointerInput(roomItemId_Lamp, ordered_Lamp.size) {
                     detectVerticalDragGestures(onDragStart = { roomDragOffset_Lamp = 0f }, onVerticalDrag = { change, amount ->
                         change.consume(); roomDragOffset_Lamp += amount
@@ -4333,20 +4258,6 @@ private fun RoomsScreen(rooms: List<String>, devices: List<DeviceItem>, lights: 
                             Text("Helligkeit beim Einschalten: ${turnOnPercent}%", color = text, fontWeight = FontWeight.SemiBold)
                             Slider(value = turnOnPercent.toFloat(), onValueChange = { turnOnPercent = it.toInt() }, valueRange = 1f..100f, enabled = connected,
                                 onValueChangeFinished = { onSetDefaultBrightness(item, turnOnPercent); if (!item.initialOn) onSetNumeric(item, item.brightnessId, turnOnPercent.toDouble() * 2.54) })
-                        }
-                        if (item.colorTempId != null) {
-                            Text(if (item.currentColorTemp != null && item.currentColorTemp > 0.0) "Aktuelle Farbtemperatur: ${(1_000_000.0 / item.currentColorTemp).toInt()} K" else "Farbtemperatur wird geladen …", color = text, fontWeight = FontWeight.SemiBold)
-                            Text("Farbtemperatur einstellen", color = text, fontWeight = FontWeight.SemiBold)
-                            if (item.currentColorTemp != null) Slider(value = temp, onValueChange = { temp = it }, valueRange = 1f..100f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.colorTempId, (1_000_000.0 / (153.0 + temp.toDouble() / 100.0 * 347.0)).roundToInt().toDouble()) })
-                        }
-                        if (item.hueId != null && item.saturationId != null) {
-                            Text("Farbton einstellen: ${hue.toInt()}°", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = hue, onValueChange = { hue = it }, valueRange = 0f..360f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.hueId, hue.toDouble()) })
-                            Text("Farbsättigung einstellen: ${saturation.toInt()}%", color = text, fontWeight = FontWeight.SemiBold)
-                            Slider(value = saturation, onValueChange = { saturation = it }, valueRange = 0f..100f, enabled = connected,
-                                onValueChangeFinished = { onSetNumeric(item, item.saturationId, saturation.toDouble() * 2.54) })
                         }
                     }
                 }
