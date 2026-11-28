@@ -16,7 +16,7 @@ HomePilot ist eine Android-App (Kotlin, Jetpack Compose) zur Steuerung und Verwa
 - **Der Updater darf niemals verändert werden** – auch nicht nebenbei bei Features, Fehlerkorrekturen oder Aufräumarbeiten. Nur eine ausdrückliche, konkrete Nutzeranweisung, die genau diese Updater-Änderung benennt, hebt die Sperre auf.
 - **`PROJECT_STATUS.md` ist die einzige Statusdatei.** Keine weiteren Status-, Plan-, Übergabe-, TODO- oder Notizdateien anlegen, auch nicht „vorübergehend“. Neue Stände in die passenden Abschnitte einarbeiten und überholte Aussagen ersetzen, keine zusätzlichen Abgleich-Abschnitte anhängen. Der Workflow „Docs guard“ schlägt fehl, wenn eine weitere solche Datei auftaucht.
 - **Den automatisch gepflegten Block** am Anfang von `PROJECT_STATUS.md` (Version, Build, Release) nie von Hand ändern.
-- **Ablauf:** Entwicklung direkt auf `main`; größere Funktionen vorher auf einem Feature-Branch mit der Branch-Prüfung. Reine Dokumentationscommits auf `main` mit `[skip ci]` kennzeichnen.
+- **Ablauf:** Alles direkt auf `main`, keine Feature-Branches; Updates über den In-App-Updater (Nutzerentscheidung 28.11.2026). Reine Dokumentationscommits auf `main` mit `[skip ci]` kennzeichnen.
 - **Nichts als gebaut, getestet oder funktionierend darstellen, was nicht verifiziert ist.** CI-Ergebnis und Gerätetest klar trennen.
 - **HomePilot und KlimaPilot strikt getrennt halten.**
 - **Roboter und andere Geräte:** keine zusätzlichen zyklischen Abfragen; keine Werte erfinden, die ein Adapter nicht liefert.

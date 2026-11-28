@@ -86,7 +86,7 @@ Arbeitsweise:
 
 ## 6. Verbindliche Regeln
 
-- Entwicklung direkt auf `main` für die Hauptversion; größere Funktionen können vorher auf einem Feature-Branch mit `branch-validation.yml` geprüft werden. Keine separaten Testversionen.
+- Alles direkt auf `main`, keine Feature-Branches; Updates über den In-App-Updater (Nutzerentscheidung 28.11.2026). Keine separaten Testversionen.
 - Vor Änderungen aktuellen Stand von `main` und betroffenen Code lesen; Änderungen klein und gezielt; Diff vor dem Push prüfen; danach Produktionsbuild und Release kontrollieren.
 - Reine Dokumentationscommits auf `main` mit `[skip ci]` kennzeichnen.
 - Nichts als gebaut, getestet oder funktionierend darstellen, was nicht tatsächlich verifiziert ist.
